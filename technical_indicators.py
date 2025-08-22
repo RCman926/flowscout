@@ -1,0 +1,365 @@
+import pandas as pd
+import numpy as np
+from scipy import stats
+import talib
+
+class TechnicalAnalyzer:
+    def __init__(self):
+        self.indicators = {}
+        
+    def calculate_all_indicators(self, price_data, volume_data):
+        """Calculate all technical indicators"""
+        if len(price_data) < 50:  # Need minimum data points
+            return self._default_indicators()
+            
+        try:
+            indicators = {}
+            
+            # Price-based indicators
+            indicators['rsi'] = self.calculate_rsi(price_data)
+            indicators['macd'], indicators['macd_signal'] = self.calculate_macd(price_data)
+            indicators['bb_upper'], indicators['bb_lower'], indicators['bb_middle'] = self.calculate_bollinger_bands(price_data)
+            indicators['bb_percent'] = self.calculate_bb_percent(price_data, indicators['bb_upper'], indicators['bb_lower'])
+            indicators['stoch_k'], indicators['stoch_d'] = self.calculate_stochastic(price_data)
+            indicators['ema_20'] = self.calculate_ema(price_data, 20)
+            indicators['ema_50'] = self.calculate_ema(price_data, 50)
+            indicators['sma_20'] = self.calculate_sma(price_data, 20)
+            indicators['sma_50'] = self.calculate_sma(price_data, 50)
+            indicators['atr'] = self.calculate_atr(price_data)
+            indicators['adx'] = self.calculate_adx(price_data)
+            indicators['cci'] = self.calculate_cci(price_data)
+            indicators['williams_r'] = self.calculate_williams_r(price_data)
+            
+            # Volume-based indicators
+            if len(volume_data) == len(price_data):
+                indicators['volume_sma'] = self.calculate_sma(volume_data, 20)
+                indicators['volume_ratio'] = volume_data[-1] / indicators['volume_sma'] if indicators['volume_sma'] > 0 else 1
+                indicators['obv'] = self.calculate_obv(price_data, volume_data)
+                indicators['cmf'] = self.calculate_cmf(price_data, volume_data)
+            else:
+                indicators['volume_sma'] = 0
+                indicators['volume_ratio'] = 1
+                indicators['obv'] = 0
+                indicators['cmf'] = 0
+            
+            # Pattern recognition
+            indicators['support'] = self.find_support_level(price_data)
+            indicators['resistance'] = self.find_resistance_level(price_data)
+            indicators['trend'] = self.identify_trend(price_data)
+            
+            return indicators
+            
+        except Exception as e:
+            print(f"Technical analysis error: {e}")
+            return self._default_indicators()
+    
+    def _default_indicators(self):
+        """Return default indicator values when calculation fails"""
+        return {
+            'rsi': 50, 'macd': 0, 'macd_signal': 0,
+            'bb_upper': 0, 'bb_lower': 0, 'bb_middle': 0, 'bb_percent': 50,
+            'stoch_k': 50, 'stoch_d': 50,
+            'ema_20': 0, 'ema_50': 0, 'sma_20': 0, 'sma_50': 0,
+            'atr': 0, 'adx': 0, 'cci': 0, 'williams_r': -50,
+            'volume_sma': 0, 'volume_ratio': 1, 'obv': 0, 'cmf': 0,
+            'support': 0, 'resistance': 0, 'trend': 'sideways'
+        }
+    
+    def calculate_rsi(self, data, period=14):
+        """Calculate Relative Strength Index"""
+        try:
+            if hasattr(talib, 'RSI'):
+                return talib.RSI(np.array(data, dtype=float), timeperiod=period)[-1]
+            else:
+                # Manual calculation
+                delta = np.diff(data)
+                gain = np.where(delta > 0, delta, 0)
+                loss = np.where(delta < 0, -delta, 0)
+                
+                avg_gain = np.mean(gain[-period:]) if len(gain) >= period else 0
+                avg_loss = np.mean(loss[-period:]) if len(loss) >= period else 0
+                
+                if avg_loss == 0:
+                    return 100
+                
+                rs = avg_gain / avg_loss
+                return 100 - (100 / (1 + rs))
+                
+        except Exception as e:
+            print(f"RSI calculation error: {e}")
+            return 50
+    
+    def calculate_macd(self, data, fast=12, slow=26, signal=9):
+        """Calculate MACD indicator"""
+        try:
+            if hasattr(talib, 'MACD'):
+                macd, signal_line, hist = talib.MACD(np.array(data, dtype=float), 
+                                                   fastperiod=fast, slowperiod=slow, signalperiod=signal)
+                return macd[-1], signal_line[-1]
+            else:
+                # Manual calculation
+                exp1 = pd.Series(data).ewm(span=fast, adjust=False).mean()
+                exp2 = pd.Series(data).ewm(span=slow, adjust=False).mean()
+                macd = exp1 - exp2
+                signal_line = macd.ewm(span=signal, adjust=False).mean()
+                return macd.iloc[-1], signal_line.iloc[-1]
+                
+        except Exception as e:
+            print(f"MACD calculation error: {e}")
+            return 0, 0
+    
+    def calculate_bollinger_bands(self, data, period=20, std_dev=2):
+        """Calculate Bollinger Bands"""
+        try:
+            if hasattr(talib, 'BBANDS'):
+                upper, middle, lower = talib.BBANDS(np.array(data, dtype=float), 
+                                                   timeperiod=period, nbdevup=std_dev, nbdevdn=std_dev)
+                return upper[-1], lower[-1], middle[-1]
+            else:
+                # Manual calculation
+                sma = pd.Series(data).rolling(window=period).mean()
+                std = pd.Series(data).rolling(window=period).std()
+                upper = sma + (std * std_dev)
+                lower = sma - (std * std_dev)
+                return upper.iloc[-1], lower.iloc[-1], sma.iloc[-1]
+                
+        except Exception as e:
+            print(f"Bollinger Bands calculation error: {e}")
+            return 0, 0, 0
+    
+    def calculate_bb_percent(self, data, bb_upper, bb_lower):
+        """Calculate %B (Bollinger Band percentage)"""
+        try:
+            if bb_upper == bb_lower:
+                return 50
+            return ((data[-1] - bb_lower) / (bb_upper - bb_lower)) * 100
+        except:
+            return 50
+    
+    def calculate_stochastic(self, data, k_period=14, d_period=3):
+        """Calculate Stochastic Oscillator"""
+        try:
+            if hasattr(talib, 'STOCH'):
+                # Need high, low, close for proper stochastic
+                high = np.array(data, dtype=float)
+                low = np.array(data, dtype=float) 
+                close = np.array(data, dtype=float)
+                slowk, slowd = talib.STOCH(high, low, close, 
+                                         fastk_period=k_period, slowk_period=d_period, slowd_period=d_period)
+                return slowk[-1], slowd[-1]
+            else:
+                # Manual calculation
+                low_min = pd.Series(data).rolling(window=k_period).min()
+                high_max = pd.Series(data).rolling(window=k_period).max()
+                k_percent = 100 * ((pd.Series(data) - low_min) / (high_max - low_min))
+                d_percent = k_percent.rolling(window=d_period).mean()
+                return k_percent.iloc[-1], d_percent.iloc[-1]
+                
+        except Exception as e:
+            print(f"Stochastic calculation error: {e}")
+            return 50, 50
+    
+    def calculate_ema(self, data, period):
+        """Calculate Exponential Moving Average"""
+        try:
+            if hasattr(talib, 'EMA'):
+                return talib.EMA(np.array(data, dtype=float), timeperiod=period)[-1]
+            else:
+                return pd.Series(data).ewm(span=period, adjust=False).mean().iloc[-1]
+        except:
+            return np.mean(data[-period:]) if len(data) >= period else np.mean(data)
+    
+    def calculate_sma(self, data, period):
+        """Calculate Simple Moving Average"""
+        try:
+            if hasattr(talib, 'SMA'):
+                return talib.SMA(np.array(data, dtype=float), timeperiod=period)[-1]
+            else:
+                return pd.Series(data).rolling(window=period).mean().iloc[-1]
+        except:
+            return np.mean(data[-period:]) if len(data) >= period else np.mean(data)
+    
+    def calculate_atr(self, data, period=14):
+        """Calculate Average True Range"""
+        try:
+            # Simplified ATR using only close prices
+            high_low = np.diff(data)
+            true_range = np.abs(high_low)
+            return pd.Series(true_range).rolling(window=period).mean().iloc[-1]
+        except:
+            return np.std(data[-period:]) if len(data) >= period else np.std(data)
+    
+    def calculate_adx(self, data, period=14):
+        """Calculate Average Directional Index"""
+        try:
+            if hasattr(talib, 'ADX'):
+                # Simplified using close prices as high/low/close
+                close_array = np.array(data, dtype=float)
+                return talib.ADX(close_array, close_array, close_array, timeperiod=period)[-1]
+            else:
+                # Simplified ADX calculation
+                return 25  # Neutral ADX value
+        except:
+            return 25
+    
+    def calculate_cci(self, data, period=20):
+        """Calculate Commodity Channel Index"""
+        try:
+            if hasattr(talib, 'CCI'):
+                close_array = np.array(data, dtype=float)
+                return talib.CCI(close_array, close_array, close_array, timeperiod=period)[-1]
+            else:
+                # Manual calculation
+                tp = pd.Series(data)  # Using close as typical price
+                sma_tp = tp.rolling(window=period).mean()
+                mad = tp.rolling(window=period).apply(lambda x: np.mean(np.abs(x - x.mean())))
+                return ((tp.iloc[-1] - sma_tp.iloc[-1]) / (0.015 * mad.iloc[-1])) if mad.iloc[-1] != 0 else 0
+        except:
+            return 0
+    
+    def calculate_williams_r(self, data, period=14):
+        """Calculate Williams %R"""
+        try:
+            if hasattr(talib, 'WILLR'):
+                close_array = np.array(data, dtype=float)
+                return talib.WILLR(close_array, close_array, close_array, timeperiod=period)[-1]
+            else:
+                # Manual calculation
+                high_max = pd.Series(data).rolling(window=period).max()
+                low_min = pd.Series(data).rolling(window=period).min()
+                current = data[-1]
+                return -100 * ((high_max.iloc[-1] - current) / (high_max.iloc[-1] - low_min.iloc[-1])) if (high_max.iloc[-1] - low_min.iloc[-1]) != 0 else -50
+        except:
+            return -50
+    
+    def calculate_obv(self, price_data, volume_data):
+        """Calculate On-Balance Volume"""
+        try:
+            if hasattr(talib, 'OBV'):
+                return talib.OBV(np.array(price_data, dtype=float), np.array(volume_data, dtype=float))[-1]
+            else:
+                # Manual calculation
+                obv = [0]
+                for i in range(1, len(price_data)):
+                    if price_data[i] > price_data[i-1]:
+                        obv.append(obv[-1] + volume_data[i])
+                    elif price_data[i] < price_data[i-1]:
+                        obv.append(obv[-1] - volume_data[i])
+                    else:
+                        obv.append(obv[-1])
+                return obv[-1]
+        except:
+            return 0
+    
+    def calculate_cmf(self, price_data, volume_data, period=20):
+        """Calculate Chaikin Money Flow"""
+        try:
+            if len(price_data) != len(volume_data) or len(price_data) < period:
+                return 0
+                
+            # Simplified CMF calculation
+            mfv = []
+            for i in range(1, len(price_data)):
+                if price_data[i] != price_data[i-1]:
+                    mf_multiplier = (price_data[i] - price_data[i-1]) / abs(price_data[i] - price_data[i-1])
+                    mfv.append(mf_multiplier * volume_data[i])
+                else:
+                    mfv.append(0)
+            
+            mfv_sum = sum(mfv[-period:])
+            volume_sum = sum(volume_data[-period:])
+            
+            return mfv_sum / volume_sum if volume_sum > 0 else 0
+            
+        except:
+            return 0
+    
+    def find_support_level(self, data, lookback=20):
+        """Find support level"""
+        try:
+            recent_data = data[-lookback:]
+            return np.percentile(recent_data, 20)  # 20th percentile as support
+        except:
+            return min(data) if data else 0
+    
+    def find_resistance_level(self, data, lookback=20):
+        """Find resistance level"""
+        try:
+            recent_data = data[-lookback:]
+            return np.percentile(recent_data, 80)  # 80th percentile as resistance
+        except:
+            return max(data) if data else 0
+    
+    def identify_trend(self, data, period=20):
+        """Identify price trend"""
+        try:
+            if len(data) < period:
+                return "insufficient_data"
+                
+            recent_data = data[-period:]
+            slope, _, r_value, _, _ = stats.linregress(range(len(recent_data)), recent_data)
+            
+            if abs(r_value) < 0.5:  # Weak correlation
+                return "sideways"
+            elif slope > 0:
+                return "uptrend"
+            else:
+                return "downtrend"
+                
+        except:
+            return "unknown"
+    
+    def calculate_momentum_indicators(self, data):
+        """Calculate momentum-based indicators"""
+        try:
+            indicators = {}
+            
+            # Rate of Change
+            if len(data) >= 12:
+                indicators['roc'] = ((data[-1] - data[-12]) / data[-12]) * 100
+            else:
+                indicators['roc'] = 0
+            
+            # Momentum
+            if len(data) >= 10:
+                indicators['momentum'] = data[-1] - data[-10]
+            else:
+                indicators['momentum'] = 0
+            
+            return indicators
+            
+        except Exception as e:
+            print(f"Momentum indicators error: {e}")
+            return {'roc': 0, 'momentum': 0}
+    
+    def get_trading_signals(self, indicators):
+        """Generate trading signals based on indicators"""
+        try:
+            signals = []
+            
+            # RSI signals
+            if indicators.get('rsi', 50) > 70:
+                signals.append({"type": "sell", "strength": "strong", "reason": "RSI overbought"})
+            elif indicators.get('rsi', 50) < 30:
+                signals.append({"type": "buy", "strength": "strong", "reason": "RSI oversold"})
+            
+            # MACD signals
+            macd = indicators.get('macd', 0)
+            macd_signal = indicators.get('macd_signal', 0)
+            if macd > macd_signal and macd > 0:
+                signals.append({"type": "buy", "strength": "medium", "reason": "MACD bullish crossover"})
+            elif macd < macd_signal and macd < 0:
+                signals.append({"type": "sell", "strength": "medium", "reason": "MACD bearish crossover"})
+            
+            # Bollinger Band signals
+            bb_percent = indicators.get('bb_percent', 50)
+            if bb_percent > 100:
+                signals.append({"type": "sell", "strength": "medium", "reason": "Price above upper Bollinger Band"})
+            elif bb_percent < 0:
+                signals.append({"type": "buy", "strength": "medium", "reason": "Price below lower Bollinger Band"})
+            
+            return signals
+            
+        except Exception as e:
+            print(f"Trading signals error: {e}")
+            return []
