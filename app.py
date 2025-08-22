@@ -50,7 +50,7 @@ with st.sidebar:
     
     # Refresh controls
     auto_refresh = st.checkbox("Auto Refresh", value=True)
-    refresh_interval = st.slider("Refresh Interval (seconds)", 1, 30, 5)
+    refresh_interval = st.slider("Refresh Interval (seconds)", 30, 300, 60)
     
     if st.button("🔄 Manual Refresh"):
         st.session_state.last_update = datetime.now()
