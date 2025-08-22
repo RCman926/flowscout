@@ -1,0 +1,489 @@
+import streamlit as st
+import pandas as pd
+import numpy as np
+from datetime import datetime
+import asyncio
+from ibapi.client import EClient
+from ibapi.wrapper import EWrapper
+from ibapi.contract import Contract
+from tensorflow.keras.models import Model
+from tensorflow.keras.layers import Input, LSTM, Dense, Dropout, Concatenate
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.preprocessing import MinMaxScaler
+from textblob import TextBlob
+import requests
+import os
+import telegram
+import time
+import yfinance as yf
+import plotly.graph_objects as go
+from streamlit.runtime.scriptrunner import get_script_run_ctx
+
+# IBKR API Client
+class IBKRApp(EWrapper, EClient):
+    def __init__(self):
+        EClient.__init__(self, self)
+        self.price = 0
+        self.data = []
+        self.options = []
+
+    def tickPrice(self, reqId, tickType, price, attrib):
+        if tickType == 4:  # Last price
+            self.price = price
+
+    def historicalData(self, reqId, bar):
+        if reqId == 2:
+            self.data.append([bar.date, bar.close, bar.volume])
+
+    def contractDetails(self, reqId, contractDetails):
+        if reqId == 3:
+            self.options.append(contractDetails.contract)
+
+async def fetch_ibkr_price(symbol):
+    app = IBKRApp()
+    try:
+        app.connect("127.0.0.1", 7497, clientId=1)  # Update IP/port for your TWS
+        await asyncio.sleep(1)
+        contract = Contract()
+        contract.symbol = symbol
+        contract.secType = "STK"
+        contract.exchange = "SMART"
+        contract.currency = "USD"
+        app.reqMktData(1, contract, "", False, False, [])
+        await asyncio.sleep(2)
+        app.disconnect()
+        return app.price if app.price > 0 else await fetch_yahoo_price(symbol)
+    except Exception as e:
+        st.warning(f"IBKR price fetch failed: {e}")
+        return await fetch_yahoo_price(symbol)
+
+async def fetch_yahoo_price(symbol):
+    try:
+        loop = asyncio.get_event_loop()
+        data = await loop.run_in_executor(None, lambda: yf.download(symbol, period="1d", interval="1m"))
+        return data["Close"].iloc[-1] if not data.empty else 0
+    except Exception as e:
+        st.warning(f"Yahoo price fetch failed: {e}")
+        return 0
+
+async def fetch_historical_data(symbol):
+    app = IBKRApp()
+    try:
+        app.connect("127.0.0.1", 7497, clientId=1)
+        await asyncio.sleep(1)
+        contract = Contract()
+        contract.symbol = symbol
+        contract.secType = "STK"
+        contract.exchange = "SMART"
+        contract.currency = "USD"
+        app.reqHistoricalData(2, contract, "", "60 D", "1 day", "TRADES", 1, 1, False, [])
+        await asyncio.sleep(5)
+        app.disconnect()
+        if app.data:
+            df = pd.DataFrame(app.data, columns=["date", "close", "volume"])
+            return df[["close", "volume"]].values
+        return await fetch_yahoo_historical(symbol)
+    except Exception as e:
+        st.warning(f"IBKR historical data fetch failed: {e}")
+        return await fetch_yahoo_historical(symbol)
+
+async def fetch_yahoo_historical(symbol, period="60d", interval="1d"):
+    try:
+        loop = asyncio.get_event_loop()
+        df = await loop.run_in_executor(None, lambda: yf.download(symbol, period=period, interval=interval))
+        return df[["Close", "Volume"]].values if not df.empty else np.array([])
+    except Exception as e:
+        st.warning(f"Yahoo historical data fetch failed: {e}")
+        return np.array([])
+
+async def fetch_options_data(symbol):
+    app = IBKRApp()
+    try:
+        app.connect("127.0.0.1", 7497, clientId=1)
+        await asyncio.sleep(1)
+        contract = Contract()
+        contract.symbol = symbol
+        contract.secType = "STK"
+        contract.exchange = "SMART"
+        contract.currency = "USD"
+        app.reqContractDetails(3, contract)
+        await asyncio.sleep(5)
+        app.disconnect()
+        return [{"strike": 400 + i * 5, "bid": 5 - i * 0.5, "ask": 5.5 - i * 0.5} for i in range(10)]
+    except Exception as e:
+        st.warning(f"Options data fetch failed: {e}")
+        return []
+
+async def fetch_vix():
+    try:
+        loop = asyncio.get_event_loop()
+        vix_data = await loop.run_in_executor(None, lambda: yf.download("^VIX", period="1d", interval="1d"))
+        return vix_data["Close"].iloc[-1] if not vix_data.empty else 0
+    except Exception as e:
+        st.warning(f"VIX fetch failed: {e}")
+        return 0
+
+async def fetch_sentiment(symbol):
+    try:
+        query = f"{symbol} stock -inurl:(signup | login) (bullish OR bearish)"
+        response = requests.get(f"https://api.twitter.com/2/tweets/search/recent?query={query}", headers={"Authorization": f"Bearer {os.getenv('TWITTER_BEARER_TOKEN', 'demo')}"})
+        tweets = response.json().get("data", [])
+        if tweets:
+            sentiments = []
+            for tweet in tweets[:10]:
+                analysis = TextBlob(tweet["text"])
+                polarity = analysis.sentiment.polarity
+                subjectivity = analysis.sentiment.subjectivity
+                weight = 1.2 if "bullish" in tweet["text"].lower() else 0.8 if "bearish" in tweet["text"].lower() else 1.0
+                sentiments.append(polarity * weight * subjectivity)
+            return np.mean(sentiments)
+        return 0
+    except Exception as e:
+        st.warning(f"Sentiment fetch failed: {e}")
+        return 0
+
+async def send_telegram_alert(chat_id, message):
+    bot_token = "8157079885:AAEgFRkDFwhlO4NQpxZ731iX_jLojGc29KY"
+    if bot_token:
+        try:
+            bot = telegram.Bot(token=bot_token)
+            await bot.send_message(chat_id=chat_id, text=message)
+        except Exception as e:
+            st.warning(f"Telegram alert failed: {e}")
+
+# Technical Indicators
+def calculate_rsi(data, period=14):
+    delta = np.diff(data)
+    gain = np.where(delta > 0, delta, 0)
+    loss = np.where(delta < 0, -delta, 0)
+    avg_gain = np.mean(gain[:period]) if len(gain) >= period else 0
+    avg_loss = np.mean(loss[:period]) if len(loss) >= period else 0
+    rs = avg_gain / avg_loss if avg_loss > 0 else 0
+    return 100 - (100 / (1 + rs)) if rs > 0 else 50
+
+def calculate_macd(data, slow=26, fast=12, signal=9):
+    exp1 = pd.Series(data).ewm(span=fast, adjust=False).mean()
+    exp2 = pd.Series(data).ewm(span=slow, adjust=False).mean()
+    macd = exp1 - exp2
+    signal_line = macd.ewm(span=signal, adjust=False).mean()
+    return macd.iloc[-1], signal_line.iloc[-1]
+
+def calculate_bollinger_bands(data, period=20, std_dev=2):
+    sma = pd.Series(data).rolling(window=period).mean()
+    std = pd.Series(data).rolling(window=period).std()
+    upper = sma + (std * std_dev)
+    lower = sma - (std * std_dev)
+    return upper.iloc[-1], lower.iloc[-1], sma.iloc[-1]
+
+def calculate_atr(data, period=14):
+    high_low = np.max(data) - np.min(data)
+    atr = pd.Series(high_low).rolling(window=period).mean().iloc[-1]
+    return atr
+
+def calculate_vwap(data, volume):
+    prices = pd.Series(data)
+    vols = pd.Series(volume)
+    return (prices * vols).cumsum().iloc[-1] / vols.cumsum().iloc[-1] if vols.sum() > 0 else 0
+
+def calculate_parabolic_sar(data, step=0.02, max_step=0.2):
+    high = np.max(data)
+    low = np.min(data)
+    sar = low if data[-1] > data[-2] else high
+    return sar
+
+def calculate_stochastic_oscillator(data, period=14):
+    low_min = pd.Series(data).rolling(window=period).min().iloc[-1]
+    high_max = pd.Series(data).rolling(window=period).max().iloc[-1]
+    current = data[-1]
+    return 100 * (current - low_min) / (high_max - low_min) if (high_max - low_min) > 0 else 50
+
+def calculate_ema(data, period):
+    return pd.Series(data).ewm(span=period, adjust=False).mean().iloc[-1]
+
+def calculate_sma(data, period):
+    return pd.Series(data).rolling(window=period).mean().iloc[-1]
+
+def calculate_roc(data, period=14):
+    return ((data[-1] - data[-period-1]) / data[-period-1]) * 100 if data[-period-1] != 0 else 0
+
+def calculate_rvi(data, period=14):
+    close = pd.Series(data)
+    high = close.rolling(window=period).max()
+    low = close.rolling(window=period).min()
+    rc = (close - close.shift(1)) / (high - low)
+    rvi = rc.rolling(window=period).mean().iloc[-1]
+    return rvi
+
+def calculate_obv(data, volume):
+    obv = [0]
+    for i in range(1, len(data)):
+        if data[i] > data[i-1]:
+            obv.append(obv[-1] + volume[i])
+        elif data[i] < data[i-1]:
+            obv.append(obv[-1] - volume[i])
+        else:
+            obv.append(obv[-1])
+    return obv[-1]
+
+def calculate_ichimoku_cloud(data):
+    high_9 = pd.Series(data).rolling(window=9).max()
+    low_9 = pd.Series(data).rolling(window=9).min()
+    high_26 = pd.Series(data).rolling(window=26).max()
+    low_26 = pd.Series(data).rolling(window=26).min()
+    high_52 = pd.Series(data).rolling(window=52).max()
+    low_52 = pd.Series(data).rolling(window=52).min()
+    tenkan_sen = (high_9 + low_9) / 2
+    kijun_sen = (high_26 + low_26) / 2
+    senkou_span_a = ((tenkan_sen + kijun_sen) / 2).shift(26)
+    senkou_span_b = ((high_52 + low_52) / 2).shift(26)
+    return tenkan_sen.iloc[-1], kijun_sen.iloc[-1], senkou_span_a.iloc[-1], senkou_span_b.iloc[-1]
+
+def calculate_cci(data, period=20):
+    tp = (np.max(data) + np.min(data) + data[-1]) / 3
+    sma_tp = pd.Series(tp).rolling(window=period).mean().iloc[-1]
+    md = pd.Series(np.abs(tp - sma_tp)).rolling(window=period).mean().iloc[-1]
+    return (tp[-1] - sma_tp) / (0.015 * md) if md != 0 else 0
+
+def calculate_williams_r(data, period=14):
+    low_min = pd.Series(data).rolling(window=period).min().iloc[-1]
+    high_max = pd.Series(data).rolling(window=period).max().iloc[-1]
+    current = data[-1]
+    return -100 * (high_max - current) / (high_max - low_min) if (high_max - low_min) > 0 else -50
+
+def calculate_cmf(data, volume, period=20):
+    mfv = [(data[i] - data[i-1]) * volume[i] / (data[i] + data[i-1]) for i in range(1, len(data))]
+    mfv.insert(0, 0)
+    return sum(mfv[-period:]) / sum(volume[-period:]) if sum(volume[-period:]) > 0 else 0
+
+def calculate_tsi(data, long_period=25, short_period=13):
+    diff = np.diff(data)
+    abs_diff = np.abs(diff)
+    ema1 = pd.Series(diff).ewm(span=long_period, adjust=False).mean()
+    ema2 = pd.Series(ema1).ewm(span=short_period, adjust=False).mean()
+    ema3 = pd.Series(abs_diff).ewm(span=long_period, adjust=False).mean()
+    ema4 = pd.Series(ema3).ewm(span=short_period, adjust=False).mean()
+    return ema2.iloc[-1] / ema4.iloc[-1] if ema4.iloc[-1] != 0 else 0
+
+def calculate_keltner_channels(data, period=20, multiplier=2):
+    tp = (np.max(data) + np.min(data) + data[-1]) / 3
+    sma = pd.Series(tp).rolling(window=period).mean().iloc[-1]
+    atr = calculate_atr(data, period)
+    upper = sma + (multiplier * atr)
+    lower = sma - (multiplier * atr)
+    return upper, lower, sma
+
+def calculate_ad_oscillator(data, volume):
+    adl = [0]
+    for i in range(1, len(data)):
+        multiplier = ((data[i] - data[i-1]) + (data[i] - np.min(data[:i+1])) - (np.max(data[:i+1]) - data[i])) / (np.max(data[:i+1]) - np.min(data[:i+1]))
+        adl.append(adl[-1] + (multiplier * volume[i]))
+    return adl[-1] - adl[-14] if len(adl) > 14 else adl[-1]
+
+def detect_upside_breakout(data, volume, period=20):
+    highs = pd.Series(data).rolling(window=period).max()
+    return 1 if (data[-1] > highs.iloc[-2] and volume[-1] > np.mean(volume[-period:])) else 0
+
+def detect_downside_breakout(data, volume, period=20):
+    lows = pd.Series(data).rolling(window=period).min()
+    return 1 if (data[-1] < lows.iloc[-2] and volume[-1] > np.mean(volume[-period:])) else 0
+
+def detect_symmetrical_triangle(data, period=30):
+    highs = pd.Series(data).rolling(window=period).max()
+    lows = pd.Series(data).rolling(window=period).min()
+    return 1 if (highs.iloc[-period:-1].std() < highs.iloc[-1] and lows.iloc[-period:-1].std() < lows.iloc[-1]) else 0
+
+def detect_ascending_triangle(data, period=30):
+    highs = pd.Series(data).rolling(window=period).max()
+    lows = pd.Series(data).rolling(window=period).min()
+    return 1 if (highs.iloc[-period:-1].std() < 0.01 * highs.iloc[-1] and lows.iloc[-period:-1].is_monotonic) else 0
+
+def detect_descending_triangle(data, period=30):
+    highs = pd.Series(data).rolling(window=period).max()
+    lows = pd.Series(data).rolling(window=period).min()
+    return 1 if (lows.iloc[-period:-1].std() < 0.01 * lows.iloc[-1] and highs.iloc[-period:-1].is_monotonic_decreasing) else 0
+
+def detect_wedge(data, period=30):
+    highs = pd.Series(data).rolling(window=period).max()
+    lows = pd.Series(data).rolling(window=period).min()
+    return 1 if (highs.iloc[-period:-1].std() < highs.iloc[-1] and lows.iloc[-period:-1].std() < lows.iloc[-1] and (highs.iloc[-1] - highs.iloc[-period]) * (lows.iloc[-1] - lows.iloc[-period]) > 0) else 0
+
+def detect_flag_pennant(data, volume, period=20):
+    return 1 if (data[-1] > data[-period] and volume[-1] > np.mean(volume[-period:]) and data[-period:].std() < 0.02 * data[-1]) else 0
+
+# AI Models
+def build_lstm_model():
+    price_input = Input(shape=(60, 1))
+    indicators_input = Input(shape=(16,))  # RSI, MACD, BB, ATR, VWAP, PSAR, Stoch, EMA12, EMA50, EMA200, ROC, RVI, CCI, CMF, VIX, Sentiment
+    x = LSTM(150, return_sequences=True)(price_input)
+    x = Dropout(0.2)(x)
+    x = LSTM(100, return_sequences=True)(x)
+    x = Dropout(0.2)(x)
+    x = LSTM(50)(x)
+    x = Dropout(0.2)(x)
+    x = Concatenate()([x, indicators_input])
+    x = Dense(64, activation='relu')(x)
+    output = Dense(1)(x)
+    model = Model(inputs=[price_input, indicators_input], outputs=output)
+    model.compile(optimizer='adam', loss='mse')
+    return model
+
+def build_random_forest():
+    return RandomForestRegressor(n_estimators=100, random_state=42)
+
+def prepare_data_multi(data, volume, sentiment, vix, look_back=60):
+    scaler = MinMaxScaler()
+    data_scaled = scaler.fit_transform(data)
+    X_price, X_indicators, y = [], [], []
+    for i in range(look_back, len(data_scaled)):
+        X_price.append(data_scaled[i-look_back:i])
+        rsi = calculate_rsi(data_scaled[:i+1].flatten(), 14)
+        macd, _ = calculate_macd(data_scaled[:i+1].flatten(), 26, 12, 9)
+        upper_bb, lower_bb, _ = calculate_bollinger_bands(data_scaled[:i+1].flatten(), 20, 2)
+        atr = calculate_atr(data_scaled[:i+1].flatten(), 14)
+        vwap = calculate_vwap(data_scaled[:i+1].flatten(), volume[:i+1]) if i > 0 else 0
+        psar = calculate_parabolic_sar(data_scaled[:i+1].flatten())
+        stoch = calculate_stochastic_oscillator(data_scaled[:i+1].flatten(), 14)
+        ema12 = calculate_ema(data_scaled[:i+1].flatten(), 12)
+        ema50 = calculate_ema(data_scaled[:i+1].flatten(), 50)
+        ema200 = calculate_ema(data_scaled[:i+1].flatten(), 200)
+        roc = calculate_roc(data_scaled[:i+1].flatten(), 14)
+        rvi = calculate_rvi(data_scaled[:i+1].flatten(), 14)
+        cci = calculate_cci(data_scaled[:i+1].flatten(), 20)
+        cmf = calculate_cmf(data_scaled[:i+1].flatten(), volume[:i+1], 20)
+        X_indicators.append([rsi, macd, upper_bb, lower_bb, atr, vwap, psar, stoch, ema12, ema50, ema200, roc, rvi, cci, cmf, vix])
+        y.append(data_scaled[i])
+    return np.array(X_price), np.array(X_indicators), np.array(y), scaler
+
+def predict_signal(model_lstm, model_rf, data, volume, sentiment, vix, live_price):
+    if len(data) < 60:
+        return "NO_TRADE", 0, 0
+    X_price, X_indicators, _, scaler = prepare_data_multi(data, volume, sentiment, vix, 60)
+    if len(X_price) == 0:
+        return "NO_TRADE", 0, 0
+    pred_lstm = model_lstm.predict([X_price[-1:], X_indicators[-1:]])
+    pred_rf = model_rf.predict(X_indicators[-1:].reshape(1, -1))
+    predicted_price = scaler.inverse_transform(np.array([[np.mean([pred_lstm[0][0], pred_rf[0]])]]))[0][0]
+    confidence = abs(predicted_price - live_price) / live_price if live_price > 0 else 0
+    rsi = calculate_rsi(data.flatten())
+    macd, signal_line = calculate_macd(data.flatten())
+    upper_bb, lower_bb, _ = calculate_bollinger_bands(data.flatten())
+    atr = calculate_atr(data.flatten())
+    vwap = calculate_vwap(data.flatten(), volume.flatten())
+    psar = calculate_parabolic_sar(data.flatten())
+    stoch = calculate_stochastic_oscillator(data.flatten())
+    ema12 = calculate_ema(data.flatten(), 12)
+    ema50 = calculate_ema(data.flatten(), 50)
+    ema200 = calculate_ema(data.flatten(), 200)
+    roc = calculate_roc(data.flatten(), 14)
+    rvi = calculate_rvi(data.flatten(), 14)
+    cci = calculate_cci(data.flatten(), 20)
+    cmf = calculate_cmf(data.flatten(), volume.flatten(), 20)
+    upper_kc, lower_kc, _ = calculate_keltner_channels(data.flatten())
+    ad_osc = calculate_ad_oscillator(data.flatten(), volume.flatten())
+    up_break = detect_upside_breakout(data.flatten(), volume.flatten())
+    down_break = detect_downside_breakout(data.flatten(), volume.flatten())
+    sym_tri = detect_symmetrical_triangle(data.flatten(), 30)
+    asc_tri = detect_ascending_triangle(data.flatten(), 30)
+    desc_tri = detect_descending_triangle(data.flatten(), 30)
+    wedge = detect_wedge(data.flatten(), 30)
+    flag = detect_flag_pennant(data.flatten(), volume.flatten())
+    signal = "BUY_CALL" if (predicted_price > live_price * 1.01 and confidence > 0.005 and rsi < 30 and macd > signal_line and cci < -100 and up_break and asc_tri) else \
+             "BUY_PUT" if (predicted_price < live_price * 0.99 and confidence > 0.005 and rsi > 70 and macd < signal_line and cci > 100 and down_break and desc_tri) else "NO_TRADE"
+    return signal, predicted_price, confidence
+
+# Dashboard with Auto-Refresh
+def render_dashboard():
+    st.set_page_config(page_title="Quantum Elite Dashboard", layout="wide")
+    st.markdown("<h1 style='text-align: center; color: #1E90FF;'>Quantum Elite Dashboard</h1>", unsafe_allow_html=True)
+
+    with st.sidebar:
+        st.header("Settings")
+        symbols = st.multiselect("Symbols", ["SPY", "QQQ", "TSLA"], default=["SPY"])
+        if st.button("Update"):
+            st.experimental_rerun()
+        if st.button("Logout"):
+            st.session_state.clear()
+            st.experimental_rerun()
+
+    while True:
+        with st.spinner("Fetching data..."):
+            tabs = st.tabs(["Market Insights", "Trade Execution", "Performance"])
+            for symbol in symbols:
+                with tabs[0]:  # Market Insights
+                    st.subheader(f"{symbol} Market Insights")
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+                    live_price = loop.run_until_complete(fetch_ibkr_price(symbol))
+                    historical_data = loop.run_until_complete(fetch_historical_data(symbol))
+                    sentiment = loop.run_until_complete(fetch_sentiment(symbol))
+                    vix = loop.run_until_complete(fetch_vix())
+                    options_data = loop.run_until_complete(fetch_options_data(symbol))
+                    if live_price == 0 or len(historical_data) == 0:
+                        st.warning("Data fetch failed. Check IBKR TWS or internet.")
+                        continue
+                    data, volume = historical_data[:, 0], historical_data[:, 1]
+                    model_lstm = build_lstm_model()
+                    model_rf = build_random_forest()
+                    X_price, X_indicators, y, scaler = prepare_data_multi(data, volume, sentiment, vix, 60)
+                    if len(X_price) > 0:
+                        model_lstm.fit([X_price, X_indicators], y, epochs=100, batch_size=64, verbose=0)
+                        model_rf.fit(X_indicators, y)
+                    signal, predicted_price, confidence = predict_signal(model_lstm, model_rf, data, volume, sentiment, vix, live_price)
+                    rsi = calculate_rsi(data)
+                    macd, signal_line = calculate_macd(data)
+                    upper_bb, lower_bb, _ = calculate_bollinger_bands(data)
+                    atr = calculate_atr(data)
+                    vwap = calculate_vwap(data, volume)
+                    psar = calculate_parabolic_sar(data)
+                    stoch = calculate_stochastic_oscillator(data)
+                    ema12 = calculate_ema(data, 12)
+                    ema50 = calculate_ema(data, 50)
+                    ema200 = calculate_ema(data, 200)
+                    roc = calculate_roc(data, 14)
+                    rvi = calculate_rvi(data, 14)
+                    cci = calculate_cci(data, 20)
+                    cmf = calculate_cmf(data, volume, 20)
+                    upper_kc, lower_kc, _ = calculate_keltner_channels(data)
+                    ad_osc = calculate_ad_oscillator(data, volume)
+                    up_break = detect_upside_breakout(data, volume)
+                    down_break = detect_downside_breakout(data, volume)
+                    sym_tri = detect_symmetrical_triangle(data, 30)
+                    asc_tri = detect_ascending_triangle(data, 30)
+                    desc_tri = detect_descending_triangle(data, 30)
+                    wedge = detect_wedge(data, 30)
+                    flag = detect_flag_pennant(data, volume)
+                    signal_color = "green" if signal == "BUY_CALL" else "red" if signal == "BUY_PUT" else "orange"
+                    st.markdown(f"**Live Price (IBKR):** ${live_price:.2f}")
+                    st.markdown(f"**Predicted Price:** ${predicted_price:.2f}")
+                    st.markdown(f"**Confidence Score:** <span style='color:{signal_color}'>{confidence:.2%}</span>", unsafe_allow_html=True)
+                    st.markdown(f"**Signal:** <span style='color:{signal_color}'>{signal}</span>", unsafe_allow_html=True)
+                    st.markdown(f"**Indicators:** RSI: {rsi:.2f}, MACD: {macd:.2f}/{signal_line:.2f}, BB: [{upper_bb:.2f}, {lower_bb:.2f}], ATR: {atr:.2f}, VWAP: {vwap:.2f}, PSAR: {psar:.2f}, Stoch: {stoch:.2f}, EMA12/50/200: {ema12:.2f}/{ema50:.2f}/{ema200:.2f}, ROC: {roc:.2f}%, RVI: {rvi:.2f}, CCI: {cci:.2f}, CMF: {cmf:.2f}, KC: [{upper_kc:.2f}, {lower_kc:.2f}], A/D Osc: {ad_osc:.2f}, VIX: {vix:.2f}")
+                    st.markdown(f"**Patterns:** Up Break: {up_break}, Down Break: {down_break}, Sym Tri: {sym_tri}, Asc Tri: {asc_tri}, Desc Tri: {desc_tri}, Wedge: {wedge}, Flag: {flag}")
+                    df = pd.DataFrame({"Close": data, "Volume": volume}, index=range(len(data)))
+                    fig = go.Figure(data=[go.Scatter(x=df.index, y=df["Close"], mode='lines', line=dict(color=signal_color))])
+                    st.plotly_chart(fig, use_container_width=True)
+
+                with tabs[1]:  # Trade Execution
+                    st.subheader(f"{symbol} Trade Execution")
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+                    signal, _, _ = predict_signal(model_lstm, model_rf, data, volume, sentiment, vix, live_price)
+                    if st.button(f"Execute {signal} for {symbol}"):
+                        if signal != "NO_TRADE":
+                            st.success(f"Trade executed for {symbol} at {datetime.now()} with signal {signal}")
+                            loop.run_until_complete(send_telegram_alert("6314164168", f"Trade executed: {symbol} - {signal}"))
+                        else:
+                            st.warning("No trade executed - signal is NO_TRADE.")
+                    st.subheader("Options Chain")
+                    for option in options_data:
+                        st.write(f"Strike: ${option['strike']:.2f}, Bid: ${option['bid']:.2f}, Ask: ${option['ask']:.2f}")
+
+                with tabs[2]:  # Performance
+                    st.subheader(f"{symbol} Performance")
+                    st.write(f"Simulated Return: ${(predicted_price - live_price) * 100:.2f} (based on 100 shares)")  # Placeholder metric
+
+        time.sleep(5)  # Auto-refresh every 5 seconds
+        st.experimental_rerun()
+
+if __name__ == "__main__":
+    render_dashboard()
