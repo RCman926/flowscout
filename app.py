@@ -14,6 +14,7 @@ from technical_indicators import TechnicalAnalyzer
 from alerts import AlertManager
 from news_sentiment import NewsSentimentAnalyzer
 from ai_models import AITradingModels
+from options_trading_signals import OptionsSignalGenerator
 from utils import format_currency, format_percentage, calculate_time_to_expiry
 
 # Configure page
@@ -37,6 +38,8 @@ if 'news_analyzer' not in st.session_state:
     st.session_state.news_analyzer = NewsSentimentAnalyzer()
 if 'ai_models' not in st.session_state:
     st.session_state.ai_models = AITradingModels()
+if 'signal_generator' not in st.session_state:
+    st.session_state.signal_generator = OptionsSignalGenerator()
 if 'last_update' not in st.session_state:
     st.session_state.last_update = datetime.now()
 if 'selected_positions' not in st.session_state:
@@ -451,9 +454,14 @@ with tab5:
                 current_price_sequence, indicators_array
             )
             
-            # Generate trading signal
-            signal, confidence = st.session_state.ai_models.generate_trading_signal(
+            # Generate detailed options trading signal
+            basic_signal, confidence = st.session_state.ai_models.generate_trading_signal(
                 current_price, predicted_price, indicators
+            )
+            
+            # Generate detailed options signal with specific pricing
+            detailed_signal = st.session_state.signal_generator.generate_options_signal(
+                selected_symbol, current_price, predicted_price, indicators, confidence
             )
             
             # Display AI predictions
@@ -473,9 +481,10 @@ with tab5:
                     'BUY_PUT': '🔴', 
                     'NO_TRADE': '⚪'
                 }
+                current_signal = detailed_signal.get('signal', 'NO_TRADE')
                 st.metric(
-                    "AI Signal",
-                    f"{signal_colors.get(signal, '⚪')} {signal}",
+                    "Options Signal",
+                    f"{signal_colors.get(current_signal, '⚪')} {current_signal}",
                     delta=f"Confidence: {confidence:.2%}"
                 )
             
@@ -492,6 +501,114 @@ with tab5:
                     f"{len(models_active)}/2",
                     delta=f"{', '.join(models_active)}"
                 )
+            
+            # Display detailed options trading information
+            if detailed_signal.get('signal') not in ['NO_TRADE', 'ERROR']:
+                st.subheader("🎯 Options Trading Setup")
+                
+                # Signal reasoning
+                st.info(f"**Reasoning:** {detailed_signal.get('reasoning', 'AI analysis suggests this setup')}")
+                
+                # Create tabs for different aspects
+                trade_tab1, trade_tab2, trade_tab3 = st.columns(3)
+                
+                with trade_tab1:
+                    st.markdown("### 📈 Strike Prices")
+                    strikes = detailed_signal.get('strikes', {})
+                    for strike_type, strike_price in strikes.items():
+                        if strike_price > 0:
+                            st.write(f"**{strike_type.title()}:** ${strike_price:.0f}")
+                
+                with trade_tab2:
+                    st.markdown("### 📅 Expiry Dates")
+                    expiry_dates = detailed_signal.get('expiry_dates', {})
+                    for exp_type, exp_date in expiry_dates.items():
+                        if exp_type == 'recommended':
+                            st.write(f"**🎯 {exp_type.title()}:** {exp_date}")
+                        else:
+                            st.write(f"**{exp_type.title()}:** {exp_date}")
+                
+                with trade_tab3:
+                    st.markdown("### 💰 Risk Levels")
+                    risk_targets = detailed_signal.get('risk_targets', {})
+                    for risk_level, risk_data in risk_targets.items():
+                        st.write(f"**{risk_level.title()}:** {risk_data.get('description', '')}")
+                
+                # Detailed premium pricing
+                premiums = detailed_signal.get('premium_estimates', {})
+                if 'primary' in premiums:
+                    st.subheader("💵 Options Pricing Details")
+                    
+                    primary_trade = premiums['primary']
+                    
+                    col_price1, col_price2, col_price3, col_price4 = st.columns(4)
+                    
+                    with col_price1:
+                        st.metric(
+                            "Entry Target",
+                            f"${primary_trade.get('entry_target', 0):.2f}",
+                            help="Recommended entry price for the option"
+                        )
+                    
+                    with col_price2:
+                        st.metric(
+                            "Conservative Exit",
+                            f"${primary_trade.get('conservative_exit', 0):.2f}",
+                            delta=f"+{((primary_trade.get('conservative_exit', 0) / primary_trade.get('entry_target', 1)) - 1) * 100:.0f}%"
+                        )
+                    
+                    with col_price3:
+                        st.metric(
+                            "Aggressive Exit",
+                            f"${primary_trade.get('moderate_exit', 0):.2f}",
+                            delta=f"+{((primary_trade.get('moderate_exit', 0) / primary_trade.get('entry_target', 1)) - 1) * 100:.0f}%"
+                        )
+                    
+                    with col_price4:
+                        st.metric(
+                            "Stop Loss",
+                            f"${primary_trade.get('stop_loss', 0):.2f}",
+                            delta=f"{((primary_trade.get('stop_loss', 0) / primary_trade.get('entry_target', 1)) - 1) * 100:.0f}%"
+                        )
+                    
+                    # Position sizing recommendations
+                    st.subheader("📊 Position Sizing Guide")
+                    
+                    position_data = detailed_signal.get('position_sizing', {})
+                    if position_data:
+                        # Create a table for position sizing
+                        sizing_data = []
+                        for account_size, risk_levels in position_data.items():
+                            for risk_level, sizing in risk_levels.items():
+                                sizing_data.append({
+                                    'Account Size': f"${account_size:,}",
+                                    'Risk Level': risk_level.title(),
+                                    'Max Risk': f"${sizing['max_risk_amount']:.0f}",
+                                    'Suggested Contracts': sizing['suggested_contracts'],
+                                    'Max Premium/Contract': f"${sizing['max_premium_per_contract']:.2f}"
+                                })
+                        
+                        # Display the top few recommendations
+                        sizing_df = pd.DataFrame(sizing_data)
+                        st.dataframe(sizing_df.head(9), use_container_width=True, hide_index=True)
+                    
+                    # Trading checklist
+                    st.subheader("✅ Trading Checklist")
+                    st.markdown(f"""
+                    **Before placing the trade:**
+                    - [ ] Confirm {detailed_signal['signal']} signal aligns with your analysis
+                    - [ ] Check current option chain for ${primary_trade.get('strike', 0):.0f} strike
+                    - [ ] Verify entry price is near ${primary_trade.get('entry_target', 0):.2f}
+                    - [ ] Set stop loss at ${primary_trade.get('stop_loss', 0):.2f} (50% loss)
+                    - [ ] Plan exit strategy: ${primary_trade.get('conservative_exit', 0):.2f} (conservative) or ${primary_trade.get('moderate_exit', 0):.2f} (aggressive)
+                    - [ ] Position size matches your risk tolerance
+                    - [ ] Check earnings dates and major news events
+                    """)
+            
+            elif detailed_signal.get('signal') == 'NO_TRADE':
+                st.info("🚫 **No Trade Signal** - Current market conditions don't meet our criteria for a high-confidence options trade.")
+            else:
+                st.error("❌ **Signal Error** - Unable to generate trading signal. Please try again.")
             
             # Show detailed AI analysis
             st.subheader("AI Analysis Details")
