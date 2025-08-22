@@ -360,6 +360,11 @@ class MarketDataManager:
                 premarket_start = pd.Timestamp.combine(today, pd.Timestamp("04:00:00").time())
                 market_open = pd.Timestamp.combine(today, pd.Timestamp("09:30:00").time())
                 
+                # Handle timezone compatibility
+                if premarket.index.tz is not None:
+                    premarket_start = premarket_start.tz_localize('UTC').tz_convert(premarket.index.tz)
+                    market_open = market_open.tz_localize('UTC').tz_convert(premarket.index.tz)
+                
                 premarket_data = premarket[
                     (premarket.index >= premarket_start) & 
                     (premarket.index < market_open)
@@ -408,6 +413,11 @@ class MarketDataManager:
                 # Filter for after-hours (4:00 PM - 8:00 PM EST)
                 market_close = pd.Timestamp.combine(today, pd.Timestamp("16:00:00").time())
                 afterhours_end = pd.Timestamp.combine(today, pd.Timestamp("20:00:00").time())
+                
+                # Handle timezone compatibility
+                if afterhours.index.tz is not None:
+                    market_close = market_close.tz_localize('UTC').tz_convert(afterhours.index.tz)
+                    afterhours_end = afterhours_end.tz_localize('UTC').tz_convert(afterhours.index.tz)
                 
                 afterhours_data = afterhours[
                     (afterhours.index >= market_close) & 

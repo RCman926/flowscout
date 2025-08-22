@@ -681,10 +681,10 @@ try:
         # Price chart with indicators
         fig = make_subplots(
             rows=2, cols=1,
-            shared_xaxis=True,
+            shared_xaxes=True,
             vertical_spacing=0.03,
             subplot_titles=(f'{selected_symbol} Price', 'Volume'),
-            row_width=[0.7, 0.3]
+            row_heights=[0.7, 0.3]
         )
         
         # Price candlestick
