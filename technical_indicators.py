@@ -332,6 +332,156 @@ class TechnicalAnalyzer:
             print(f"Momentum indicators error: {e}")
             return {'roc': 0, 'momentum': 0}
     
+    def calculate_keltner_channels(self, data, period=20, multiplier=2):
+        """Calculate Keltner Channels"""
+        try:
+            # Use close price as typical price for simplification
+            typical_price = pd.Series(data)
+            sma = typical_price.rolling(window=period).mean()
+            atr = self.calculate_atr(data, period)
+            
+            upper = sma + (multiplier * atr)
+            lower = sma - (multiplier * atr)
+            
+            return upper.iloc[-1], lower.iloc[-1], sma.iloc[-1]
+            
+        except Exception as e:
+            print(f"Keltner Channels calculation error: {e}")
+            return 0, 0, 0
+    
+    def calculate_ad_oscillator(self, price_data, volume_data):
+        """Calculate Accumulation/Distribution Oscillator"""
+        try:
+            if len(price_data) != len(volume_data):
+                return 0
+                
+            adl = [0]
+            for i in range(1, len(price_data)):
+                # Money Flow Multiplier calculation
+                high = max(price_data[i-5:i+1]) if i >= 5 else price_data[i]
+                low = min(price_data[i-5:i+1]) if i >= 5 else price_data[i]
+                close = price_data[i]
+                
+                if high != low:
+                    mf_multiplier = ((close - low) - (high - close)) / (high - low)
+                else:
+                    mf_multiplier = 0
+                
+                # Money Flow Volume
+                mf_volume = mf_multiplier * volume_data[i]
+                
+                # Accumulation/Distribution Line
+                adl.append(adl[-1] + mf_volume)
+            
+            # Return the oscillator (difference from 14 periods ago)
+            return adl[-1] - adl[-14] if len(adl) > 14 else adl[-1]
+            
+        except Exception as e:
+            print(f"A/D Oscillator calculation error: {e}")
+            return 0
+    
+    def detect_upside_breakout(self, price_data, volume_data, period=20):
+        """Detect upside breakout pattern"""
+        try:
+            if len(price_data) < period or len(volume_data) < period:
+                return False
+                
+            recent_high = max(price_data[-period:-1])
+            current_price = price_data[-1]
+            avg_volume = sum(volume_data[-period:]) / period
+            current_volume = volume_data[-1]
+            
+            return current_price > recent_high and current_volume > avg_volume * 1.5
+            
+        except Exception as e:
+            print(f"Upside breakout detection error: {e}")
+            return False
+    
+    def detect_downside_breakout(self, price_data, volume_data, period=20):
+        """Detect downside breakout pattern"""
+        try:
+            if len(price_data) < period or len(volume_data) < period:
+                return False
+                
+            recent_low = min(price_data[-period:-1])
+            current_price = price_data[-1]
+            avg_volume = sum(volume_data[-period:]) / period
+            current_volume = volume_data[-1]
+            
+            return current_price < recent_low and current_volume > avg_volume * 1.5
+            
+        except Exception as e:
+            print(f"Downside breakout detection error: {e}")
+            return False
+    
+    def detect_triangle_pattern(self, price_data, period=30):
+        """Detect triangle patterns"""
+        try:
+            if len(price_data) < period:
+                return {'symmetrical': False, 'ascending': False, 'descending': False}
+            
+            recent_data = price_data[-period:]
+            highs = pd.Series(recent_data).rolling(window=5).max()
+            lows = pd.Series(recent_data).rolling(window=5).min()
+            
+            # Calculate trend lines
+            high_trend = np.polyfit(range(len(highs)), highs, 1)[0]
+            low_trend = np.polyfit(range(len(lows)), lows, 1)[0]
+            
+            # Pattern detection
+            symmetrical = abs(high_trend) < 0.01 and abs(low_trend) < 0.01
+            ascending = abs(high_trend) < 0.01 and low_trend > 0.01
+            descending = high_trend < -0.01 and abs(low_trend) < 0.01
+            
+            return {
+                'symmetrical': symmetrical,
+                'ascending': ascending, 
+                'descending': descending
+            }
+            
+        except Exception as e:
+            print(f"Triangle pattern detection error: {e}")
+            return {'symmetrical': False, 'ascending': False, 'descending': False}
+    
+    def calculate_vwap(self, price_data, volume_data):
+        """Calculate Volume Weighted Average Price"""
+        try:
+            if len(price_data) != len(volume_data):
+                return np.mean(price_data) if price_data else 0
+                
+            price_volume = [p * v for p, v in zip(price_data, volume_data)]
+            total_price_volume = sum(price_volume)
+            total_volume = sum(volume_data)
+            
+            return total_price_volume / total_volume if total_volume > 0 else 0
+            
+        except Exception as e:
+            print(f"VWAP calculation error: {e}")
+            return 0
+    
+    def calculate_parabolic_sar(self, price_data, step=0.02, max_step=0.2):
+        """Calculate Parabolic SAR"""
+        try:
+            if len(price_data) < 10:
+                return price_data[-1] if price_data else 0
+                
+            # Simplified PSAR calculation
+            high = max(price_data[-10:])
+            low = min(price_data[-10:])
+            current = price_data[-1]
+            
+            # Determine if we're in uptrend or downtrend
+            if current > (high + low) / 2:
+                # Uptrend - SAR below price
+                return low + (high - low) * step
+            else:
+                # Downtrend - SAR above price  
+                return high - (high - low) * step
+                
+        except Exception as e:
+            print(f"Parabolic SAR calculation error: {e}")
+            return 0
+    
     def get_trading_signals(self, indicators):
         """Generate trading signals based on indicators"""
         try:
@@ -357,6 +507,12 @@ class TechnicalAnalyzer:
                 signals.append({"type": "sell", "strength": "medium", "reason": "Price above upper Bollinger Band"})
             elif bb_percent < 0:
                 signals.append({"type": "buy", "strength": "medium", "reason": "Price below lower Bollinger Band"})
+            
+            # Pattern-based signals
+            if indicators.get('upside_breakout', False):
+                signals.append({"type": "buy", "strength": "strong", "reason": "Upside breakout detected"})
+            if indicators.get('downside_breakout', False):
+                signals.append({"type": "sell", "strength": "strong", "reason": "Downside breakout detected"})
             
             return signals
             

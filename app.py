@@ -12,6 +12,8 @@ from options_engine import OptionsEngine
 from market_data import MarketDataManager
 from technical_indicators import TechnicalAnalyzer
 from alerts import AlertManager
+from news_sentiment import NewsSentimentAnalyzer
+from ai_models import AITradingModels
 from utils import format_currency, format_percentage, calculate_time_to_expiry
 
 # Configure page
@@ -31,6 +33,10 @@ if 'technical_analyzer' not in st.session_state:
     st.session_state.technical_analyzer = TechnicalAnalyzer()
 if 'alert_manager' not in st.session_state:
     st.session_state.alert_manager = AlertManager()
+if 'news_analyzer' not in st.session_state:
+    st.session_state.news_analyzer = NewsSentimentAnalyzer()
+if 'ai_models' not in st.session_state:
+    st.session_state.ai_models = AITradingModels()
 if 'last_update' not in st.session_state:
     st.session_state.last_update = datetime.now()
 if 'selected_positions' not in st.session_state:
@@ -79,7 +85,7 @@ if auto_refresh:
         st.rerun()
 
 # Main dashboard layout
-col1, col2, col3 = st.columns([2, 1, 1])
+col1, col2, col3, col4 = st.columns([2, 1, 1, 1])
 
 with col1:
     # Current price and basic info
@@ -87,11 +93,32 @@ with col1:
         current_price = asyncio.run(st.session_state.market_data.get_current_price(selected_symbol))
         price_change = asyncio.run(st.session_state.market_data.get_price_change(selected_symbol))
         
+        # Get extended hours data
+        extended_hours = asyncio.run(st.session_state.market_data.get_extended_hours_data(selected_symbol))
+        market_status = extended_hours['market_status']
+        
+        status_emoji = {
+            'market_hours': '🟢',
+            'premarket': '🟡', 
+            'afterhours': '🟠',
+            'closed': '🔴',
+            'weekend': '⚫'
+        }
+        
         st.metric(
-            label=f"{selected_symbol} Price",
+            label=f"{status_emoji.get(market_status, '⚪')} {selected_symbol} ({market_status.replace('_', ' ').title()})",
             value=f"${current_price:.2f}",
             delta=f"{price_change:+.2f} ({(price_change/current_price)*100:+.2f}%)"
         )
+        
+        # Show pre-market/after-hours data if available
+        if market_status == 'premarket' and extended_hours['premarket']['is_premarket_active']:
+            pm_data = extended_hours['premarket']
+            st.caption(f"Pre-market: ${pm_data['premarket_price']:.2f} ({pm_data['premarket_change']:+.2f})")
+        elif market_status == 'afterhours' and extended_hours['afterhours']['is_afterhours_active']:
+            ah_data = extended_hours['afterhours']
+            st.caption(f"After-hours: ${ah_data['afterhours_price']:.2f} ({ah_data['afterhours_change']:+.2f})")
+            
     except Exception as e:
         st.error(f"Error fetching price data: {e}")
         current_price = 0
@@ -110,11 +137,34 @@ with col3:
     except Exception as e:
         st.metric("VIX", "N/A")
 
+with col4:
+    try:
+        # News sentiment
+        sentiment_data = asyncio.run(st.session_state.news_analyzer.get_news_sentiment(selected_symbol))
+        sentiment_score = sentiment_data['sentiment_score']
+        sentiment_label = sentiment_data['sentiment_label']
+        
+        sentiment_colors = {
+            'very_bullish': '🟢',
+            'bullish': '🟢', 
+            'neutral': '⚪',
+            'bearish': '🔴',
+            'very_bearish': '🔴'
+        }
+        
+        st.metric(
+            "News Sentiment",
+            f"{sentiment_colors.get(sentiment_label, '⚪')} {sentiment_label.replace('_', ' ').title()}",
+            delta=f"{sentiment_score:+.3f}"
+        )
+    except Exception as e:
+        st.metric("News Sentiment", "N/A")
+
 # Options flow section
 st.header("📊 Live Options Flow")
 
 # Create tabs for different views
-tab1, tab2, tab3, tab4 = st.tabs(["Options Flow", "Options Chain", "Greeks Analysis", "Flow Heatmap"])
+tab1, tab2, tab3, tab4, tab5 = st.tabs(["Options Flow", "Options Chain", "Greeks Analysis", "Flow Heatmap", "AI Predictions"])
 
 with tab1:
     st.subheader("Real-Time Options Flow")
@@ -308,6 +358,163 @@ with tab4:
             
     except Exception as e:
         st.error(f"Error creating flow heatmap: {e}")
+
+with tab5:
+    st.subheader("AI-Powered Predictions & Signals")
+    
+    try:
+        # Get historical data for AI models
+        historical_data = asyncio.run(st.session_state.market_data.get_historical_data(selected_symbol))
+        
+        if not historical_data.empty and len(historical_data) > 60:
+            # Calculate all indicators for AI input
+            indicators = st.session_state.technical_analyzer.calculate_all_indicators(
+                historical_data['Close'].values,
+                historical_data['Volume'].values
+            )
+            
+            # Get news sentiment
+            sentiment_data = asyncio.run(st.session_state.news_analyzer.get_news_sentiment(selected_symbol))
+            
+            # Add sentiment and VIX to indicators
+            indicators['sentiment'] = sentiment_data['sentiment_score']
+            indicators['vix'] = asyncio.run(st.session_state.market_data.get_vix())
+            
+            # Prepare indicators array for AI models
+            indicators_array = [
+                indicators.get('rsi', 50),
+                indicators.get('macd', 0),
+                indicators.get('bb_upper', 0),
+                indicators.get('bb_lower', 0), 
+                indicators.get('atr', 0),
+                indicators.get('volume_ratio', 1),
+                indicators.get('stoch_k', 50),
+                indicators.get('ema_20', 0),
+                indicators.get('ema_50', 0),
+                indicators.get('sma_20', 0),
+                indicators.get('sma_50', 0),
+                indicators.get('adx', 25),
+                indicators.get('cci', 0),
+                indicators.get('williams_r', -50),
+                indicators.get('sentiment', 0),
+                indicators.get('vix', 20)
+            ]
+            
+            # Train models if not already trained
+            if not st.session_state.ai_models.is_trained:
+                with st.spinner("Training AI models..."):
+                    # Prepare training data
+                    price_data = historical_data['Close'].values
+                    volume_data = historical_data['Volume'].values
+                    
+                    # Create indicators history (simplified)
+                    indicators_history = []
+                    for i in range(len(price_data)):
+                        if i >= 60:  # Minimum lookback
+                            temp_indicators = st.session_state.technical_analyzer.calculate_all_indicators(
+                                price_data[:i+1],
+                                volume_data[:i+1]
+                            )
+                            temp_array = [
+                                temp_indicators.get('rsi', 50),
+                                temp_indicators.get('macd', 0),
+                                temp_indicators.get('bb_upper', 0),
+                                temp_indicators.get('bb_lower', 0),
+                                temp_indicators.get('atr', 0),
+                                temp_indicators.get('volume_ratio', 1),
+                                temp_indicators.get('stoch_k', 50),
+                                temp_indicators.get('ema_20', 0),
+                                temp_indicators.get('ema_50', 0),
+                                temp_indicators.get('sma_20', 0),
+                                temp_indicators.get('sma_50', 0),
+                                temp_indicators.get('adx', 25),
+                                temp_indicators.get('cci', 0),
+                                temp_indicators.get('williams_r', -50),
+                                sentiment_data['sentiment_score'],
+                                indicators.get('vix', 20)
+                            ]
+                            indicators_history.append(temp_array)
+                    
+                    # Train models
+                    training_success = asyncio.run(st.session_state.ai_models.train_models(
+                        price_data, volume_data, np.array(indicators_history)
+                    ))
+                    
+                    if training_success:
+                        st.success("✅ AI models trained successfully!")
+                    else:
+                        st.warning("⚠️ AI model training failed - using fallback predictions")
+            
+            # Make predictions
+            current_price_sequence = historical_data['Close'].values[-60:]  # Last 60 prices
+            predicted_price = st.session_state.ai_models.predict_price(
+                current_price_sequence, indicators_array
+            )
+            
+            # Generate trading signal
+            signal, confidence = st.session_state.ai_models.generate_trading_signal(
+                current_price, predicted_price, indicators
+            )
+            
+            # Display AI predictions
+            col_ai1, col_ai2, col_ai3 = st.columns(3)
+            
+            with col_ai1:
+                price_change_pct = ((predicted_price - current_price) / current_price) * 100
+                st.metric(
+                    "AI Price Prediction", 
+                    f"${predicted_price:.2f}",
+                    delta=f"{price_change_pct:+.2f}%"
+                )
+            
+            with col_ai2:
+                signal_colors = {
+                    'BUY_CALL': '🟢',
+                    'BUY_PUT': '🔴', 
+                    'NO_TRADE': '⚪'
+                }
+                st.metric(
+                    "AI Signal",
+                    f"{signal_colors.get(signal, '⚪')} {signal}",
+                    delta=f"Confidence: {confidence:.2%}"
+                )
+            
+            with col_ai3:
+                model_status = st.session_state.ai_models.get_model_status()
+                models_active = []
+                if model_status['lstm_available']:
+                    models_active.append('LSTM')
+                if model_status['rf_available']:
+                    models_active.append('RF')
+                
+                st.metric(
+                    "Active Models",
+                    f"{len(models_active)}/2",
+                    delta=f"{', '.join(models_active)}"
+                )
+            
+            # Show detailed AI analysis
+            st.subheader("AI Analysis Details")
+            
+            with st.expander("View Detailed Analysis"):
+                st.write("**Current Market Conditions:**")
+                st.write(f"- RSI: {indicators.get('rsi', 50):.2f}")
+                st.write(f"- MACD: {indicators.get('macd', 0):.4f}")
+                st.write(f"- Bollinger Band %: {indicators.get('bb_percent', 50):.2f}%")
+                st.write(f"- Volume Ratio: {indicators.get('volume_ratio', 1):.2f}x")
+                st.write(f"- News Sentiment: {sentiment_data['sentiment_label']}")
+                st.write(f"- VIX Level: {indicators.get('vix', 20):.2f}")
+                
+                st.write("**Model Performance:**")
+                st.write(f"- LSTM Available: {'✅' if model_status['lstm_available'] else '❌'}")
+                st.write(f"- Random Forest Available: {'✅' if model_status['rf_available'] else '❌'}")
+                st.write(f"- Models Trained: {'✅' if model_status['is_trained'] else '❌'}")
+                
+        else:
+            st.info("Insufficient historical data for AI predictions. Need at least 60 data points.")
+            
+    except Exception as e:
+        st.error(f"Error in AI predictions: {e}")
 
 # Performance tracking section
 st.header("📈 Performance Tracking")
