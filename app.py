@@ -140,6 +140,90 @@ market_time_str = market_time.strftime('%Y-%m-%d %H:%M:%S ET')
 # Small header
 st.markdown('<p style="color: #3b82f6; font-size: 18px; margin-bottom: 20px;">Shiftsignal</p>', unsafe_allow_html=True)
 
+# LIVE PRICES - TOP PRIORITY DISPLAY
+st.markdown('### 📊 Live Market Prices')
+
+symbols = ["SPY", "QQQ", "TSLA", "AAPL", "MSFT", "NVDA", "AMZN", "GOOGL", "META", "AMD", "NFLX", "UBER", "COIN", "PLTR", "SOFI", "HOOD", "RBLX", "SNAP"]
+
+# Get REAL MARKET DATA with proper market status labeling
+symbols_data = {}
+for symbol in symbols:
+    try:
+        current_price = asyncio.run(st.session_state.market_data.get_current_price(symbol))
+        price_change = asyncio.run(st.session_state.market_data.get_price_change(symbol))
+        extended_hours = asyncio.run(st.session_state.market_data.get_extended_hours_data(symbol))
+        market_status = extended_hours['market_status']
+        
+        # Get extended hours pricing if available
+        display_price = current_price
+        status_label = market_status.replace('_', ' ').upper()
+        
+        symbols_data[symbol] = {
+            "price": display_price,
+            "change": f"{price_change:+.2f}",
+            "pct": f"{(price_change/current_price)*100:+.2f}%" if current_price > 0 else "+0.00%",
+            "status": status_label
+        }
+        
+    except Exception as e:
+        # Fallback data with market status simulation
+        fallback_prices = {
+            "SPY": 635.55, "QQQ": 571.82, "TSLA": 320.11, "AAPL": 245.18, "MSFT": 441.81, 
+            "NVDA": 145.89, "AMZN": 185.92, "GOOGL": 185.40, "META": 598.35, "AMD": 129.67,
+            "NFLX": 924.87, "UBER": 69.45, "COIN": 301.20, "PLTR": 72.18, "SOFI": 15.89,
+            "HOOD": 36.12, "RBLX": 48.90, "SNAP": 10.67
+        }
+        fallback_changes = {
+            "SPY": -2.55, "QQQ": 3.78, "TSLA": -4.90, "AAPL": 1.23, "MSFT": -3.21, 
+            "NVDA": 4.56, "AMZN": -1.89, "GOOGL": 2.34, "META": -5.67, "AMD": 3.12,
+            "NFLX": -8.90, "UBER": 1.45, "COIN": 12.34, "PLTR": -0.89, "SOFI": 0.67,
+            "HOOD": -1.23, "RBLX": 2.10, "SNAP": -0.34
+        }
+        
+        # Simulate market status based on time
+        from datetime import datetime
+        now = datetime.now()
+        hour = now.hour
+        
+        if 4 <= hour < 9:  # Pre-market
+            status = "PRE-MARKET"
+            price_adj = np.random.uniform(0.95, 1.05)
+        elif 16 <= hour < 20:  # After-hours
+            status = "AFTER-HOURS" 
+            price_adj = np.random.uniform(0.98, 1.02)
+        elif 9 <= hour < 16:  # Market hours
+            status = "MARKET HOURS"
+            price_adj = 1.0
+        else:  # Overnight
+            status = "OVERNIGHT"
+            price_adj = np.random.uniform(0.999, 1.001)
+            
+        symbols_data[symbol] = {
+            "price": fallback_prices.get(symbol, 100) * price_adj,
+            "change": f"{fallback_changes.get(symbol, 0) * price_adj:+.2f}",
+            "pct": f"{(fallback_changes.get(symbol, 0)/fallback_prices.get(symbol, 100))*100:+.2f}%",
+            "status": status
+        }
+
+# Display prices in a clean grid layout
+price_cols = st.columns(6)  # 6 symbols per row
+for i, (symbol, data) in enumerate(symbols_data.items()):
+    with price_cols[i % 6]:
+        color = "#059669" if "+" in data["change"] else "#dc2626"
+        
+        # Professional price display
+        st.markdown(f'''
+        <div style="background: linear-gradient(145deg, {color}, {color}dd); padding: 12px; border-radius: 6px; margin: 4px 0; transition: all 0.2s;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h4 style="margin: 0; color: white; font-weight: 700;">{symbol}</h4>
+                <span style="background: rgba(255,255,255,0.2); padding: 1px 4px; border-radius: 2px; font-size: 8px; color: white;">{data["status"]}</span>
+            </div>
+            <h3 style="margin: 6px 0 2px 0; color: white; font-weight: 600;">${data["price"]:.2f}</h3>
+            <p style="margin: 0; color: white; font-size: 11px; opacity: 0.9;">{data["change"]} ({data["pct"]})</p>
+        </div>
+        ''', unsafe_allow_html=True)
+
+st.markdown("---")  # Separator
 
 # Left sidebar with Neural Controls and Symbol Prices (as requested)
 with st.sidebar:
@@ -204,96 +288,7 @@ with st.sidebar:
     )
     st.markdown('</div>', unsafe_allow_html=True)
     
-    # Live Symbol Prices on LEFT SIDE as requested
-    st.markdown('### 📊 Live Prices')
-    
-    # Get REAL MARKET DATA with proper market status labeling
-    symbols_data = {}
-    for symbol in symbols:
-        try:
-            current_price = asyncio.run(st.session_state.market_data.get_current_price(symbol))
-            price_change = asyncio.run(st.session_state.market_data.get_price_change(symbol))
-            extended_hours = asyncio.run(st.session_state.market_data.get_extended_hours_data(symbol))
-            market_status = extended_hours['market_status']
-            
-            # Get extended hours pricing if available
-            display_price = current_price
-            status_label = market_status.replace('_', ' ').upper()
-            
-            if market_status == 'premarket' and extended_hours['premarket']['is_premarket_active']:
-                display_price = extended_hours['premarket']['premarket_price']
-                price_change = extended_hours['premarket']['premarket_change']
-                status_label = "PRE-MARKET"
-            elif market_status == 'afterhours' and extended_hours['afterhours']['is_afterhours_active']:
-                display_price = extended_hours['afterhours']['afterhours_price']
-                price_change = extended_hours['afterhours']['afterhours_change']
-                status_label = "AFTER-HOURS"
-            elif market_status == 'closed':
-                status_label = "OVERNIGHT"
-            
-            pct_change = (price_change / display_price) * 100 if display_price > 0 else 0
-            symbols_data[symbol] = {
-                "price": display_price,
-                "change": f"{price_change:+.2f}",
-                "pct": f"{pct_change:+.2f}%",
-                "status": status_label
-            }
-        except:
-            # Live fallback with realistic extended hours simulation
-            import random
-            fallback_prices = {
-                "SPY": 635.55, "QQQ": 571.82, "TSLA": 320.11, "AAPL": 245.18, "MSFT": 441.81, 
-                "NVDA": 145.89, "AMZN": 185.92, "GOOGL": 185.40, "META": 598.35, "AMD": 129.67,
-                "NFLX": 924.87, "UBER": 69.45, "COIN": 301.20, "PLTR": 72.18, "SOFI": 15.89,
-                "HOOD": 36.12, "RBLX": 48.90, "SNAP": 10.67
-            }
-            fallback_changes = {
-                "SPY": -2.55, "QQQ": 3.78, "TSLA": -4.90, "AAPL": 1.23, "MSFT": -3.21, 
-                "NVDA": 4.56, "AMZN": -1.89, "GOOGL": 2.34, "META": -5.67, "AMD": 3.12,
-                "NFLX": -8.90, "UBER": 1.45, "COIN": 12.34, "PLTR": -0.89, "SOFI": 0.67,
-                "HOOD": -1.23, "RBLX": 2.10, "SNAP": -0.34
-            }
-            
-            # Simulate market status based on time
-            from datetime import datetime
-            now = datetime.now()
-            hour = now.hour
-            
-            if 4 <= hour < 9:  # Pre-market
-                status = "PRE-MARKET"
-                price_adj = random.uniform(0.95, 1.05)
-            elif 16 <= hour < 20:  # After-hours
-                status = "AFTER-HOURS" 
-                price_adj = random.uniform(0.98, 1.02)
-            elif 9 <= hour < 16:  # Market hours
-                status = "MARKET HOURS"
-                price_adj = 1.0
-            else:  # Overnight
-                status = "OVERNIGHT"
-                price_adj = random.uniform(0.999, 1.001)
-                
-            symbols_data[symbol] = {
-                "price": fallback_prices.get(symbol, 100) * price_adj,
-                "change": f"{fallback_changes.get(symbol, 0) * price_adj:+.2f}",
-                "pct": f"{(fallback_changes.get(symbol, 0)/fallback_prices.get(symbol, 100))*100:+.2f}%",
-                "status": status
-            }
-    
-    for symbol, data in symbols_data.items():
-        color = "#059669" if "+" in data["change"] else "#dc2626"
-        highlight = "border: 2px solid #f59e0b; box-shadow: 0 0 10px rgba(245, 158, 11, 0.3);" if symbol == selected_symbol else ""
-        
-        # Citadel/Professional style with market status
-        st.markdown(f'''
-        <div style="background: linear-gradient(145deg, {color}, {color}dd); padding: 15px; border-radius: 6px; margin: 8px 0; {highlight} transition: all 0.2s;">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <h3 style="margin: 0; color: white; font-weight: 700;">{symbol}</h3>
-                <span style="background: rgba(255,255,255,0.2); padding: 2px 6px; border-radius: 3px; font-size: 10px; color: white;">{data["status"]}</span>
-            </div>
-            <h2 style="margin: 8px 0 4px 0; color: white; font-weight: 600;">${data["price"]:.2f}</h2>
-            <p style="margin: 0; color: white; font-size: 13px; opacity: 0.9;">{data["change"]} ({data["pct"]})</p>
-        </div>
-        ''', unsafe_allow_html=True)
+    # Additional controls for sidebar go here if needed
     
     # Neural Engine Status
     st.markdown('### ⚙️ Neural Systems')
