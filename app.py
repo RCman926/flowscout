@@ -8,6 +8,44 @@ import plotly.express as px
 from plotly.subplots import make_subplots
 import pytz
 from scipy.stats import norm
+
+# === SIMPLE DATA FALLBACK FUNCTION ===
+def create_fallback_data(current_price):
+    """Create simple fallback data quickly"""
+    import random
+    import time
+    
+    random.seed(int(time.time()) // 10)
+    
+    # Simple call/put data
+    call_volume = random.randint(500, 2000)
+    put_volume = random.randint(300, 1500)
+    
+    strikes = [current_price * 0.98, current_price, current_price * 1.02]
+    
+    call_data = []
+    put_data = []
+    
+    for strike in strikes:
+        call_data.append({
+            'Strike': f"${strike:.0f}",
+            'Last': f"${random.uniform(1, 10):.2f}",
+            'Vol': f"{random.randint(50, 500):,}",
+            'IV': f"{random.uniform(20, 40):.1f}%",
+            'Delta': f"{random.uniform(0.3, 0.7):.2f}",
+            'Gamma': f"{random.uniform(0.01, 0.05):.3f}"
+        })
+        
+        put_data.append({
+            'Strike': f"${strike:.0f}",
+            'Last': f"${random.uniform(1, 8):.2f}",
+            'Vol': f"{random.randint(30, 400):,}",
+            'IV': f"{random.uniform(25, 45):.1f}%",
+            'Delta': f"{random.uniform(-0.7, -0.3):.2f}",
+            'Gamma': f"{random.uniform(0.01, 0.05):.3f}"
+        })
+    
+    return call_data, put_data, call_volume, put_volume, 0
 import time
 import warnings
 warnings.filterwarnings('ignore')
@@ -907,121 +945,6 @@ with rec_col3:
         st.metric("Target", f"${target:.2f}", 
                  f"{((target - current_price) / current_price * 100):+.1f}%")
 
-# === ENHANCED SAFETY ANALYSIS ===
-st.markdown('<hr class="divider">', unsafe_allow_html=True)
-st.markdown("**🛡️ Advanced Safety Analysis & Trade Calculator**")
-
-safety_col1, safety_col2, safety_col3 = st.columns(3)
-
-with safety_col1:
-    st.markdown("**💰 Position Calculator**")
-    
-    # Account-based position sizing
-    account_balance = st.number_input("Account Balance ($)", min_value=1000, max_value=1000000, value=10000, step=1000)
-    max_risk_percent = st.slider("Max Risk per Trade (%)", min_value=0.5, max_value=10.0, value=2.0, step=0.5)
-    
-    # Calculate actual dollar amounts
-    max_risk_dollars = account_balance * (max_risk_percent / 100)
-    position_value = account_balance * (suggested_position / 100)
-    
-    st.metric("Max Risk Amount", f"${max_risk_dollars:,.0f}", f"{max_risk_percent}% of account")
-    st.metric("Suggested Position", f"${position_value:,.0f}", f"{suggested_position:.1f}% of account")
-
-with safety_col2:
-    st.markdown("**📊 Probability Analysis**")
-    
-    # Probability calculations based on distance to levels
-    prob_reach_resistance = min(95, 70 - (resistance_distance * 10))  # Further = less likely
-    prob_reach_support = min(95, 70 - (support_distance * 10))
-    
-    # Confidence-adjusted probabilities
-    if signal == "CALL":
-        success_prob = prob_reach_resistance * (confidence / 100)
-    elif signal == "PUT":
-        success_prob = prob_reach_support * (confidence / 100)
-    else:
-        success_prob = 50.0  # Neutral
-    
-    st.metric("Success Probability", f"{success_prob:.0f}%", 
-             "High" if success_prob > 60 else "Medium" if success_prob > 40 else "Low")
-    
-    # Expected value calculation
-    win_amount = abs(target - current_price)
-    loss_amount = abs(current_price - stop_loss)
-    expected_value = (success_prob/100 * win_amount) - ((100-success_prob)/100 * loss_amount)
-    
-    st.metric("Expected Value", f"${expected_value:.2f}", 
-             "Positive" if expected_value > 0 else "Negative")
-
-with safety_col3:
-    st.markdown("**⚠️ Risk Assessment**")
-    
-    # Comprehensive safety score
-    safety_factors = []
-    
-    # Volatility factor (lower is safer)
-    vol_factor = max(0, 100 - tech_indicators['volatility'])
-    safety_factors.append(vol_factor)
-    
-    # Confidence factor
-    safety_factors.append(confidence)
-    
-    # Risk/reward factor
-    rr_factor = min(100, risk_reward_ratio * 30)
-    safety_factors.append(rr_factor)
-    
-    # Expected value factor
-    ev_factor = max(0, min(100, (expected_value + 5) * 10))
-    safety_factors.append(ev_factor)
-    
-    overall_safety = sum(safety_factors) / len(safety_factors)
-    
-    if overall_safety > 70:
-        safety_color = "🟢"
-        safety_text = "SAFE"
-    elif overall_safety > 50:
-        safety_color = "🟡"
-        safety_text = "MODERATE"
-    else:
-        safety_color = "🔴"
-        safety_text = "RISKY"
-    
-    st.metric("Safety Score", f"{safety_color} {overall_safety:.0f}/100", safety_text)
-    
-    # Trade recommendation
-    if overall_safety > 70 and expected_value > 0:
-        recommendation = "✅ PROCEED"
-        rec_color = "green"
-    elif overall_safety > 50 and expected_value > -1:
-        recommendation = "⚠️ CAUTION"
-        rec_color = "orange"
-    else:
-        recommendation = "❌ AVOID"
-        rec_color = "red"
-    
-    st.metric("Recommendation", recommendation, f"EV: ${expected_value:.2f}")
-
-# Quick trade setup summary
-st.markdown("---")
-st.markdown("**⚡ Quick Trade Setup**")
-
-setup_col1, setup_col2, setup_col3, setup_col4 = st.columns(4)
-
-with setup_col1:
-    entry_price = current_price
-    st.metric("Entry Price", f"${entry_price:.2f}", "Current Market")
-
-with setup_col2:
-    shares_to_buy = int(position_value / current_price) if current_price > 0 else 0
-    st.metric("Shares/Contracts", f"{shares_to_buy:,}", f"${position_value:,.0f} value")
-
-with setup_col3:
-    total_risk = shares_to_buy * loss_amount if shares_to_buy > 0 else 0
-    st.metric("Total Risk", f"${total_risk:,.0f}", f"{(total_risk/account_balance*100):.1f}% of account")
-
-with setup_col4:
-    potential_profit = shares_to_buy * win_amount if shares_to_buy > 0 else 0
-    st.metric("Potential Profit", f"${potential_profit:,.0f}", f"{(potential_profit/position_value*100):.0f}% gain")
 
 # === LIVE OPTIONS CHAIN & FLOW WITH MULTIPLE EXPIRATIONS ===
 st.markdown("---")
@@ -1309,43 +1232,6 @@ else:
     call_data, put_data, call_volume, put_volume, days_to_exp = create_fallback_data(market_data.get('price', 100))
     selected_exp_date = "Today"
 
-# === SIMPLE FALLBACK DATA FUNCTION ===
-def create_fallback_data(current_price):
-    """Create simple fallback data quickly"""
-    import random
-    import time
-    
-    random.seed(int(time.time()) // 10)
-    
-    # Simple call/put data
-    call_volume = random.randint(500, 2000)
-    put_volume = random.randint(300, 1500)
-    
-    strikes = [current_price * 0.98, current_price, current_price * 1.02]
-    
-    call_data = []
-    put_data = []
-    
-    for strike in strikes:
-        call_data.append({
-            'Strike': f"${strike:.0f}",
-            'Last': f"${random.uniform(1, 10):.2f}",
-            'Vol': f"{random.randint(50, 500):,}",
-            'IV': f"{random.uniform(20, 40):.1f}%",
-            'Delta': f"{random.uniform(0.3, 0.7):.2f}",
-            'Gamma': f"{random.uniform(0.01, 0.05):.3f}"
-        })
-        
-        put_data.append({
-            'Strike': f"${strike:.0f}",
-            'Last': f"${random.uniform(1, 8):.2f}",
-            'Vol': f"{random.randint(30, 400):,}",
-            'IV': f"{random.uniform(25, 45):.1f}%",
-            'Delta': f"{random.uniform(-0.7, -0.3):.2f}",
-            'Gamma': f"{random.uniform(0.01, 0.05):.3f}"
-        })
-    
-    return call_data, put_data, call_volume, put_volume, 0
 
 # === YOUR CLEAN FLOW CHART IS BACK ===
 st.markdown("---")
