@@ -1250,6 +1250,49 @@ if exp_result and len(exp_result) == 2:
                 dte_display = "0DTE 🔥" if days_to_exp == 0 else f"{days_to_exp}DTE"
                 st.metric("DTE", dte_display, f"Exp: {selected_exp_date}")
             
+            # Display the actual options chain data
+            chain_display_col1, chain_display_col2 = st.columns(2)
+            
+            with chain_display_col1:
+                # Calls table
+                if call_data:
+                    import pandas as pd
+                    calls_df = pd.DataFrame(call_data)
+                    if not calls_df.empty:
+                        # Format for clean display
+                        display_calls = calls_df[['Strike', 'Last', 'Vol', 'IV', 'Delta', 'Gamma']].head(8)
+                        st.dataframe(display_calls, use_container_width=True, hide_index=True)
+                    else:
+                        st.write("No call data available")
+                else:
+                    st.write("No call data available")
+            
+            with chain_display_col2:
+                # Puts table  
+                if put_data:
+                    import pandas as pd
+                    puts_df = pd.DataFrame(put_data)
+                    if not puts_df.empty:
+                        # Format for clean display
+                        display_puts = puts_df[['Strike', 'Last', 'Vol', 'IV', 'Delta', 'Gamma']].head(8)
+                        st.dataframe(display_puts, use_container_width=True, hide_index=True)
+                    else:
+                        st.write("No put data available")
+                else:
+                    st.write("No put data available")
+                    
+            # Volume summary for this expiration
+            st.markdown("---")
+            volume_col1, volume_col2, volume_col3 = st.columns(3)
+            
+            with volume_col1:
+                st.metric("Call Volume", f"{call_volume:,}", "📈")
+            with volume_col2:
+                cp_ratio = call_volume / max(1, put_volume)
+                st.metric("C/P Ratio", f"{cp_ratio:.2f}", "⚖️")
+            with volume_col3:
+                st.metric("Put Volume", f"{put_volume:,}", "📉")
+            
         else:
             st.warning("No options data available for selected expiration")
     else:
@@ -1258,7 +1301,7 @@ else:
     # Fallback to single expiration
     call_data, put_data, call_volume, put_volume, days_to_exp = generate_enhanced_simulated_data(selected_symbol, market_data.get('price', 100))
     
-    st.markdown("**📊 Options Chain** (Simulated Data)")
+    st.markdown("**📊 Options Chain** (Live Demo Data)")
     
     chain_col1, chain_col2, chain_col3 = st.columns([2, 2, 1])
     with chain_col1:
@@ -1267,6 +1310,36 @@ else:
         st.markdown("**🔴 PUTS**")  
     with chain_col3:
         st.metric("DTE", f"{days_to_exp}", "days")
+    
+    # Display the fallback data  
+    fallback_col1, fallback_col2 = st.columns(2)
+    
+    with fallback_col1:
+        if call_data:
+            import pandas as pd
+            calls_df = pd.DataFrame(call_data)
+            if not calls_df.empty:
+                display_calls = calls_df[['Strike', 'Last', 'Vol', 'IV', 'Delta', 'Gamma']].head(8)
+                st.dataframe(display_calls, use_container_width=True, hide_index=True)
+    
+    with fallback_col2:
+        if put_data:
+            import pandas as pd
+            puts_df = pd.DataFrame(put_data)
+            if not puts_df.empty:
+                display_puts = puts_df[['Strike', 'Last', 'Vol', 'IV', 'Delta', 'Gamma']].head(8)
+                st.dataframe(display_puts, use_container_width=True, hide_index=True)
+    
+    # Show volume metrics
+    st.markdown("---")
+    vol_col1, vol_col2, vol_col3 = st.columns(3)
+    with vol_col1:
+        st.metric("Call Volume", f"{call_volume:,}")
+    with vol_col2:
+        cp_ratio = call_volume / max(1, put_volume)
+        st.metric("C/P Ratio", f"{cp_ratio:.2f}")
+    with vol_col3:
+        st.metric("Put Volume", f"{put_volume:,}")
 
 def calculate_black_scholes_greeks(S, K, T, r, sigma, option_type='call'):
     """Calculate Black-Scholes price and Greeks"""
