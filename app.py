@@ -252,11 +252,10 @@ for i, symbol in enumerate(symbols):
         """
         st.markdown(button_style, unsafe_allow_html=True)
         
-        # Invisible functional button
+        # Functional button for selection
         if st.button(
-            f"Select {symbol}", 
-            key=f"symbol_{symbol}",
-            label_visibility="hidden"
+            symbol, 
+            key=f"btn_{symbol}"
         ):
             selected_symbol = symbol
             st.session_state.selected_symbol = symbol
