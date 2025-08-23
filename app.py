@@ -622,55 +622,22 @@ if flow_data and flow_data['analysis']:
 # === SIGNAL PERFORMANCE TRACKING ===
 st.markdown("### 📊 SIGNAL PERFORMANCE TRACKING")
 
-# Simulate real performance data (in real version, this would be stored in database)
-performance_data = {
-    'today': {'win_rate': 73.2, 'profit_loss': '+$2,847', 'total_signals': 24, 'accuracy': 18},
-    '7_day': {'win_rate': 69.8, 'profit_loss': '+$18,240', 'total_signals': 167, 'accuracy': 117},
-    '30_day': {'win_rate': 71.5, 'profit_loss': '+$64,892', 'total_signals': 684, 'accuracy': 489},
-    '90_day': {'win_rate': 68.9, 'profit_loss': '+$189,453', 'total_signals': 2156, 'accuracy': 1485}
-}
-
-perf_col1, perf_col2, perf_col3, perf_col4 = st.columns(4)
-
-with perf_col1:
-    st.markdown(f"""
-    <div style="background: linear-gradient(135deg, #10b981, #059669); padding: 1rem; border-radius: 8px; color: white; text-align: center;">
-        <h4 style="margin: 0; color: white;">TODAY</h4>
-        <div style="font-size: 1.8rem; font-weight: bold; margin: 0.5rem 0;">{performance_data['today']['win_rate']}%</div>
-        <div style="font-size: 0.9rem; opacity: 0.9;">{performance_data['today']['profit_loss']}</div>
-        <div style="font-size: 0.8rem; margin-top: 0.3rem;">{performance_data['today']['accuracy']}/{performance_data['today']['total_signals']} signals</div>
+st.markdown("""
+<div style="background: #1e293b; padding: 2rem; border-radius: 8px; color: white; text-align: center; border: 2px solid #374151;">
+    <h4 style="margin: 0; color: white;">🚀 PERFORMANCE TRACKING COMING SOON</h4>
+    <div style="margin: 1rem 0; color: #94a3b8;">
+        Signal performance tracking will begin once you start following our live signals.<br>
+        All performance metrics will be 100% real and verified - no fake data.
     </div>
-    """, unsafe_allow_html=True)
-
-with perf_col2:
-    st.markdown(f"""
-    <div style="background: linear-gradient(135deg, #3b82f6, #2563eb); padding: 1rem; border-radius: 8px; color: white; text-align: center;">
-        <h4 style="margin: 0; color: white;">7 DAYS</h4>
-        <div style="font-size: 1.8rem; font-weight: bold; margin: 0.5rem 0;">{performance_data['7_day']['win_rate']}%</div>
-        <div style="font-size: 0.9rem; opacity: 0.9;">{performance_data['7_day']['profit_loss']}</div>
-        <div style="font-size: 0.8rem; margin-top: 0.3rem;">{performance_data['7_day']['accuracy']}/{performance_data['7_day']['total_signals']} signals</div>
+    <div style="background: #374151; padding: 1rem; border-radius: 6px; margin-top: 1rem;">
+        <strong>What We'll Track:</strong><br>
+        • Win/Loss ratios for each signal<br>
+        • Profit/Loss per trade<br>
+        • Signal accuracy by symbol<br>
+        • Historical performance data
     </div>
-    """, unsafe_allow_html=True)
-
-with perf_col3:
-    st.markdown(f"""
-    <div style="background: linear-gradient(135deg, #8b5cf6, #7c3aed); padding: 1rem; border-radius: 8px; color: white; text-align: center;">
-        <h4 style="margin: 0; color: white;">30 DAYS</h4>
-        <div style="font-size: 1.8rem; font-weight: bold; margin: 0.5rem 0;">{performance_data['30_day']['win_rate']}%</div>
-        <div style="font-size: 0.9rem; opacity: 0.9;">{performance_data['30_day']['profit_loss']}</div>
-        <div style="font-size: 0.8rem; margin-top: 0.3rem;">{performance_data['30_day']['accuracy']}/{performance_data['30_day']['total_signals']} signals</div>
-    </div>
-    """, unsafe_allow_html=True)
-
-with perf_col4:
-    st.markdown(f"""
-    <div style="background: linear-gradient(135deg, #f59e0b, #d97706); padding: 1rem; border-radius: 8px; color: white; text-align: center;">
-        <h4 style="margin: 0; color: white;">90 DAYS</h4>
-        <div style="font-size: 1.8rem; font-weight: bold; margin: 0.5rem 0;">{performance_data['90_day']['win_rate']}%</div>
-        <div style="font-size: 0.9rem; opacity: 0.9;">{performance_data['90_day']['profit_loss']}</div>
-        <div style="font-size: 0.8rem; margin-top: 0.3rem;">{performance_data['90_day']['accuracy']}/{performance_data['90_day']['total_signals']} signals</div>
-    </div>
-    """, unsafe_allow_html=True)
+</div>
+""", unsafe_allow_html=True)
 
 # === POSITION SIZING & RISK MANAGEMENT ===
 st.markdown("### 💰 POSITION SIZING & RISK MANAGEMENT")
