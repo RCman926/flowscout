@@ -1107,16 +1107,71 @@ if call_data and put_data:
             df_puts = pd.DataFrame(put_strikes)
             st.dataframe(df_puts, use_container_width=True, hide_index=True)
     
-    # Profit targets summary
+    # ACTIONABLE PRICE TARGETS - Show exact buy/sell prices
     st.markdown("---")
-    profit_col1, profit_col2, profit_col3 = st.columns(3)
+    st.markdown("**💰 Exact Buy/Sell Price Targets**")
     
-    with profit_col1:
-        st.metric("🟢 Low Profit", "25%", "Conservative")
-    with profit_col2:
-        st.metric("🟡 Medium Profit", "50%", "Balanced")  
-    with profit_col3:
-        st.metric("🔴 High Profit", "100%", "Aggressive")
+    if call_strikes and put_strikes:
+        target_col1, target_col2 = st.columns(2)
+        
+        with target_col1:
+            st.markdown("**🟢 BEST CALL TRADE**")
+            best_call = call_strikes[0]  # First/best call option
+            buy_price = float(best_call['Buy Price'].replace('$', ''))
+            
+            col1, col2, col3, col4 = st.columns(4)
+            with col1:
+                st.metric("BUY AT", best_call['Buy Price'], best_call['Strike'])
+            with col2:
+                st.metric("SELL: +25%", best_call['Low Target'], f"+${(buy_price * 0.25):.2f}")
+            with col3:
+                st.metric("SELL: +50%", best_call['Med Target'], f"+${(buy_price * 0.50):.2f}")
+            with col4:
+                st.metric("SELL: +100%", best_call['High Target'], f"+${buy_price:.2f}")
+        
+        with target_col2:
+            st.markdown("**🔴 BEST PUT TRADE**")
+            best_put = put_strikes[0]  # First/best put option
+            buy_price = float(best_put['Buy Price'].replace('$', ''))
+            
+            col1, col2, col3, col4 = st.columns(4)
+            with col1:
+                st.metric("BUY AT", best_put['Buy Price'], best_put['Strike'])
+            with col2:
+                st.metric("SELL: +25%", best_put['Low Target'], f"+${(buy_price * 0.25):.2f}")
+            with col3:
+                st.metric("SELL: +50%", best_put['Med Target'], f"+${(buy_price * 0.50):.2f}")
+            with col4:
+                st.metric("SELL: +100%", best_put['High Target'], f"+${buy_price:.2f}")
+    
+    # Quick reference guide
+    st.markdown("---")
+    st.markdown("**📋 Quick Trading Rules:**")
+    rule_col1, rule_col2, rule_col3 = st.columns(3)
+    
+    with rule_col1:
+        st.markdown("""
+        **🟢 Conservative (25%)**
+        - Quick profit taking
+        - Lower risk
+        - Frequent wins
+        """)
+    
+    with rule_col2:
+        st.markdown("""
+        **🟡 Balanced (50%)**
+        - Standard target
+        - Good risk/reward
+        - Most common
+        """)
+    
+    with rule_col3:
+        st.markdown("""
+        **🔴 Aggressive (100%)**
+        - Home run swings
+        - Higher risk
+        - Let winners run
+        """)
 
 else:
     st.warning("No options data available for buying chart")
