@@ -181,20 +181,41 @@ def calculate_technical_indicators(symbol):
         macd = exp1 - exp2
         macd_signal = macd.ewm(span=9).mean()
         
-        # Bollinger Bands
-        sma = hist['Close'].rolling(window=20).mean()
-        std = hist['Close'].rolling(window=20).std()
-        bb_upper = sma + (std * 2)
-        bb_lower = sma - (std * 2)
-        
+        # Simple calculations to avoid type errors
         current_price = float(hist['Close'].iloc[-1])
-        bb_position = ((current_price - float(bb_lower.iloc[-1])) / (float(bb_upper.iloc[-1]) - float(bb_lower.iloc[-1]))) * 100
+        
+        # Bollinger Bands - simple calculation
+        try:
+            prices = hist['Close'].values
+            sma_val = np.mean(prices[-20:])
+            std_val = np.std(prices[-20:])
+            bb_upper_val = sma_val + (std_val * 2)
+            bb_lower_val = sma_val - (std_val * 2)
+            bb_position = ((current_price - bb_lower_val) / (bb_upper_val - bb_lower_val)) * 100
+        except:
+            bb_position = 50.0
+        
+        # Safe extraction using iloc properly
+        try:
+            rsi_val = float(rsi.iloc[-1])
+        except:
+            rsi_val = 50.0
+            
+        try:
+            macd_val = float(macd.iloc[-1])
+        except:
+            macd_val = 0.0
+            
+        try:
+            macd_signal_val = float(macd_signal.iloc[-1])
+        except:
+            macd_signal_val = 0.0
         
         return {
-            'rsi': float(rsi.iloc[-1]),
-            'macd': float(macd.iloc[-1]),
-            'macd_signal': float(macd_signal.iloc[-1]),
-            'bb_position': float(bb_position),
+            'rsi': rsi_val,
+            'macd': macd_val,
+            'macd_signal': macd_signal_val,
+            'bb_position': bb_position,
             'current_price': current_price
         }
     except:
@@ -427,6 +448,10 @@ for sym in symbols:
     try:
         data = get_real_market_data(sym)
         indicators = calculate_technical_indicators(sym)
+        
+        # Check if data is valid
+        if data is None or indicators is None:
+            continue
         
         # Real signal calculation
         score = 0
