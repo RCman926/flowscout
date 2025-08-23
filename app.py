@@ -404,69 +404,123 @@ with col6:
     status = "🔥 ACTIVE" if hours_left > 1 else "⚠️ FINAL HOUR" if hours_left > 0 else "🔴 CLOSED"
     st.metric("MARKET STATUS", status, f"{hours_left:.1f}h left")
 
-# === LIVE FLOW CHART ===
+# === LIVE FLOW ANALYSIS ===
 st.markdown("### 🔥 REAL-TIME FLOW ANALYSIS")
 
-flow_col1, flow_col2 = st.columns([2, 1])
+# Single comprehensive chart showing both volume and premium
+fig = make_subplots(
+    rows=2, cols=1,
+    subplot_titles=("💰 Premium Flow (Dollars)", "📊 Volume Flow (Contracts)"),
+    specs=[[{"secondary_y": False}], [{"secondary_y": False}]],
+    vertical_spacing=0.15
+)
 
-with flow_col1:
-    # Create flow visualization
-    fig = make_subplots(
-        rows=1, cols=2, 
-        subplot_titles=("Call Premium Flow", "Put Premium Flow"),
-        specs=[[{"type": "bar"}, {"type": "bar"}]]
-    )
-    
-    # Extract data for chart
-    exp_labels = [f"{f['dte']}DTE" for f in flow_data['analysis']]
-    call_premiums = [f['call_premium']/1e3 for f in flow_data['analysis']]  # Convert to thousands
-    put_premiums = [f['put_premium']/1e3 for f in flow_data['analysis']]
-    
-    # Add call flow
-    fig.add_trace(
-        go.Bar(x=exp_labels, y=call_premiums, name="Call Premium", 
-               marker_color="#10b981", text=[f"${p:.0f}K" for p in call_premiums],
-               textposition="auto"),
-        row=1, col=1
-    )
-    
-    # Add put flow  
-    fig.add_trace(
-        go.Bar(x=exp_labels, y=put_premiums, name="Put Premium", 
-               marker_color="#dc2626", text=[f"${p:.0f}K" for p in put_premiums],
-               textposition="auto"),
-        row=1, col=2
-    )
-    
-    fig.update_layout(
-        height=300, 
-        showlegend=False,
-        title_text=f"Premium Flow Analysis - {flow_data['flow_signal']}",
-        paper_bgcolor='rgba(0,0,0,0)',
-        plot_bgcolor='rgba(0,0,0,0)'
-    )
-    
-    st.plotly_chart(fig, use_container_width=True)
+# Extract data for chart
+exp_labels = [f"{f['dte']}DTE" for f in flow_data['analysis']]
+call_premiums = [f['call_premium']/1e6 for f in flow_data['analysis']]  # Convert to millions
+put_premiums = [f['put_premium']/1e6 for f in flow_data['analysis']]
+call_volumes = [f['call_volume'] for f in flow_data['analysis']]
+put_volumes = [f['put_volume'] for f in flow_data['analysis']]
 
-with flow_col2:
-    st.markdown("**📊 FLOW BREAKDOWN**")
+# Premium flow (top chart)
+fig.add_trace(
+    go.Bar(x=exp_labels, y=call_premiums, name="Call Premium", 
+           marker_color="#10b981", text=[f"${p:.1f}M" for p in call_premiums],
+           textposition="auto", showlegend=True),
+    row=1, col=1
+)
+
+fig.add_trace(
+    go.Bar(x=exp_labels, y=put_premiums, name="Put Premium", 
+           marker_color="#dc2626", text=[f"${p:.1f}M" for p in put_premiums],
+           textposition="auto", showlegend=True),
+    row=1, col=1
+)
+
+# Volume flow (bottom chart)
+fig.add_trace(
+    go.Bar(x=exp_labels, y=call_volumes, name="Call Volume", 
+           marker_color="#22c55e", text=[f"{v:,}" for v in call_volumes],
+           textposition="auto", showlegend=False),
+    row=2, col=1
+)
+
+fig.add_trace(
+    go.Bar(x=exp_labels, y=put_volumes, name="Put Volume", 
+           marker_color="#ef4444", text=[f"{v:,}" for v in put_volumes],
+           textposition="auto", showlegend=False),
+    row=2, col=1
+)
+
+fig.update_layout(
+    height=500, 
+    title_text=f"Options Flow Analysis - {flow_data['flow_signal']}",
+    paper_bgcolor='rgba(0,0,0,0)',
+    plot_bgcolor='rgba(0,0,0,0)',
+    barmode='group'
+)
+
+fig.update_yaxes(title_text="Premium ($M)", row=1, col=1)
+fig.update_yaxes(title_text="Volume (Contracts)", row=2, col=1)
+
+st.plotly_chart(fig, use_container_width=True)
+
+# === KEY INSIGHTS ===
+st.markdown("### 🔍 KEY INSIGHTS")
+
+insight_col1, insight_col2, insight_col3 = st.columns(3)
+
+# Find most active expiry by total premium
+most_active = max(flow_data['analysis'], key=lambda x: x['call_premium'] + x['put_premium'])
+most_active_exp = datetime.strptime(most_active['exp_date'], '%Y-%m-%d').strftime('%m/%d')
+
+with insight_col1:
+    total_premium = most_active['call_premium'] + most_active['put_premium']
+    call_dominance = (most_active['call_premium'] / max(1, total_premium)) * 100
     
-    for f in flow_data['analysis'][:3]:
-        total_vol = f['call_volume'] + f['put_volume']
-        call_pct = (f['call_volume'] / max(1, total_vol)) * 100
-        
-        exp_short = datetime.strptime(f['exp_date'], '%Y-%m-%d').strftime('%m/%d')
-        
-        st.markdown(f"""
-        <div style="background: #1e293b; padding: 0.8rem; margin: 0.3rem 0; border-radius: 6px; color: white;">
-            <div style="font-weight: bold; font-size: 0.9rem;">{exp_short} ({f['dte']}DTE)</div>
-            <div style="font-size: 0.8rem; margin: 0.2rem 0;">
-                📈 Calls: {f['call_volume']:,} ({call_pct:.0f}%)<br>
-                📉 Puts: {f['put_volume']:,} ({100-call_pct:.0f}%)<br>
-                💰 Premium: ${(f['call_premium'] + f['put_premium'])/1e3:.0f}K
-            </div>
+    st.markdown(f"""
+    <div style="background: #1e293b; padding: 1rem; border-radius: 8px; color: white; text-align: center;">
+        <h5 style="margin: 0; color: #fbbf24;">🎯 HOTTEST EXPIRY</h5>
+        <div style="font-size: 1.4rem; font-weight: bold; margin: 0.5rem 0;">{most_active_exp} ({most_active['dte']}DTE)</div>
+        <div style="font-size: 0.9rem;">
+            Total Premium: ${total_premium/1e6:.1f}M<br>
+            Call Bias: {call_dominance:.0f}%
         </div>
-        """, unsafe_allow_html=True)
+    </div>
+    """, unsafe_allow_html=True)
+
+with insight_col2:
+    # Calculate premium per contract
+    total_contracts = most_active['call_volume'] + most_active['put_volume']
+    avg_premium_per_contract = total_premium / max(1, total_contracts)
+    
+    st.markdown(f"""
+    <div style="background: #1e293b; padding: 1rem; border-radius: 8px; color: white; text-align: center;">
+        <h5 style="margin: 0; color: #10b981;">💵 AVG PREMIUM</h5>
+        <div style="font-size: 1.4rem; font-weight: bold; margin: 0.5rem 0;">${avg_premium_per_contract:.0f}</div>
+        <div style="font-size: 0.9rem;">
+            Per Contract<br>
+            Total: {total_contracts:,} contracts
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+with insight_col3:
+    # Calculate call/put ratio
+    call_put_ratio = most_active['call_volume'] / max(1, most_active['put_volume'])
+    sentiment = "BULLISH" if call_put_ratio > 1.2 else "BEARISH" if call_put_ratio < 0.8 else "NEUTRAL"
+    sentiment_color = "#10b981" if sentiment == "BULLISH" else "#dc2626" if sentiment == "BEARISH" else "#6b7280"
+    
+    st.markdown(f"""
+    <div style="background: #1e293b; padding: 1rem; border-radius: 8px; color: white; text-align: center;">
+        <h5 style="margin: 0; color: {sentiment_color};">📈 SENTIMENT</h5>
+        <div style="font-size: 1.4rem; font-weight: bold; margin: 0.5rem 0; color: {sentiment_color};">{sentiment}</div>
+        <div style="font-size: 0.9rem;">
+            C/P Ratio: {call_put_ratio:.2f}<br>
+            {most_active['call_volume']:,} calls / {most_active['put_volume']:,} puts
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
 # === INSTITUTIONAL TRADING OPPORTUNITIES ===
 st.markdown("### 🎯 INSTITUTIONAL TRADING OPPORTUNITIES")
