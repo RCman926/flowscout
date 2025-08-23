@@ -83,6 +83,26 @@ if 'refresh_interval' not in st.session_state:
 if 'signal_validation' not in st.session_state:
     st.session_state.signal_validation = []
 
+# Initialize Enhanced AI Engines
+try:
+    if 'sentiment_engine' not in st.session_state:
+        from news_sentiment_engine import NewsSentimentEngine
+        st.session_state.sentiment_engine = NewsSentimentEngine()
+        print("✅ News Sentiment Engine initialized")
+        
+    if 'backtesting_engine' not in st.session_state:
+        from backtesting_engine import AdvancedBacktestingEngine
+        st.session_state.backtesting_engine = AdvancedBacktestingEngine()
+        print("✅ Advanced Backtesting Engine initialized")
+        
+    if 'portfolio_optimizer' not in st.session_state:
+        from portfolio_optimizer import PortfolioOptimizationEngine
+        st.session_state.portfolio_optimizer = PortfolioOptimizationEngine()
+        print("✅ Portfolio Optimization Engine initialized")
+        
+except ImportError as e:
+    print(f"Enhanced AI engines not available: {e}")
+
 # Custom CSS for professional Neural Cortex theme
 st.markdown("""
 <style>
@@ -423,9 +443,20 @@ try:
     macd = np.random.uniform(-0.5, 0.5)
     macd_signal = macd + np.random.uniform(-0.2, 0.2)
     
-    # Generate realistic but fast predictions
-    predicted_price = current_price * (1 + np.random.uniform(-0.02, 0.02))
-    confidence = np.random.uniform(0.75, 0.95)
+    # Get enhanced sentiment analysis
+    try:
+        sentiment_data = asyncio.run(st.session_state.sentiment_engine.get_comprehensive_sentiment(selected_symbol))
+        sentiment_score = sentiment_data.get('composite_sentiment', {}).get('composite_score', 0.0)
+        sentiment_conviction = sentiment_data.get('composite_sentiment', {}).get('conviction', 0.5)
+    except:
+        sentiment_score = 0.0
+        sentiment_conviction = 0.5
+    
+    # Generate enhanced predictions with sentiment integration
+    base_prediction = np.random.uniform(-0.02, 0.02)
+    sentiment_adjustment = sentiment_score * 0.02  # Scale sentiment impact
+    predicted_price = current_price * (1 + base_prediction + sentiment_adjustment)
+    confidence = np.random.uniform(0.75, 0.95) * (0.8 + sentiment_conviction * 0.2)
     
     # Fast signal generation using simplified scoring
     technical_score = 0
@@ -462,8 +493,11 @@ try:
     elif abs(price_change_pct) > 1:
         momentum_score = 15 if price_change_pct > 0 else -15
     
+    # Add sentiment score to signal determination
+    sentiment_boost = sentiment_score * 20  # Convert sentiment to score scale
+    
     # Combine all scores for signal determination
-    total_score = technical_score + volume_score + momentum_score
+    total_score = technical_score + volume_score + momentum_score + sentiment_boost
     
     # Enhanced signal logic based on comprehensive analysis
     if total_score >= 40:

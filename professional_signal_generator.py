@@ -12,7 +12,7 @@ async def generate_professional_ai_signal(symbol, indicators, price_data, volume
         
         # 1. Get Professional AI Prediction
         ai_prediction = await st.session_state.professional_ai.generate_professional_prediction(
-            price_data, indicators
+            price_data, volume_data, indicators, symbol
         )
         
         # 2. Prepare volume analysis data

@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "Add your description here"
 requires-python = ">=3.11"
 dependencies = [
+    "aiohttp>=3.12.15",
     "asyncio-mqtt>=0.16.2",
     "ibapi>=9.81.1.post1",
     "notion-client>=2.4.0",
