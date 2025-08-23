@@ -261,28 +261,22 @@ st.markdown(f"""
 
 # === VALUE PROPOSITION BANNER ===
 st.markdown("""
-<div style="background: linear-gradient(135deg, #7c3aed 0%, #3b82f6 100%); padding: 1rem; border-radius: 8px; margin-bottom: 1rem; color: white; text-align: center;">
-    <h3 style="margin: 0; color: white;">⚡ WHAT MAKES THIS DIFFERENT</h3>
-    <div style="display: flex; justify-content: space-around; margin-top: 0.8rem; flex-wrap: wrap;">
-        <div style="text-align: center; margin: 0.3rem;">
-            <div style="font-size: 1.2rem; font-weight: bold;">100% REAL DATA</div>
-            <div style="font-size: 0.7rem; opacity: 0.9;">Live Yahoo Finance</div>
+<div style="background: linear-gradient(135deg, #7c3aed 0%, #3b82f6 100%); padding: 0.5rem; border-radius: 4px; margin-bottom: 0.5rem; color: white; text-align: center;">
+    <div style="display: flex; justify-content: space-around; align-items: center; flex-wrap: wrap;">
+        <div style="text-align: center; margin: 0.2rem; font-size: 0.7rem;">
+            <strong>100% REAL DATA</strong>
         </div>
-        <div style="text-align: center; margin: 0.3rem;">
-            <div style="font-size: 1.2rem; font-weight: bold;">EXACT PRICES</div>
-            <div style="font-size: 0.7rem; opacity: 0.9;">Live Bid/Ask Spreads</div>
+        <div style="text-align: center; margin: 0.2rem; font-size: 0.7rem;">
+            <strong>EXACT PRICES</strong>
         </div>
-        <div style="text-align: center; margin: 0.3rem;">
-            <div style="font-size: 1.2rem; font-weight: bold;">5-SEC REFRESH</div>
-            <div style="font-size: 0.7rem; opacity: 0.9;">0DTE Speed</div>
+        <div style="text-align: center; margin: 0.2rem; font-size: 0.7rem;">
+            <strong>5-SEC REFRESH</strong>
         </div>
-        <div style="text-align: center; margin: 0.3rem;">
-            <div style="font-size: 1.2rem; font-weight: bold;">POSITION SIZING</div>
-            <div style="font-size: 0.7rem; opacity: 0.9;">Risk Management</div>
+        <div style="text-align: center; margin: 0.2rem; font-size: 0.7rem;">
+            <strong>POSITION SIZING</strong>
         </div>
-        <div style="text-align: center; margin: 0.3rem;">
-            <div style="font-size: 1.2rem; font-weight: bold;">IV ANALYSIS</div>
-            <div style="font-size: 0.7rem; opacity: 0.9;">Volatility Intelligence</div>
+        <div style="text-align: center; margin: 0.2rem; font-size: 0.7rem;">
+            <strong>IV ANALYSIS</strong>
         </div>
     </div>
 </div>
@@ -405,7 +399,7 @@ with col6:
     st.metric("MARKET STATUS", status, f"{hours_left:.1f}h left")
 
 # === LIVE FLOW ANALYSIS ===
-st.markdown("### 🔥 REAL-TIME FLOW ANALYSIS")
+st.markdown("### 🔥 FLOW ANALYSIS")
 
 # Single comprehensive chart showing both volume and premium
 fig = make_subplots(
@@ -453,11 +447,12 @@ fig.add_trace(
 )
 
 fig.update_layout(
-    height=500, 
-    title_text=f"Options Flow Analysis - {flow_data['flow_signal']}",
+    height=250, 
+    title_text=f"Flow Analysis - {flow_data['flow_signal']}",
     paper_bgcolor='rgba(0,0,0,0)',
     plot_bgcolor='rgba(0,0,0,0)',
-    barmode='group'
+    barmode='group',
+    margin=dict(t=40, b=20, l=20, r=20)
 )
 
 fig.update_yaxes(title_text="Premium ($M)", row=1, col=1)
@@ -466,7 +461,7 @@ fig.update_yaxes(title_text="Volume (Contracts)", row=2, col=1)
 st.plotly_chart(fig, use_container_width=True)
 
 # === KEY INSIGHTS ===
-st.markdown("### 🔍 KEY INSIGHTS")
+st.markdown("### 🔍 INSIGHTS")
 
 insight_col1, insight_col2, insight_col3 = st.columns(3)
 
@@ -479,13 +474,10 @@ with insight_col1:
     call_dominance = (most_active['call_premium'] / max(1, total_premium)) * 100
     
     st.markdown(f"""
-    <div style="background: #1e293b; padding: 1rem; border-radius: 8px; color: white; text-align: center;">
-        <h5 style="margin: 0; color: #fbbf24;">🎯 HOTTEST EXPIRY</h5>
-        <div style="font-size: 1.4rem; font-weight: bold; margin: 0.5rem 0;">{most_active_exp} ({most_active['dte']}DTE)</div>
-        <div style="font-size: 0.9rem;">
-            Total Premium: ${total_premium/1e6:.1f}M<br>
-            Call Bias: {call_dominance:.0f}%
-        </div>
+    <div style="background: #1e293b; padding: 0.5rem; border-radius: 4px; color: white; text-align: center;">
+        <h6 style="margin: 0; color: #fbbf24; font-size: 0.8rem;">🎯 HOTTEST</h6>
+        <div style="font-size: 1rem; font-weight: bold; margin: 0.2rem 0;">{most_active_exp} ({most_active['dte']}DTE)</div>
+        <div style="font-size: 0.7rem;">${total_premium/1e6:.1f}M • {call_dominance:.0f}% calls</div>
     </div>
     """, unsafe_allow_html=True)
 
@@ -495,13 +487,10 @@ with insight_col2:
     avg_premium_per_contract = total_premium / max(1, total_contracts)
     
     st.markdown(f"""
-    <div style="background: #1e293b; padding: 1rem; border-radius: 8px; color: white; text-align: center;">
-        <h5 style="margin: 0; color: #10b981;">💵 AVG PREMIUM</h5>
-        <div style="font-size: 1.4rem; font-weight: bold; margin: 0.5rem 0;">${avg_premium_per_contract:.0f}</div>
-        <div style="font-size: 0.9rem;">
-            Per Contract<br>
-            Total: {total_contracts:,} contracts
-        </div>
+    <div style="background: #1e293b; padding: 0.5rem; border-radius: 4px; color: white; text-align: center;">
+        <h6 style="margin: 0; color: #10b981; font-size: 0.8rem;">💵 AVG PREMIUM</h6>
+        <div style="font-size: 1rem; font-weight: bold; margin: 0.2rem 0;">${avg_premium_per_contract:.0f}</div>
+        <div style="font-size: 0.7rem;">{total_contracts:,} contracts</div>
     </div>
     """, unsafe_allow_html=True)
 
@@ -512,18 +501,15 @@ with insight_col3:
     sentiment_color = "#10b981" if sentiment == "BULLISH" else "#dc2626" if sentiment == "BEARISH" else "#6b7280"
     
     st.markdown(f"""
-    <div style="background: #1e293b; padding: 1rem; border-radius: 8px; color: white; text-align: center;">
-        <h5 style="margin: 0; color: {sentiment_color};">📈 SENTIMENT</h5>
-        <div style="font-size: 1.4rem; font-weight: bold; margin: 0.5rem 0; color: {sentiment_color};">{sentiment}</div>
-        <div style="font-size: 0.9rem;">
-            C/P Ratio: {call_put_ratio:.2f}<br>
-            {most_active['call_volume']:,} calls / {most_active['put_volume']:,} puts
-        </div>
+    <div style="background: #1e293b; padding: 0.5rem; border-radius: 4px; color: white; text-align: center;">
+        <h6 style="margin: 0; color: {sentiment_color}; font-size: 0.8rem;">📈 SENTIMENT</h6>
+        <div style="font-size: 1rem; font-weight: bold; margin: 0.2rem 0; color: {sentiment_color};">{sentiment}</div>
+        <div style="font-size: 0.7rem;">C/P: {call_put_ratio:.2f}</div>
     </div>
     """, unsafe_allow_html=True)
 
 # === INSTITUTIONAL TRADING OPPORTUNITIES ===
-st.markdown("### 🎯 INSTITUTIONAL TRADING OPPORTUNITIES")
+st.markdown("### 🎯 OPPORTUNITIES")
 
 if flow_data and flow_data['analysis']:
     best_flow = max(flow_data['analysis'], key=lambda x: x['call_premium'] + x['put_premium'])
@@ -533,25 +519,23 @@ if flow_data and flow_data['analysis']:
     
     with opp_col1:
         st.markdown(f"""
-        <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 1rem; border-radius: 8px; color: white;">
-            <h4 style="margin: 0; color: white;">🟢 CALL OPPORTUNITY</h4>
-            <div style="font-size: 1.1rem; font-weight: bold; margin: 0.5rem 0;">
+        <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 0.5rem; border-radius: 4px; color: white;">
+            <h5 style="margin: 0; color: white; font-size: 0.8rem;">🟢 CALL</h5>
+            <div style="font-size: 0.9rem; font-weight: bold; margin: 0.2rem 0;">
                 {selected_symbol} {exp_short} ${best_flow['top_call_strike']:.0f}C
             </div>
-            <div>Volume: {best_flow['top_call_volume']:,}</div>
-            <div>Premium Flow: ${best_flow['call_premium']/1e3:.0f}K</div>
+            <div style="font-size: 0.7rem;">Vol: {best_flow['top_call_volume']:,} • ${best_flow['call_premium']/1e3:.0f}K</div>
         </div>
         """, unsafe_allow_html=True)
     
     with opp_col2:
         st.markdown(f"""
-        <div style="background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%); padding: 1rem; border-radius: 8px; color: white;">
-            <h4 style="margin: 0; color: white;">🔴 PUT OPPORTUNITY</h4>
-            <div style="font-size: 1.1rem; font-weight: bold; margin: 0.5rem 0;">
+        <div style="background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%); padding: 0.5rem; border-radius: 4px; color: white;">
+            <h5 style="margin: 0; color: white; font-size: 0.8rem;">🔴 PUT</h5>
+            <div style="font-size: 0.9rem; font-weight: bold; margin: 0.2rem 0;">
                 {selected_symbol} {exp_short} ${best_flow['top_put_strike']:.0f}P
             </div>
-            <div>Volume: {best_flow['top_put_volume']:,}</div>
-            <div>Premium Flow: ${best_flow['put_premium']/1e3:.0f}K</div>
+            <div style="font-size: 0.7rem;">Vol: {best_flow['top_put_volume']:,} • ${best_flow['put_premium']/1e3:.0f}K</div>
         </div>
         """, unsafe_allow_html=True)
     
@@ -571,14 +555,14 @@ if flow_data and flow_data['analysis']:
         """, unsafe_allow_html=True)
 
 # === LIVE OPTIONS CHAIN - BUY/SELL PRICES ===
-st.markdown("### 💰 LIVE OPTIONS CHAIN - EXACT BUY/SELL PRICES")
+st.markdown("### 💰 OPTIONS CHAIN - BUY/SELL PRICES")
 
 # Add live refresh indicator
 if market_open:
     refresh_time = datetime.now().strftime("%H:%M:%S")
     st.markdown(f"""
-    <div style="background: #10b981; padding: 0.5rem; border-radius: 4px; margin-bottom: 1rem; color: white; text-align: center;">
-        🔴 LIVE • Last Updated: {refresh_time} • Auto-Refresh: 5 seconds
+    <div style="background: #10b981; padding: 0.3rem; border-radius: 3px; margin-bottom: 0.5rem; color: white; text-align: center; font-size: 0.7rem;">
+        🔴 LIVE • {refresh_time} • 5s refresh
     </div>
     """, unsafe_allow_html=True)
 
