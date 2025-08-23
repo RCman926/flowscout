@@ -466,6 +466,98 @@ current_price = market_data['price']
 if signal in ["CALL", "PUT", "NEUTRAL"]:
     st.markdown(f"**🚀 {signal} Signal - {confidence:.0f}% Confidence**")
     
+    # === ODTE (0 Days to Expiration) Section ===
+    st.markdown("---")
+    st.markdown("### ⚡ **0DTE SAME-DAY EXPIRATION PLAYS**")
+    
+    if signal == "CALL":
+        # ODTE CALL plays - very tight strikes
+        odte_strike_1 = current_price * 1.005  # 0.5% OTM
+        odte_strike_2 = current_price * 1.01   # 1% OTM  
+        odte_strike_3 = current_price           # ATM
+        
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            st.markdown(f"""
+            **⚡ ODTE SCALP**
+            - **Strike**: ${odte_strike_3:.0f} (ATM)
+            - **Entry**: $0.15-0.25
+            - **Target**: $0.35-0.50
+            - **Stop**: $0.05
+            - **Time**: Exit by 2PM ET
+            """)
+            
+        with col2:
+            st.markdown(f"""
+            **🎯 ODTE MOMENTUM**
+            - **Strike**: ${odte_strike_1:.0f} (0.5% OTM)
+            - **Entry**: $0.08-0.15
+            - **Target**: $0.25-0.40
+            - **Stop**: $0.03
+            - **Time**: Exit by 1PM ET
+            """)
+            
+        with col3:
+            st.markdown(f"""
+            **🚀 ODTE LOTTERY**
+            - **Strike**: ${odte_strike_2:.0f} (1% OTM)
+            - **Entry**: $0.03-0.08
+            - **Target**: $0.15-0.30
+            - **Stop**: $0.01
+            - **Time**: Exit by 12PM ET
+            """)
+            
+    elif signal == "PUT":
+        # ODTE PUT plays - very tight strikes
+        odte_strike_1 = current_price * 0.995  # 0.5% OTM
+        odte_strike_2 = current_price * 0.99   # 1% OTM
+        odte_strike_3 = current_price           # ATM
+        
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            st.markdown(f"""
+            **⚡ ODTE SCALP**
+            - **Strike**: ${odte_strike_3:.0f} (ATM)
+            - **Entry**: $0.15-0.25
+            - **Target**: $0.35-0.50
+            - **Stop**: $0.05
+            - **Time**: Exit by 2PM ET
+            """)
+            
+        with col2:
+            st.markdown(f"""
+            **🎯 ODTE MOMENTUM**
+            - **Strike**: ${odte_strike_1:.0f} (0.5% OTM)
+            - **Entry**: $0.08-0.15
+            - **Target**: $0.25-0.40
+            - **Stop**: $0.03
+            - **Time**: Exit by 1PM ET
+            """)
+            
+        with col3:
+            st.markdown(f"""
+            **🚀 ODTE LOTTERY**
+            - **Strike**: ${odte_strike_2:.0f} (1% OTM)
+            - **Entry**: $0.03-0.08
+            - **Target**: $0.15-0.30
+            - **Stop**: $0.01
+            - **Time**: Exit by 12PM ET
+            """)
+    
+    # ODTE Risk Warning
+    st.markdown("""
+    **⚠️ ODTE RISK WARNING**
+    - **Extreme Time Decay**: Options lose value rapidly after 10AM ET
+    - **High Gamma Risk**: Massive swings possible
+    - **Position Size**: Max 0.5% of account per trade
+    - **Cut Losses Fast**: Don't hold losing ODTE past stop loss
+    """)
+    
+    st.markdown("---")
+    st.markdown("### 📅 **STANDARD EXPIRATION PLAYS**")
+    
     if signal == "CALL":
         # CALL recommendations
         strike_otm = current_price * 1.02  # 2% out of money
@@ -544,6 +636,45 @@ if signal in ["CALL", "PUT", "NEUTRAL"]:
             
 elif signal == "NEUTRAL":
     st.markdown(f"⚫ **NEUTRAL SIGNAL - {confidence:.0f}% Confidence**")
+    
+    # === ODTE Neutral Strategy ===
+    st.markdown("---")
+    st.markdown("### ⚡ **0DTE NEUTRAL STRATEGIES**")
+    
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        st.markdown(f"""
+        **🔄 ODTE IRON CONDOR**
+        - **Call Strike**: ${current_price * 1.01:.0f}
+        - **Put Strike**: ${current_price * 0.99:.0f}
+        - **Credit**: $0.15-0.25
+        - **Max Risk**: $0.75
+        - **Time**: Close by 2PM ET
+        """)
+        
+    with col2:
+        st.markdown(f"""
+        **⚖️ ODTE STRADDLE SELL**
+        - **Strike**: ${current_price:.0f} (ATM)
+        - **Credit**: $0.30-0.50
+        - **Max Risk**: Unlimited
+        - **Breakeven**: ±$0.40
+        - **Time**: Close by 1PM ET
+        """)
+        
+    with col3:
+        st.markdown(f"""
+        **📍 ODTE RANGE BOUND**
+        - **Buy**: ${current_price * 0.998:.0f} Put
+        - **Sell**: ${current_price * 1.002:.0f} Call
+        - **Entry**: $0.10 total
+        - **Target**: Range hold
+        - **Time**: Monitor closely
+        """)
+    
+    st.markdown("---")
+    st.markdown("### 📊 **NEUTRAL MARKET ANALYSIS**")
     st.markdown("**📊 INSTITUTIONAL ANALYSIS RECOMMENDATIONS**")
     
     col1, col2, col3 = st.columns(3)
