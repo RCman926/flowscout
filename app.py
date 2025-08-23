@@ -47,17 +47,66 @@ st.markdown("""
 st.title("🚀 Institutional Options Trading Platform")
 st.markdown("**Professional-Grade Trading Analytics with REAL Market Data**")
 
-# Symbol selection - Compact clickable boxes
+# Symbol selection - Color coded clickable boxes
 symbols = ['AAPL', 'TSLA', 'NVDA', 'MSFT', 'GOOGL', 'AMZN', 'META', 'NFLX', 'SPY']
 
-# Create compact symbol selector
-st.markdown("**Select Symbol:**")
+# Quick signal calculation for all symbols to color code buttons
+def get_quick_signal(symbol):
+    try:
+        indicators = calculate_technical_indicators(symbol)
+        if indicators is None:
+            return "HOLD", "#6b7280"
+        
+        score = 0
+        if indicators['rsi'] < 30:
+            score += 2
+        elif indicators['rsi'] > 70:
+            score -= 2
+        if indicators['macd'] > indicators['macd_signal']:
+            score += 1
+        else:
+            score -= 1
+            
+        if score > 0:
+            return "CALL", "#059669"  # Green for calls
+        elif score < 0:
+            return "PUT", "#dc2626"   # Red for puts
+        else:
+            return "HOLD", "#6b7280"  # Gray for hold
+    except:
+        return "HOLD", "#6b7280"
+
+# Create compact symbol selector with color coding
+st.markdown("**Select Symbol:** 🟢 CALL | 🔴 PUT | ⚫ HOLD")
 symbol_cols = st.columns(9)
 selected_symbol = 'AAPL'  # Default
 
 for i, symbol in enumerate(symbols):
+    signal_type, button_color = get_quick_signal(symbol)
     with symbol_cols[i]:
-        if st.button(symbol, key=f"symbol_{symbol}", use_container_width=True):
+        # Custom styled button with color coding
+        button_html = f"""
+        <style>
+        .symbol-btn-{symbol} {{
+            background-color: {button_color} !important;
+            color: white !important;
+            border: none !important;
+            padding: 8px 12px !important;
+            border-radius: 6px !important;
+            font-weight: bold !important;
+            font-size: 14px !important;
+            width: 100% !important;
+            cursor: pointer !important;
+            margin: 2px 0 !important;
+        }}
+        .symbol-btn-{symbol}:hover {{
+            opacity: 0.8 !important;
+        }}
+        </style>
+        """
+        st.markdown(button_html, unsafe_allow_html=True)
+        
+        if st.button(f"{symbol}", key=f"symbol_{symbol}", use_container_width=True):
             selected_symbol = symbol
             st.session_state.selected_symbol = symbol
 
