@@ -372,8 +372,14 @@ with col1:
              delta_color=price_color)
 
 with col2:
-    confidence_color = "🟢" if confidence > 60 else "🟡" if confidence > 40 else "🔴"
-    st.metric("SIGNAL", f"{confidence_color} {signal}", f"{confidence:.0f}% conf")
+    # Signal color based on signal type, not confidence
+    if "BUY" in signal:
+        signal_icon = "🟢"
+    elif "SELL" in signal:
+        signal_icon = "🔴"
+    else:  # NEUTRAL
+        signal_icon = "⚫"  # Gray circle for neutral
+    st.metric("SIGNAL", f"{signal_icon} {signal}", f"{confidence:.0f}% conf")
 
 with col3:
     flow_color = "🟢" if "BULLISH" in flow_data['flow_signal'] else "🔴" if "BEARISH" in flow_data['flow_signal'] else "⚪"
