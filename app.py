@@ -39,20 +39,14 @@ st.markdown("""
         box-shadow: 0 10px 40px rgba(30, 64, 175, 0.3);
     }
     
-    /* Card containers */
+    /* Compact card containers */
     .card-container {
-        background: white;
-        padding: 2rem;
-        border-radius: 20px;
-        margin: 1.5rem 0;
-        box-shadow: 0 4px 25px rgba(0,0,0,0.08);
-        border: 1px solid #f1f5f9;
-        transition: all 0.3s ease;
-    }
-    
-    .card-container:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 35px rgba(0,0,0,0.12);
+        background: #f8fafc;
+        padding: 1rem;
+        border-radius: 8px;
+        margin: 0.5rem 0;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        border: 1px solid #e2e8f0;
     }
     
     /* ODTE special styling */
@@ -84,20 +78,44 @@ st.markdown("""
         box-shadow: 0 4px 20px rgba(0,0,0,0.06);
     }
     
-    /* Metrics styling */
+    /* Compact metrics styling - much smaller and readable */
     .stMetric {
-        background: white;
-        padding: 1.2rem;
-        border-radius: 12px;
-        margin: 0.5rem 0;
-        box-shadow: 0 2px 12px rgba(0,0,0,0.06);
-        border-left: 4px solid #3b82f6;
-        transition: all 0.3s ease;
+        background: #1e293b !important;
+        padding: 0.5rem !important;
+        border-radius: 8px !important;
+        margin: 0.25rem 0 !important;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.2) !important;
+        border: 1px solid #475569 !important;
+        color: white !important;
     }
     
-    .stMetric:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+    .stMetric [data-testid="metric-container"] {
+        background-color: #1e293b !important;
+        border: 1px solid #475569 !important;
+        padding: 0.5rem !important;
+        border-radius: 6px !important;
+        color: white !important;
+    }
+    
+    .stMetric [data-testid="metric-container"] > div {
+        color: #e2e8f0 !important;
+    }
+    
+    .stMetric [data-testid="metric-container"] label {
+        color: #94a3b8 !important;
+        font-size: 0.75rem !important;
+        font-weight: 500 !important;
+    }
+    
+    .stMetric [data-testid="metric-container"] [data-testid="metric-value"] {
+        color: #f1f5f9 !important;
+        font-size: 1rem !important;
+        font-weight: 600 !important;
+    }
+    
+    .stMetric [data-testid="metric-container"] [data-testid="metric-delta"] {
+        color: #64748b !important;
+        font-size: 0.7rem !important;
     }
     
     /* Clean dividers */
