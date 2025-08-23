@@ -185,29 +185,84 @@ elif 9 <= hour < 16:  # Market hours
 else:  # Overnight
     status = "OVERNIGHT"
 
-# Fetch REAL market data
+# Fetch REAL market data using Yahoo Finance
+import yfinance as yf
+from datetime import datetime, timedelta
+
+# Cache real data for 30 seconds to avoid repeated API calls
+if 'real_data_cache' not in st.session_state:
+    st.session_state.real_data_cache = {}
+    st.session_state.cache_timestamp = datetime.now()
+
+# Check if cache is still valid (30 seconds)
+cache_valid = (datetime.now() - st.session_state.cache_timestamp).seconds < 30
+
 symbols_data = {}
-for symbol in symbols:
-        # Fast price simulation for instant loading
-    base_prices = {
-        "SPY": 645.31, "QQQ": 498.75, "TSLA": 268.50, "AAPL": 224.80, "MSFT": 441.85,
-        "NVDA": 138.25, "AMZN": 186.40, "GOOGL": 178.95, "META": 582.30, "AMD": 122.40,
-        "NFLX": 758.80, "UBER": 72.45, "COIN": 248.65, "PLTR": 67.20, "SOFI": 15.85,
-        "HOOD": 35.80, "RBLX": 52.15, "SNAP": 10.25
-    }
+if not cache_valid or not st.session_state.real_data_cache:
+    st.write("🔄 Fetching real market data...")
     
-    base_price = base_prices.get(symbol, 100.0)
-    daily_change = np.random.uniform(-0.05, 0.05)  # -5% to +5%
-    current_price = base_price * (1 + daily_change)
-    change = current_price - base_price
-    pct_change = (change / base_price) * 100
-    
-    symbols_data[symbol] = {
-        "price": current_price,
-        "change": f"{change:+.2f}",
-        "pct": f"{pct_change:+.2f}%",
-        "status": status
-    }
+    # Fetch real data for all symbols at once for efficiency
+    try:
+        tickers = yf.Tickers(' '.join(symbols))
+        for symbol in symbols:
+            try:
+                ticker = yf.Ticker(symbol)
+                hist = ticker.history(period='2d')  # Get last 2 days
+                info = ticker.info
+                
+                if not hist.empty and len(hist) >= 2:
+                    current_price = hist['Close'].iloc[-1]
+                    prev_close = hist['Close'].iloc[-2]
+                    change = current_price - prev_close
+                    pct_change = (change / prev_close) * 100 if prev_close > 0 else 0
+                    
+                    # Determine market status
+                    market_open = info.get('regularMarketOpen', current_price)
+                    if abs(current_price - market_open) < 0.01:
+                        status = "PRE-MARKET"
+                    else:
+                        status = "MARKET HOURS"
+                    
+                    symbols_data[symbol] = {
+                        "price": float(current_price),
+                        "change": f"{change:+.2f}",
+                        "pct": f"{pct_change:+.2f}%",
+                        "status": status
+                    }
+                else:
+                    # Fallback if no data
+                    symbols_data[symbol] = {
+                        "price": 100.0,
+                        "change": "+0.00",
+                        "pct": "+0.00%",
+                        "status": "DATA ERROR"
+                    }
+            except Exception as e:
+                # Fallback for individual symbol errors
+                symbols_data[symbol] = {
+                    "price": 100.0,
+                    "change": "+0.00",
+                    "pct": "+0.00%",
+                    "status": "LOADING"
+                }
+        
+        # Cache the data
+        st.session_state.real_data_cache = symbols_data.copy()
+        st.session_state.cache_timestamp = datetime.now()
+        
+    except Exception as e:
+        st.error(f"Error fetching real data: {str(e)}")
+        # Use fallback data if API fails
+        for symbol in symbols:
+            symbols_data[symbol] = {
+                "price": 100.0,
+                "change": "+0.00",
+                "pct": "+0.00%",
+                "status": "API ERROR"
+            }
+else:
+    # Use cached data
+    symbols_data = st.session_state.real_data_cache.copy()
 
 # Display prices in a compact, clickable grid layout
 price_cols = st.columns(9)  # 9 symbols per row for more compact display
