@@ -12,6 +12,9 @@ import time
 import warnings
 warnings.filterwarnings('ignore')
 
+# Import Telegram alerts system
+from telegram_alerts import telegram_alerts
+
 # Set page config
 st.set_page_config(
     page_title="Options Trading Platform",
@@ -1644,6 +1647,94 @@ with social_col3:
     top_signal = random.choice(["CALL", "PUT"])
     signal_emoji = "🟢" if top_signal == "CALL" else "🔴"
     st.metric("Community Signal", f"{signal_emoji} {top_signal}", f"{random.randint(15, 35)} votes")
+
+# === SMART TELEGRAM ALERTS SYSTEM ===
+st.markdown('<hr class="divider">', unsafe_allow_html=True)
+st.markdown("**📱 Smart Telegram Alerts System**")
+
+# Create alert settings columns
+alert_config_col1, alert_config_col2 = st.columns(2)
+
+with alert_config_col1:
+    # Test alert button
+    if st.button("🧪 Test Alert", help="Send test message to verify Telegram connection"):
+        if telegram_alerts.send_test_alert():
+            st.success("✅ Test alert sent to Telegram!")
+        else:
+            st.error("❌ Alert failed - check bot token")
+    
+    # Alert types configuration
+    st.markdown("**Alert Types:**")
+    alert_settings = {}
+    alert_settings['unusual_activity'] = st.checkbox("🚨 Unusual Options Activity", value=True)
+    alert_settings['price_targets'] = st.checkbox("🎯 Price Target Breaks", value=True)
+    alert_settings['volatility_spikes'] = st.checkbox("📊 Volatility Spikes", value=True)
+    alert_settings['trading_signals'] = st.checkbox("📈 Trading Signals", value=True)
+    alert_settings['dte_alerts'] = st.checkbox("🔥 0DTE Special Alerts", value=True)
+
+with alert_config_col2:
+    # Alert thresholds
+    st.markdown("**Sensitivity Settings:**")
+    alert_settings['volume_threshold'] = st.slider("Volume Alert Threshold", 500, 5000, 1000)
+    alert_settings['ratio_threshold'] = st.slider("C/P Ratio Alert Level", 2.0, 5.0, 3.0)
+    alert_settings['proximity_threshold'] = st.slider("Price Target Distance %", 0.5, 3.0, 1.0) / 100
+    alert_settings['iv_spike_threshold'] = st.slider("IV Spike Multiple", 1.2, 2.5, 1.5)
+    alert_settings['min_signal_confidence'] = st.slider("Min Signal Confidence %", 50, 90, 60)
+
+# Alert statistics
+alert_stats = telegram_alerts.get_alert_stats()
+if alert_stats['total'] > 0:
+    stats_col1, stats_col2, stats_col3 = st.columns(3)
+    with stats_col1:
+        st.metric("Today's Alerts", alert_stats['today'])
+    with stats_col2:
+        st.metric("Total Sent", alert_stats['total'])
+    with stats_col3:
+        st.metric("Success Rate", f"{alert_stats['success_rate']:.0f}%")
+
+# Store alert settings in session state for use throughout the app
+st.session_state['alert_settings'] = alert_settings
+
+# === REAL-TIME ALERT MONITORING ===
+# Run alerts for current data if we have options data
+if 'call_data' in locals() and 'put_data' in locals() and alert_settings:
+    current_price = market_data['price']
+    
+    # Check unusual options activity
+    telegram_alerts.check_unusual_options_activity(
+        selected_symbol, call_data, put_data, call_volume, put_volume, alert_settings
+    )
+    
+    # Check price targets if we have chart data
+    if 'resistance_level' in locals() and 'support_level' in locals():
+        telegram_alerts.check_price_targets(
+            selected_symbol, current_price, support_level, resistance_level, alert_settings
+        )
+    
+    # Check trading signals
+    telegram_alerts.check_trading_signals(
+        selected_symbol, signal, confidence, {}, alert_settings
+    )
+    
+    # Check volatility spikes
+    current_iv = tech_indicators['volatility'] * 0.8  # Convert to IV estimate
+    historical_iv = 25.0  # Baseline
+    telegram_alerts.check_volatility_spikes(
+        selected_symbol, current_iv, historical_iv, alert_settings
+    )
+    
+    # Check 0DTE alerts if applicable
+    if 'days_to_exp' in locals() and days_to_exp == 0:
+        import datetime
+        now = datetime.datetime.now()
+        market_close = now.replace(hour=16, minute=0, second=0, microsecond=0)
+        time_left = market_close - now
+        hours_left = max(0, time_left.total_seconds() / 3600) if time_left.total_seconds() > 0 else 0
+        
+        if 'flow_direction' in locals() and 'momentum' in locals():
+            telegram_alerts.check_0dte_alerts(
+                selected_symbol, days_to_exp, flow_direction, momentum, hours_left, alert_settings
+            )
 
 # Footer
 st.markdown("---")
