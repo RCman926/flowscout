@@ -1236,101 +1236,64 @@ else:
     selected_exp_date = "Today"
 
 
-# === ENHANCED FLOW CHART WITH TRADING DATA ===
+# === FLOW ANALYSIS - SIMPLIFIED ===
 st.markdown("---")
-st.markdown("**📊 Live Options Flow Analysis**")
+st.markdown("**📊 Options Flow Analysis**")
 
 if call_data and put_data:
-    # Your preferred clean flow chart with enhancements
-    flow_col1, flow_col2, flow_col3 = st.columns([1, 2, 1])
-
-    with flow_col1:
-        st.metric("🟢 Call Volume", f"{call_volume:,}", 
+    # Flow summary and detailed breakdown
+    flow_summary_col1, flow_summary_col2, flow_summary_col3 = st.columns(3)
+    
+    with flow_summary_col1:
+        st.metric("🟢 Total Call Volume", f"{call_volume:,}", 
                  "Strong" if call_volume > put_volume * 1.5 else "")
-
-    with flow_col2:
-        # Enhanced Flow Chart with Strike/Expiry Details
-        if call_data and put_data:
-            import pandas as pd
-            
-            # Extract strike prices and volumes from data
-            strike_info = []
-            for i, (call, put) in enumerate(zip(call_data[:5], put_data[:5])):  # Top 5 strikes
-                call_strike = call['Strike'].replace('$', '')
-                call_vol = int(call['Vol'].replace(',', ''))
-                put_vol = int(put['Vol'].replace(',', ''))
-                strike_info.append({
-                    'Strike': call_strike,
-                    'Call_Vol': call_vol,
-                    'Put_Vol': put_vol
-                })
-            
-            # Create strike-level flow visualization
-            fig = make_subplots(
-                rows=1, cols=2, 
-                subplot_titles=['🟢 CALL FLOW', '🔴 PUT FLOW'],
-                specs=[[{"secondary_y": False}, {"secondary_y": False}]]
-            )
-            
-            strikes = [s['Strike'] for s in strike_info]
-            call_vols = [s['Call_Vol'] for s in strike_info]
-            put_vols = [s['Put_Vol'] for s in strike_info]
-            
-            # Call flow (left side)
-            fig.add_trace(go.Bar(
-                x=call_vols,
-                y=strikes,
-                orientation='h',
-                marker_color='#00ff00',
-                text=[f'{v:,}' for v in call_vols],
-                textposition='outside',
-                name='Calls'
-            ), row=1, col=1)
-            
-            # Put flow (right side)  
-            fig.add_trace(go.Bar(
-                x=put_vols,
-                y=strikes,
-                orientation='h',
-                marker_color='#ff0000',
-                text=[f'{v:,}' for v in put_vols],
-                textposition='outside',
-                name='Puts'
-            ), row=1, col=2)
-            
-            # Add DTE and expiry info
-            import datetime
-            now = datetime.datetime.now()
-            market_close = now.replace(hour=16, minute=0, second=0, microsecond=0)
-            time_left = market_close - now
-            hours_left = max(0, time_left.total_seconds() / 3600) if time_left.total_seconds() > 0 else 0
-            
-            dte_text = f"{days_to_exp}DTE" if days_to_exp > 0 else "0DTE 🔥"
-            
-            fig.update_layout(
-                title=f"Strike Flow | {dte_text} | Exp: {selected_exp_date} | {hours_left:.1f}h left",
-                showlegend=False,
-                height=140,
-                margin=dict(l=20, r=20, t=40, b=20),
-                paper_bgcolor='rgba(0,0,0,0)',
-                plot_bgcolor='rgba(0,0,0,0)',
-                title_font_size=10
-            )
-            
-            # Update axes
-            fig.update_xaxes(showgrid=False, row=1, col=1)
-            fig.update_xaxes(showgrid=False, row=1, col=2) 
-            fig.update_yaxes(showgrid=False, row=1, col=1)
-            fig.update_yaxes(showgrid=False, row=1, col=2)
-            
-            st.plotly_chart(fig, use_container_width=True, key="enhanced_flow_chart")
-        else:
-            st.write("⚠️ No strike data available")
-
-    with flow_col3:
+    
+    with flow_summary_col2:
         cp_ratio = call_volume / max(1, put_volume)
-        st.metric("🔴 Put Volume", f"{put_volume:,}",
-                 f"Ratio: {cp_ratio:.2f}")
+        bias = "📈 CALL BIAS" if cp_ratio > 1.3 else "📉 PUT BIAS" if cp_ratio < 0.77 else "⚖️ BALANCED"
+        st.metric("Flow Direction", bias, f"C/P Ratio: {cp_ratio:.2f}")
+    
+    with flow_summary_col3:
+        st.metric("🔴 Total Put Volume", f"{put_volume:,}",
+                 "Strong" if put_volume > call_volume * 1.5 else "")
+    
+    # Detailed strike-by-strike flow breakdown
+    st.markdown("**📋 Volume by Strike Price:**")
+    if call_data and put_data:
+        import pandas as pd
+        
+        # Create strike comparison table
+        strike_breakdown = []
+        for i, (call, put) in enumerate(zip(call_data[:5], put_data[:5])):
+            call_vol = int(call['Vol'].replace(',', ''))
+            put_vol = int(put['Vol'].replace(',', ''))
+            strike_breakdown.append({
+                'Strike': call['Strike'],
+                'Call Volume': f"{call_vol:,}",
+                'Put Volume': f"{put_vol:,}",
+                'Call %': f"{(call_vol/(call_vol+put_vol)*100):.0f}%" if call_vol+put_vol > 0 else "0%",
+                'Put %': f"{(put_vol/(call_vol+put_vol)*100):.0f}%" if call_vol+put_vol > 0 else "0%"
+            })
+        
+        strike_df = pd.DataFrame(strike_breakdown)
+        st.dataframe(strike_df, use_container_width=True, hide_index=True)
+        
+        # Add expiration info
+        import datetime
+        now = datetime.datetime.now()
+        market_close = now.replace(hour=16, minute=0, second=0, microsecond=0)
+        time_left = market_close - now
+        hours_left = max(0, time_left.total_seconds() / 3600) if time_left.total_seconds() > 0 else 0
+        
+        dte_text = f"{days_to_exp}DTE" if days_to_exp > 0 else "0DTE 🔥"
+        
+        exp_col1, exp_col2, exp_col3 = st.columns(3)
+        with exp_col1:
+            st.info(f"**Expiration:** {selected_exp_date}")
+        with exp_col2:
+            st.info(f"**Days to Expiry:** {dte_text}")
+        with exp_col3:
+            st.info(f"**Time Left:** {hours_left:.1f} hours")
 
 # === TECHNICAL ANALYSIS DASHBOARD ===
 st.markdown("---")
