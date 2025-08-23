@@ -222,16 +222,18 @@ def calculate_institutional_signal(symbol):
         signal_score = max(0, min(100, signal_score))
         confidence = abs(signal_score - 50) * 2
         
-        if signal_score >= 65:
-            return "STRONG BUY", "#10b981", confidence
-        elif signal_score >= 55:
-            return "BUY", "#6ee7b7", confidence  
-        elif signal_score <= 35:
-            return "STRONG SELL", "#dc2626", confidence
-        elif signal_score <= 45:
-            return "SELL", "#f87171", confidence
+        # FIXED: Proper confidence thresholds - only strong signals with high confidence
+        if signal_score >= 70 and confidence >= 60:
+            return "STRONG BUY", "#10b981", confidence  # GREEN
+        elif signal_score >= 60 and confidence >= 50:
+            return "BUY", "#22c55e", confidence  # GREEN  
+        elif signal_score <= 30 and confidence >= 60:
+            return "STRONG SELL", "#dc2626", confidence  # RED
+        elif signal_score <= 40 and confidence >= 50:
+            return "SELL", "#ef4444", confidence  # RED
         else:
-            return "NEUTRAL", "#6b7280", confidence
+            # Low confidence signals become NEUTRAL
+            return "NEUTRAL", "#6b7280", min(confidence, 45)
             
     except Exception as e:
         return "NEUTRAL", "#6b7280", 25
