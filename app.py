@@ -97,10 +97,10 @@ def calculate_advanced_technical_indicators(symbol):
         if len(hist) < 50:
             return None
             
-        close_prices = hist['Close'].values
-        high_prices = hist['High'].values
-        low_prices = hist['Low'].values
-        volume = hist['Volume'].values
+        close_prices = np.array(hist['Close'].values, dtype=float)
+        high_prices = np.array(hist['High'].values, dtype=float)
+        low_prices = np.array(hist['Low'].values, dtype=float)
+        volume = np.array(hist['Volume'].values, dtype=float)
         
         # Advanced RSI (14-period)
         delta = np.diff(close_prices)
@@ -115,20 +115,24 @@ def calculate_advanced_technical_indicators(symbol):
         current_rsi = float(rsi[-1]) if len(rsi) > 0 else 50.0
         
         # MACD (12, 26, 9)
-        ema_12 = pd.Series(close_prices).ewm(span=12).mean().values
-        ema_26 = pd.Series(close_prices).ewm(span=26).mean().values
-        macd_line = ema_12[-26:] - ema_26
+        ema_12 = np.array(pd.Series(close_prices).ewm(span=12).mean().values, dtype=float)
+        ema_26 = np.array(pd.Series(close_prices).ewm(span=26).mean().values, dtype=float)
+        macd_line = ema_12[-len(ema_26):] - ema_26
         macd_signal = pd.Series(macd_line).ewm(span=9).mean().values
         
         current_macd = float(macd_line[-1]) if len(macd_line) > 0 else 0.0
         current_macd_signal = float(macd_signal[-1]) if len(macd_signal) > 0 else 0.0
         
-        # Bollinger Bands (20-period, 2 std dev)
-        sma_20 = np.convolve(close_prices, np.ones(20)/20, mode='valid')
-        rolling_std = []
-        for i in range(len(close_prices) - 19):
-            rolling_std.append(np.std(close_prices[i:i+20]))
-        rolling_std = np.array(rolling_std)
+        # Bollinger Bands (20-period, 2 std dev)  
+        if len(close_prices) >= 20:
+            sma_20 = np.convolve(close_prices, np.ones(20)/20, mode='valid')
+            rolling_std = []
+            for i in range(len(close_prices) - 19):
+                rolling_std.append(np.std(close_prices[i:i+20]))
+            rolling_std = np.array(rolling_std, dtype=float)
+        else:
+            sma_20 = np.array([close_prices[-1]], dtype=float)
+            rolling_std = np.array([np.std(close_prices)], dtype=float)
         
         bb_upper = sma_20 + (rolling_std * 2)
         bb_lower = sma_20 - (rolling_std * 2)
@@ -138,21 +142,27 @@ def calculate_advanced_technical_indicators(symbol):
         # Stochastic Oscillator (14-period)
         k_periods = 14
         stoch_k = []
-        for i in range(len(close_prices) - k_periods + 1):
-            period_high = np.max(high_prices[i:i+k_periods])
-            period_low = np.min(low_prices[i:i+k_periods])
-            current_close = close_prices[i+k_periods-1]
-            k_value = ((current_close - period_low) / (period_high - period_low)) * 100
-            stoch_k.append(k_value)
+        if len(close_prices) >= k_periods:
+            for i in range(len(close_prices) - k_periods + 1):
+                period_high = np.max(high_prices[i:i+k_periods])
+                period_low = np.min(low_prices[i:i+k_periods])
+                current_close = close_prices[i+k_periods-1]
+                k_value = ((current_close - period_low) / (period_high - period_low)) * 100 if period_high != period_low else 50.0
+                stoch_k.append(k_value)
+        else:
+            stoch_k = [50.0]
         
-        stoch_k = np.array(stoch_k)
-        stoch_d = np.convolve(stoch_k, np.ones(3)/3, mode='valid')  # 3-period SMA of %K
+        stoch_k = np.array(stoch_k, dtype=float)
+        if len(stoch_k) >= 3:
+            stoch_d = np.convolve(stoch_k, np.ones(3)/3, mode='valid')  # 3-period SMA of %K
+        else:
+            stoch_d = stoch_k
         
         current_stoch_k = float(stoch_k[-1]) if len(stoch_k) > 0 else 50.0
         current_stoch_d = float(stoch_d[-1]) if len(stoch_d) > 0 else 50.0
         
         # Volume analysis
-        avg_volume = np.mean(volume[-20:])  # 20-day average volume
+        avg_volume = np.mean(volume[-20:]) if len(volume) >= 20 else np.mean(volume)  # 20-day average volume
         volume_ratio = float(volume[-1] / avg_volume) if avg_volume > 0 else 1.0
         
         # Price momentum (rate of change)
@@ -160,8 +170,11 @@ def calculate_advanced_technical_indicators(symbol):
         momentum_10 = ((close_prices[-1] / close_prices[-11]) - 1) * 100 if len(close_prices) >= 11 else 0.0
         
         # Volatility (20-day)
-        returns = np.diff(close_prices) / close_prices[:-1]
-        volatility = np.std(returns[-20:]) * np.sqrt(252) * 100  # Annualized
+        if len(close_prices) > 1:
+            returns = np.diff(close_prices) / close_prices[:-1]
+            volatility = np.std(returns[-20:]) * np.sqrt(252) * 100  # Annualized
+        else:
+            volatility = 25.0
         
         return {
             'rsi': current_rsi,
@@ -315,26 +328,36 @@ for i, symbol in enumerate(symbols):
         # Check if this is the selected symbol
         is_selected = (symbol == st.session_state.get('selected_symbol', 'AAPL'))
         
-        # Color coded button box with confidence indication
+        # Get price for this symbol
+        symbol_market_data = get_real_market_data(symbol)
+        symbol_price = symbol_market_data['price'] if symbol_market_data else 150.0
+        price_change_pct = symbol_market_data['change_pct'] if symbol_market_data else 0.0
+        
+        # Color coded button box with price and confidence
         button_style = f"""
         <style>
         .symbol-btn-{symbol.lower()} {{
             background: {button_color} !important;
             color: white !important;
             border: {'3px solid #fbbf24' if is_selected else '2px solid transparent'} !important;
-            padding: 12px 8px !important;
+            padding: 8px 6px !important;
             border-radius: 8px !important;
             text-align: center !important;
             font-weight: bold !important;
-            font-size: 14px !important;
+            font-size: 12px !important;
             margin: 2px 0 !important;
             cursor: pointer !important;
             width: 100% !important;
-            opacity: {0.6 + (confidence/100)*0.4} !important;
+            opacity: {0.7 + (confidence/100)*0.3} !important;
+            line-height: 1.2 !important;
         }}
         </style>
-        <div class="symbol-btn-{symbol.lower()}">{symbol}</div>
-        <div style="font-size: 10px; text-align: center; color: #64748b; margin-top: 2px;">{confidence:.0f}%</div>
+        <div class="symbol-btn-{symbol.lower()}">
+            <div style="font-size: 14px; font-weight: bold;">{symbol}</div>
+            <div style="font-size: 11px; margin: 1px 0;">${symbol_price:.1f}</div>
+            <div style="font-size: 9px; opacity: 0.9;">{price_change_pct:+.1f}%</div>
+        </div>
+        <div style="font-size: 8px; text-align: center; color: #64748b; margin-top: 1px;">{confidence:.0f}% conf</div>
         """
         st.markdown(button_style, unsafe_allow_html=True)
         
