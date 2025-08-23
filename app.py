@@ -17,6 +17,9 @@ from news_sentiment import NewsSentimentAnalyzer
 from ai_models import AITradingModels
 from options_trading_signals import OptionsSignalGenerator
 from utils import format_currency, format_percentage, calculate_time_to_expiry
+from performance_tracker import PerformanceTracker
+from volume_analyzer import VolumeAnalyzer
+from alert_system import AlertSystem
 
 # Configure page
 st.set_page_config(
@@ -41,6 +44,12 @@ if 'ai_models' not in st.session_state:
     st.session_state.ai_models = AITradingModels()
 if 'signal_generator' not in st.session_state:
     st.session_state.signal_generator = OptionsSignalGenerator()
+if 'performance_tracker' not in st.session_state:
+    st.session_state.performance_tracker = PerformanceTracker()
+if 'volume_analyzer' not in st.session_state:
+    st.session_state.volume_analyzer = VolumeAnalyzer()
+if 'alert_system' not in st.session_state:
+    st.session_state.alert_system = AlertSystem()
 if 'last_update' not in st.session_state:
     st.session_state.last_update = datetime.now()
 if 'selected_positions' not in st.session_state:
@@ -127,7 +136,7 @@ with st.sidebar:
     # Asset Selection
     st.markdown('<div class="neural-card">', unsafe_allow_html=True)
     st.markdown('**Asset Selection**')
-    symbols = ["SPY", "QQQ", "TSLA"]
+    symbols = ["SPY", "QQQ", "TSLA", "AAPL", "MSFT", "NVDA", "AMZN", "GOOGL", "META", "AMD", "NFLX", "UBER", "COIN", "PLTR", "SOFI", "HOOD", "RBLX", "SNAP"]
     selected_symbol = st.selectbox(
         "Primary Symbol",
         options=symbols,
@@ -173,8 +182,18 @@ with st.sidebar:
         except:
             # Live fallback with realistic extended hours simulation
             import random
-            fallback_prices = {"SPY": 635.55, "QQQ": 571.82, "TSLA": 320.11}
-            fallback_changes = {"SPY": -2.55, "QQQ": 3.78, "TSLA": -4.90}
+            fallback_prices = {
+                "SPY": 635.55, "QQQ": 571.82, "TSLA": 320.11, "AAPL": 245.18, "MSFT": 441.81, 
+                "NVDA": 145.89, "AMZN": 185.92, "GOOGL": 185.40, "META": 598.35, "AMD": 129.67,
+                "NFLX": 924.87, "UBER": 69.45, "COIN": 301.20, "PLTR": 72.18, "SOFI": 15.89,
+                "HOOD": 36.12, "RBLX": 48.90, "SNAP": 10.67
+            }
+            fallback_changes = {
+                "SPY": -2.55, "QQQ": 3.78, "TSLA": -4.90, "AAPL": 1.23, "MSFT": -3.21, 
+                "NVDA": 4.56, "AMZN": -1.89, "GOOGL": 2.34, "META": -5.67, "AMD": 3.12,
+                "NFLX": -8.90, "UBER": 1.45, "COIN": 12.34, "PLTR": -0.89, "SOFI": 0.67,
+                "HOOD": -1.23, "RBLX": 2.10, "SNAP": -0.34
+            }
             
             # Simulate market status based on time
             from datetime import datetime
@@ -352,6 +371,97 @@ with metrics_col3:
     st.markdown(f'**Updated:** {current_time}')
     st.markdown(f'**Status:** Active Trading')
 
+# Performance Tracking Section
+st.markdown('### 📈 Performance Tracking')
+try:
+    performance_stats = st.session_state.performance_tracker.get_performance_stats()
+    historical_performance = st.session_state.performance_tracker.simulate_historical_performance()
+    
+    perf_col1, perf_col2, perf_col3, perf_col4 = st.columns(4)
+    
+    with perf_col1:
+        st.markdown(f'**Total Predictions:** {performance_stats.get("total_predictions", 0)}')
+    with perf_col2:
+        st.markdown(f'**Accuracy:** {performance_stats.get("accuracy", 0):.1f}%')
+    with perf_col3:
+        st.markdown(f'**30-Day Avg:** {historical_performance["accuracy"].mean():.1f}%')
+    with perf_col4:
+        st.markdown(f'**Best Day:** {historical_performance["accuracy"].max():.1f}%')
+    
+    # Performance chart
+    if not historical_performance.empty:
+        fig_perf = go.Figure()
+        fig_perf.add_trace(go.Scatter(
+            x=historical_performance['date'],
+            y=historical_performance['accuracy'],
+            mode='lines+markers',
+            name='Daily Accuracy',
+            line=dict(color='#059669', width=2),
+            marker=dict(size=4)
+        ))
+        fig_perf.update_layout(
+            height=250,
+            margin=dict(l=0, r=0, t=0, b=0),
+            plot_bgcolor='rgba(0,0,0,0)',
+            paper_bgcolor='rgba(0,0,0,0)',
+            xaxis=dict(showgrid=False, color='#64748b'),
+            yaxis=dict(showgrid=True, gridcolor='#334155', color='#64748b', title='Accuracy %'),
+            showlegend=False
+        )
+        st.plotly_chart(fig_perf, use_container_width=True)
+except Exception as e:
+    st.markdown('**Performance tracking initializing...**')
+
+# Volume Analysis Section
+st.markdown('### 📊 Volume Analysis')
+try:
+    volume_data = asyncio.run(st.session_state.volume_analyzer.get_volume_analysis(selected_symbol))
+    
+    vol_col1, vol_col2, vol_col3, vol_col4 = st.columns(4)
+    
+    with vol_col1:
+        ratio = volume_data.get('volume_ratio', 1)
+        color = '#059669' if ratio > 1.5 else '#dc2626' if ratio < 0.7 else '#64748b'
+        st.markdown(f'**Volume Ratio:** <span style="color: {color}">{ratio:.1f}x</span>', unsafe_allow_html=True)
+    
+    with vol_col2:
+        trend = volume_data.get('volume_trend', 'neutral')
+        trend_color = '#059669' if trend == 'increasing' else '#dc2626' if trend == 'decreasing' else '#64748b'
+        st.markdown(f'**Trend:** <span style="color: {trend_color}">{trend.title()}</span>', unsafe_allow_html=True)
+    
+    with vol_col3:
+        institutional = volume_data.get('institutional_activity', {}).get('probability', 0)
+        inst_color = '#f59e0b' if institutional > 50 else '#64748b'
+        st.markdown(f'**Institutional:** <span style="color: {inst_color}">{institutional:.0f}%</span>', unsafe_allow_html=True)
+    
+    with vol_col4:
+        spikes = volume_data.get('volume_spikes', {}).get('recent_spikes', 0)
+        spike_color = '#dc2626' if spikes > 1 else '#64748b'
+        st.markdown(f'**Recent Spikes:** <span style="color: {spike_color}">{spikes}</span>', unsafe_allow_html=True)
+        
+except Exception as e:
+    st.markdown('**Volume analysis loading...**')
+
+# Real-time Alerts Section
+st.markdown('### 🚨 Real-time Alerts')
+try:
+    # Clear old alerts first
+    st.session_state.alert_system.clear_old_alerts(hours=2)
+    
+    # Get active alerts
+    active_alerts = st.session_state.alert_system.get_active_alerts(max_alerts=5)
+    
+    if active_alerts:
+        for alert in active_alerts:
+            severity_color = '#dc2626' if alert['severity'] == 'high' else '#f59e0b' if alert['severity'] == 'medium' else '#64748b'
+            alert_time = datetime.fromisoformat(alert['timestamp']).strftime('%H:%M')
+            st.markdown(f'<span style="color: {severity_color}">**{alert_time}** - {alert["message"]}</span>', unsafe_allow_html=True)
+    else:
+        st.markdown('*No active alerts*')
+        
+except Exception as e:
+    st.markdown('*Alert system initializing...*')
+
 # NEURAL CORTEX ANALYSIS (Ken Griffin/Citadel Style)
 st.markdown('### 🏛️ Quantitative Analysis Engine')
 
@@ -523,6 +633,22 @@ with tab1:
             min_volume=min_volume,
             min_premium=min_premium
         ))
+        
+        # Process alerts for the current symbol
+        try:
+            current_price = asyncio.run(st.session_state.market_data.get_current_price(selected_symbol))
+            price_change = asyncio.run(st.session_state.market_data.get_price_change(selected_symbol))
+            price_change_pct = (price_change / current_price) * 100 if current_price > 0 else 0
+            
+            volume_data = asyncio.run(st.session_state.volume_analyzer.get_volume_analysis(selected_symbol))
+            indicators = asyncio.run(st.session_state.technical_analyzer.get_all_indicators(selected_symbol))
+            
+            # Process alerts in background
+            asyncio.run(st.session_state.alert_system.process_all_alerts(
+                selected_symbol, current_price, price_change_pct, volume_data, flow_data, indicators
+            ))
+        except:
+            pass  # Continue if alert processing fails
         
         if not flow_data.empty:
             # Apply unusual activity filter

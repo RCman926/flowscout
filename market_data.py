@@ -172,13 +172,10 @@ class MarketDataManager:
         """Get reasonable fallback price based on symbol"""
         # Updated fallback prices based on recent market data
         fallback_prices = {
-            'SPY': 580.0,
-            'QQQ': 520.0, 
-            'TSLA': 240.0,
-            'AAPL': 220.0,
-            'MSFT': 450.0,
-            'NVDA': 140.0,
-            'AMZN': 185.0
+            'SPY': 635.55, 'QQQ': 571.82, 'TSLA': 320.11, 'AAPL': 245.18, 'MSFT': 441.81,
+            'NVDA': 145.89, 'AMZN': 185.92, 'GOOGL': 185.40, 'META': 598.35, 'AMD': 129.67,
+            'NFLX': 924.87, 'UBER': 69.45, 'COIN': 301.20, 'PLTR': 72.18, 'SOFI': 15.89,
+            'HOOD': 36.12, 'RBLX': 48.90, 'SNAP': 10.67
         }
         return fallback_prices.get(symbol.upper(), 100.0)
     
@@ -283,7 +280,12 @@ class MarketDataManager:
             print(f"Yahoo historical data error: {e}")
             # Return sample data structure to prevent UI crashes
             dates = pd.date_range(start='2024-01-01', periods=60, freq='D')
-            fallback_prices = {'SPY': 580, 'QQQ': 520, 'TSLA': 240}
+            fallback_prices = {
+                'SPY': 635.55, 'QQQ': 571.82, 'TSLA': 320.11, 'AAPL': 245.18, 'MSFT': 441.81,
+                'NVDA': 145.89, 'AMZN': 185.92, 'GOOGL': 185.40, 'META': 598.35, 'AMD': 129.67,
+                'NFLX': 924.87, 'UBER': 69.45, 'COIN': 301.20, 'PLTR': 72.18, 'SOFI': 15.89,
+                'HOOD': 36.12, 'RBLX': 48.90, 'SNAP': 10.67
+            }
             base_price = fallback_prices.get(symbol, 100)
             sample_data = pd.DataFrame({
                 'Open': [base_price + (i % 10 - 5) for i in range(60)],
