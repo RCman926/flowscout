@@ -203,13 +203,16 @@ def calculate_advanced_technical_indicators(symbol):
             else:
                 cci = 0
                 
-            # Add ADX (Average Directional Index) - simplified
+            # Add ADX (Average Directional Index) - properly normalized
             if len(close_prices) >= 14:
                 high_diff = np.diff(high_prices[-15:])
                 low_diff = -np.diff(low_prices[-15:])
                 plus_dm = np.where(high_diff > low_diff, np.maximum(high_diff, 0), 0)
                 minus_dm = np.where(low_diff > high_diff, np.maximum(low_diff, 0), 0)
-                adx_strength = np.mean(plus_dm + minus_dm) * 100  # Simplified ADX
+                tr = np.maximum(high_prices[-14:] - low_prices[-14:], 
+                               np.maximum(np.abs(high_prices[-14:] - close_prices[-15:-1]),
+                                        np.abs(low_prices[-14:] - close_prices[-15:-1])))
+                adx_strength = min(100, np.mean(plus_dm + minus_dm) / np.mean(tr) * 100) if np.mean(tr) > 0 else 25
             else:
                 adx_strength = 25
         else:
