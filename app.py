@@ -935,46 +935,109 @@ if call_data is None:
 
 selected_exp_date = "Live Data"
 
-# === OPTION EXPIRY DATES ===
+# === DETAILED OPTION EXPIRY ANALYSIS ===
 st.markdown("---")
-st.markdown("**📅 Option Expiry Dates**")
+st.markdown("**📅 Detailed Option Expiry Analysis**")
 
 try:
     ticker = yf.Ticker(selected_symbol)
     exp_dates = ticker.options
+    current_price = market_data['price']
+    
     if exp_dates:
-        exp_col1, exp_col2, exp_col3 = st.columns(3)
+        # Create detailed expiry table
+        expiry_data = []
         
-        with exp_col1:
-            # Show next 3 expiry dates
-            for i, exp_date in enumerate(exp_dates[:3]):
+        for exp_date in exp_dates[:6]:  # Show top 6 expiries
+            try:
                 exp_datetime = datetime.strptime(exp_date, '%Y-%m-%d')
                 days_left = (exp_datetime - datetime.now()).days
+                day_of_week = exp_datetime.strftime('%A')
                 
-                if days_left == 0:
-                    st.metric(f"🔥 {exp_date}", "0DTE", "TODAY!")
-                elif days_left == 1:
-                    st.metric(f"⚡ {exp_date}", "1DTE", "TOMORROW")
-                else:
-                    st.metric(f"📅 {exp_date}", f"{days_left}DTE", f"{days_left} days")
+                # Get options chain for this expiry
+                options_chain = ticker.option_chain(exp_date)
+                calls_df = options_chain.calls
+                puts_df = options_chain.puts
+                
+                if not calls_df.empty and not puts_df.empty:
+                    # Calculate key metrics
+                    total_call_volume = int(calls_df['volume'].sum()) if not calls_df['volume'].isna().all() else 0
+                    total_put_volume = int(puts_df['volume'].sum()) if not puts_df['volume'].isna().all() else 0
+                    total_call_oi = int(calls_df['openInterest'].sum()) if not calls_df['openInterest'].isna().all() else 0
+                    total_put_oi = int(puts_df['openInterest'].sum()) if not puts_df['openInterest'].isna().all() else 0
+                    
+                    # Find liquid strikes (volume > 10)
+                    liquid_calls = len(calls_df[calls_df['volume'] > 10])
+                    liquid_puts = len(puts_df[puts_df['volume'] > 10])
+                    
+                    # Find ATM strikes
+                    atm_calls = calls_df[abs(calls_df['strike'] - current_price) <= current_price * 0.05]
+                    atm_puts = puts_df[abs(puts_df['strike'] - current_price) <= current_price * 0.05]
+                    
+                    # Average IV for ATM options
+                    avg_call_iv = atm_calls['impliedVolatility'].mean() * 100 if not atm_calls.empty else 0
+                    avg_put_iv = atm_puts['impliedVolatility'].mean() * 100 if not atm_puts.empty else 0
+                    
+                    # Strike range
+                    min_strike = min(calls_df['strike'].min(), puts_df['strike'].min())
+                    max_strike = max(calls_df['strike'].max(), puts_df['strike'].max())
+                    
+                    # Most active call strike
+                    most_active_call = calls_df.loc[calls_df['volume'].idxmax()] if not calls_df['volume'].isna().all() and calls_df['volume'].max() > 0 else None
+                    most_active_put = puts_df.loc[puts_df['volume'].idxmax()] if not puts_df['volume'].isna().all() and puts_df['volume'].max() > 0 else None
+                    
+                    expiry_data.append({
+                        'Expiry Date': exp_date,
+                        'DTE': f"{days_left}DTE",
+                        'Day': day_of_week,
+                        'Call Vol': f"{total_call_volume:,}",
+                        'Put Vol': f"{total_put_volume:,}",
+                        'Call OI': f"{total_call_oi:,}",
+                        'Put OI': f"{total_put_oi:,}",
+                        'Liquid Strikes': f"C:{liquid_calls} P:{liquid_puts}",
+                        'Strike Range': f"${min_strike:.0f}-${max_strike:.0f}",
+                        'ATM IV': f"{(avg_call_iv + avg_put_iv)/2:.1f}%",
+                        'Hot Call': f"${most_active_call['strike']:.0f}" if most_active_call is not None else "N/A",
+                        'Hot Put': f"${most_active_put['strike']:.0f}" if most_active_put is not None else "N/A"
+                    })
+                    
+            except Exception as e:
+                continue
         
-        with exp_col2:
-            # Weekly vs Monthly
-            weekly_count = len([d for d in exp_dates if (datetime.strptime(d, '%Y-%m-%d') - datetime.now()).days <= 7])
-            monthly_count = len(exp_dates) - weekly_count
-            st.metric("Weekly Options", f"{weekly_count}", "Available")
-            st.metric("Monthly Options", f"{monthly_count}", "Available")
-        
-        with exp_col3:
-            # Expiry summary
-            total_exp = len(exp_dates)
-            nearest_exp = exp_dates[0] if exp_dates else "None"
-            st.metric("Total Expiries", f"{total_exp}", "Available")
-            st.metric("Nearest Expiry", nearest_exp, "Date")
+        if expiry_data:
+            # Display detailed table
+            df_expiry = pd.DataFrame(expiry_data)
+            st.dataframe(df_expiry, use_container_width=True, hide_index=True)
+            
+            # Key insights below table
+            insights_col1, insights_col2, insights_col3, insights_col4 = st.columns(4)
+            
+            with insights_col1:
+                # Find highest volume expiry
+                max_vol_exp = max(expiry_data, key=lambda x: int(x['Call Vol'].replace(',', '')) + int(x['Put Vol'].replace(',', '')))
+                st.metric("🔥 Highest Volume", max_vol_exp['Expiry Date'], f"{max_vol_exp['DTE']}")
+            
+            with insights_col2:
+                # Find highest OI expiry  
+                max_oi_exp = max(expiry_data, key=lambda x: int(x['Call OI'].replace(',', '')) + int(x['Put OI'].replace(',', '')))
+                st.metric("📊 Highest OI", max_oi_exp['Expiry Date'], f"{max_oi_exp['DTE']}")
+            
+            with insights_col3:
+                # Count 0DTE/weekly options
+                weekly_exps = [exp for exp in expiry_data if int(exp['DTE'].replace('DTE', '')) <= 7]
+                st.metric("⚡ Weekly Count", f"{len(weekly_exps)}", "Available")
+            
+            with insights_col4:
+                # Average IV across all expiries
+                avg_iv = sum([float(exp['ATM IV'].replace('%', '')) for exp in expiry_data if exp['ATM IV'] != 'N/A']) / len(expiry_data)
+                st.metric("📈 Avg ATM IV", f"{avg_iv:.1f}%", "All Expiries")
+                
+        else:
+            st.warning("No detailed options data available")
     else:
         st.warning("No option expiry dates available for this symbol")
-except:
-    st.warning("Unable to fetch expiry dates")
+except Exception as e:
+    st.warning(f"Unable to fetch detailed expiry data: {str(e)}")
 
 # === KEY OPTION BUYING CHART ===
 st.markdown("---")
