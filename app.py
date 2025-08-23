@@ -298,8 +298,12 @@ def calculate_institutional_signal(symbol):
         signal_score = max(0, min(100, signal_score))
         confidence = abs(signal_score - 50) * 2  # 0-100 confidence scale
         
-        # Enhanced signal determination with higher confidence
-        confidence = min(95, max(60, confidence))  # Boost minimum confidence to 60%
+        # Smart signal determination - only show signals with sufficient confidence
+        confidence = min(95, max(35, confidence))  # Allow lower confidence for filtering
+        
+        # Don't show signals if confidence is too low
+        if confidence < 55:
+            return "NEUTRAL", "#6b7280", confidence  # Gray for low confidence
         
         if signal_score >= 62:
             return "CALL", "#10b981", confidence  # Strong CALL - Bright Green
@@ -310,17 +314,19 @@ def calculate_institutional_signal(symbol):
         elif signal_score <= 48:
             return "PUT", "#f87171", confidence   # Mild PUT - Light Red
         else:
-            # Neutral zone - use momentum as tiebreaker with decent confidence
-            if momentum_5d > 0:
-                return "CALL", "#10b981", max(65, confidence)
+            # Neutral zone - use momentum as tiebreaker
+            if momentum_5d > 1:
+                return "CALL", "#10b981", confidence
+            elif momentum_5d < -1:
+                return "PUT", "#dc2626", confidence
             else:
-                return "PUT", "#dc2626", max(65, confidence)
+                return "NEUTRAL", "#6b7280", confidence
                 
     except Exception as e:
         return "CALL", "#6b7280", 25  # Low confidence default
 
 # Create compact symbol selector with advanced color coding
-st.markdown("**Select Symbol:** 🟢 **Strong CALL** | 🟢 *Mild CALL* | 🔴 *Mild PUT* | 🔴 **Strong PUT**")
+st.markdown("**Select Symbol:** 🟢 **Strong CALL** | 🟢 *Mild CALL* | ⚫ *NEUTRAL* | 🔴 *Mild PUT* | 🔴 **Strong PUT**")
 symbol_cols = st.columns(9)
 selected_symbol = 'AAPL'  # Default
 
@@ -355,11 +361,11 @@ for i, symbol in enumerate(symbols):
         }}
         </style>
         <div class="symbol-btn-{symbol.lower()}">
-            <div style="font-size: 13px; font-weight: bold;">{symbol}</div>
-            <div style="font-size: 10px; margin: 1px 0;">${symbol_price:.1f}</div>
+            <div style="font-size: 14px; font-weight: bold;">{symbol}</div>
+            <div style="font-size: 11px; margin: 1px 0;">${symbol_price:.1f}</div>
             <div style="font-size: 9px; opacity: 0.9;">{price_change_pct:+.1f}%</div>
-            <div style="font-size: 8px; opacity: 0.8; margin-top: 1px;">{confidence:.0f}%</div>
         </div>
+        <div style="font-size: 8px; text-align: center; color: #64748b; margin-top: 2px;">{confidence:.0f}% conf</div>
         """
         st.markdown(button_style, unsafe_allow_html=True)
         
