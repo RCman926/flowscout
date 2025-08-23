@@ -28,25 +28,25 @@ st.markdown("""
         background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
     }
     
-    /* Beautiful headers */
+    /* Compact headers */
     .main-title {
         background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
-        padding: 3rem 2rem;
-        margin: -2rem -2rem 3rem -2rem;
-        border-radius: 0 0 30px 30px;
+        padding: 1.5rem 1rem;
+        margin: -1rem -1rem 1rem -1rem;
+        border-radius: 0 0 15px 15px;
         color: white;
         text-align: center;
-        box-shadow: 0 10px 40px rgba(30, 64, 175, 0.3);
+        box-shadow: 0 4px 15px rgba(30, 64, 175, 0.2);
     }
     
-    /* Compact card containers */
+    /* Remove white boxes - dark minimal cards */
     .card-container {
-        background: #f8fafc;
-        padding: 1rem;
-        border-radius: 8px;
-        margin: 0.5rem 0;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-        border: 1px solid #e2e8f0;
+        background: transparent;
+        padding: 0.5rem;
+        border-radius: 6px;
+        margin: 0.25rem 0;
+        border: none;
+        box-shadow: none;
     }
     
     /* ODTE special styling */
@@ -69,13 +69,14 @@ st.markdown("""
         box-shadow: 0 10px 40px rgba(15, 23, 42, 0.5);
     }
     
-    /* Symbol selector grid */
+    /* Remove symbol grid white box */
     .symbol-grid {
-        background: white;
-        padding: 2rem;
-        border-radius: 20px;
-        margin: 1.5rem 0;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+        background: transparent;
+        padding: 0.5rem;
+        border-radius: 6px;
+        margin: 0.5rem 0;
+        box-shadow: none;
+        border: none;
     }
     
     /* Compact metrics styling - much smaller and readable */
@@ -142,11 +143,35 @@ st.markdown("""
         box-shadow: 0 4px 20px rgba(0,0,0,0.2) !important;
     }
     
-    /* Text improvements */
+    /* Smaller text throughout */
     h1, h2, h3 {
         color: #1e293b !important;
-        font-weight: 700 !important;
-        margin-bottom: 1rem !important;
+        font-weight: 600 !important;
+        margin-bottom: 0.5rem !important;
+        font-size: 1.1rem !important;
+    }
+    
+    h1 {
+        font-size: 1.5rem !important;
+    }
+    
+    h2 {
+        font-size: 1.3rem !important;
+    }
+    
+    p, div, span {
+        font-size: 0.875rem !important;
+    }
+    
+    /* Make all text smaller */
+    .stMarkdown p {
+        font-size: 0.8rem !important;
+        margin-bottom: 0.5rem !important;
+    }
+    
+    .stMarkdown h3 {
+        font-size: 1rem !important;
+        margin-bottom: 0.25rem !important;
     }
     
     /* Expander styling */
@@ -164,11 +189,11 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Beautiful header
+# Compact header
 st.markdown("""
 <div class="main-title">
-    <h1 style="margin: 0; font-size: 3rem; font-weight: 800;">🏛️ Institutional Options Platform</h1>
-    <p style="margin: 1rem 0 0 0; font-size: 1.2rem; opacity: 0.9;">AI-powered trading signals with professional-grade analytics</p>
+    <h1 style="margin: 0; font-size: 1.8rem; font-weight: 700;">🏛️ Options Platform</h1>
+    <p style="margin: 0.5rem 0 0 0; font-size: 0.9rem; opacity: 0.9;">Live trading signals & analytics</p>
 </div>
 """, unsafe_allow_html=True)
 
@@ -652,12 +677,7 @@ def calculate_institutional_signal(symbol):
         return "NEUTRAL", "#6b7280", 25  # Low confidence default
 
 # Elegant symbol selector
-st.markdown("""
-<div class="symbol-grid">
-    <h3 style="margin-bottom: 1.5rem; color: #1e293b;">📊 Select Symbol for Analysis</h3>
-    <p style="color: #64748b; margin-bottom: 1rem;">🟢 <strong>CALL Signals</strong> | ⚫ <em>NEUTRAL</em> | 🔴 <strong>PUT Signals</strong></p>
-</div>
-""", unsafe_allow_html=True)
+st.markdown("**📊 Select Symbol:**")
 symbol_cols = st.columns(9)
 selected_symbol = 'AAPL'  # Default
 
@@ -780,11 +800,7 @@ with col4:
 
 # === INSTITUTIONAL TRADING RECOMMENDATIONS ===
 st.markdown('<hr class="divider">', unsafe_allow_html=True)
-st.markdown("""
-<div class="card-container">
-    <h3 style="margin-bottom: 1rem; color: #1e293b;">🎯 Trading Recommendations</h3>
-</div>
-""", unsafe_allow_html=True)
+st.markdown("**🎯 Trading Recommendations**")
 
 # Get detailed options recommendations
 signal, signal_color, confidence = calculate_institutional_signal(selected_symbol)
@@ -792,7 +808,7 @@ current_price = market_data['price']
 
 # === CLEAN LIVE OPTIONS CHAIN ===
 st.markdown("---")
-st.markdown("### 📊 **Live Options Chain & Flow**")
+st.markdown("**📊 Live Options Chain & Flow**")
 
 # Compact options data with live updates
 @st.cache_data(ttl=30)  # Refresh every 30 seconds
