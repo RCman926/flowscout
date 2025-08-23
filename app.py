@@ -335,35 +335,44 @@ for i, (symbol, data) in enumerate(symbols_data.items()):
         # Generate trading signal for this symbol to determine color
         current_price = data['price']
         
-        # Handle loading state and convert percentage safely
+        # Enhanced percentage parsing for better color coding
         try:
-            if 'Loading' in str(data['pct']) or data['pct'] == 'N/A':
+            if 'Loading' in str(data['pct']) or data['pct'] == 'N/A' or 'ERROR' in str(data['pct']):
                 price_change_pct = 0.0
             else:
-                price_change_pct = float(str(data['pct']).replace('%', '')) / 100
+                # Clean up percentage string more thoroughly
+                pct_str = str(data['pct']).replace('%', '').replace('+', '').strip()
+                price_change_pct = float(pct_str)
         except (ValueError, TypeError):
             price_change_pct = 0.0
         
-        # Simple signal logic based on price momentum and direction
-        if price_change_pct > 0.01:  # More than 1% gain
+        # More sensitive signal logic for better color coding (0.3% threshold)
+        if price_change_pct > 0.3:  # More than 0.3% gain
             signal = "BUY_CALL"
-            color = "#059669"  # Green for call signals
-        elif price_change_pct < -0.01:  # More than 1% loss
+            color = "#10b981"  # Bright green for call signals
+        elif price_change_pct < -0.3:  # More than 0.3% loss
             signal = "BUY_PUT" 
-            color = "#dc2626"  # Red for put signals
+            color = "#ef4444"  # Bright red for put signals
+        elif price_change_pct > 0:  # Any positive change
+            signal = "WEAK_CALL"
+            color = "#22c55e"  # Light green for weak calls
+        elif price_change_pct < 0:  # Any negative change
+            signal = "WEAK_PUT"
+            color = "#f87171"  # Light red for weak puts
         else:
-            signal = "NO_TRADE"
-            color = "#6b7280"  # Gray for no trade
+            signal = "HOLD"
+            color = "#64748b"  # Gray for no change
         
         border = "2px solid #f59e0b" if symbol == st.session_state.get('selected_symbol', 'SPY') else "1px solid rgba(255,255,255,0.1)"
         
         # CLICKABLE price box - no separate button needed
         clickable_key = f"clickable_{symbol}_{i}"
-        if st.button(f'''{symbol} ${data['price']:.2f} {data['change']} {"CALL" if signal == "BUY_CALL" else "PUT" if signal == "BUY_PUT" else "HOLD"}''', key=clickable_key, use_container_width=True):
+        signal_text = "CALL" if "CALL" in signal else "PUT" if "PUT" in signal else "HOLD"
+        if st.button(f'''{symbol} ${data['price']:.2f} {data['change']} {signal_text}''', key=clickable_key, use_container_width=True):
             st.session_state.selected_symbol = symbol
             st.rerun()
         
-        # Enhanced styling with stronger colors for clear call/put indication
+        # Enhanced styling with MUCH stronger colors for clear call/put indication
         st.markdown(f'''
         <style>
         div[data-testid="stButton"] > button[key="{clickable_key}"] {{
@@ -371,18 +380,24 @@ for i, (symbol, data) in enumerate(symbols_data.items()):
             border-radius: 8px; 
             padding: 12px; 
             text-align: center; 
-            background: linear-gradient(135deg, {color}40, {color}20) !important;
+            background: {color} !important;
             color: white !important;
             font-weight: bold;
             width: 100%;
             height: auto;
-            box-shadow: 0 2px 8px {color}30;
+            box-shadow: 0 4px 12px {color}60;
             transition: all 0.2s ease;
+            opacity: 0.9;
         }}
         div[data-testid="stButton"] > button[key="{clickable_key}"]:hover {{
-            background: linear-gradient(135deg, {color}60, {color}40) !important;
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px {color}40;
+            background: {color} !important;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px {color}80;
+            opacity: 1.0;
+        }}
+        div[data-testid="stButton"] > button[key="{clickable_key}"]:focus {{
+            background: {color} !important;
+            outline: 2px solid {color};
         }}
         </style>
         ''', unsafe_allow_html=True)
