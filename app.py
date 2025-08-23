@@ -462,6 +462,158 @@ if flow_data and flow_data['analysis']:
         </div>
         """, unsafe_allow_html=True)
 
+# === LIVE OPTIONS CHAIN - BUY/SELL PRICES ===
+st.markdown("### 💰 LIVE OPTIONS CHAIN - EXACT BUY/SELL PRICES")
+
+if flow_data and flow_data['analysis']:
+    # Get the most active expiry
+    best_exp = max(flow_data['analysis'], key=lambda x: x['call_volume'] + x['put_volume'])
+    exp_date = best_exp['exp_date']
+    exp_short = datetime.strptime(exp_date, '%Y-%m-%d').strftime('%m/%d')
+    
+    try:
+        ticker = yf.Ticker(selected_symbol)
+        options_chain = ticker.option_chain(exp_date)
+        calls_df = options_chain.calls
+        puts_df = options_chain.puts
+        current_price = market_data['price']
+        
+        st.markdown(f"**📊 {selected_symbol} {exp_short} OPTIONS - LIVE PRICES**")
+        
+        # Show ATM and nearby strikes only (more focused)
+        atm_strike = round(current_price / 5) * 5  # Round to nearest $5
+        
+        # Filter to strikes around ATM
+        calls_filtered = calls_df[
+            (calls_df['strike'] >= atm_strike - 15) & 
+            (calls_df['strike'] <= atm_strike + 15)
+        ].copy()
+        puts_filtered = puts_df[
+            (puts_df['strike'] >= atm_strike - 15) & 
+            (puts_df['strike'] <= atm_strike + 15)
+        ].copy()
+        
+        if not calls_filtered.empty and not puts_filtered.empty:
+            chain_col1, chain_col2 = st.columns(2)
+            
+            with chain_col1:
+                st.markdown("**🟢 CALL OPTIONS - BUY/SELL PRICES**")
+                
+                call_data = []
+                for _, row in calls_filtered.iterrows():
+                    volume = int(row['volume']) if pd.notna(row['volume']) and row['volume'] > 0 else 0
+                    oi = int(row['openInterest']) if pd.notna(row['openInterest']) else 0
+                    
+                    # Calculate distance from current price
+                    distance = ((row['strike'] - current_price) / current_price) * 100
+                    
+                    call_data.append({
+                        'Strike': f"${row['strike']:.0f}",
+                        'Distance': f"{distance:+.1f}%",
+                        'BID (Sell)': f"${row['bid']:.2f}" if pd.notna(row['bid']) else "$0.00",
+                        'ASK (Buy)': f"${row['ask']:.2f}" if pd.notna(row['ask']) else "$0.00", 
+                        'Last': f"${row['lastPrice']:.2f}" if pd.notna(row['lastPrice']) else "$0.00",
+                        'Volume': f"{volume:,}",
+                        'OI': f"{oi:,}"
+                    })
+                
+                calls_df_display = pd.DataFrame(call_data)
+                st.dataframe(calls_df_display, use_container_width=True, hide_index=True)
+            
+            with chain_col2:
+                st.markdown("**🔴 PUT OPTIONS - BUY/SELL PRICES**")
+                
+                put_data = []
+                for _, row in puts_filtered.iterrows():
+                    volume = int(row['volume']) if pd.notna(row['volume']) and row['volume'] > 0 else 0
+                    oi = int(row['openInterest']) if pd.notna(row['openInterest']) else 0
+                    
+                    # Calculate distance from current price  
+                    distance = ((row['strike'] - current_price) / current_price) * 100
+                    
+                    put_data.append({
+                        'Strike': f"${row['strike']:.0f}",
+                        'Distance': f"{distance:+.1f}%",
+                        'BID (Sell)': f"${row['bid']:.2f}" if pd.notna(row['bid']) else "$0.00",
+                        'ASK (Buy)': f"${row['ask']:.2f}" if pd.notna(row['ask']) else "$0.00",
+                        'Last': f"${row['lastPrice']:.2f}" if pd.notna(row['lastPrice']) else "$0.00", 
+                        'Volume': f"{volume:,}",
+                        'OI': f"{oi:,}"
+                    })
+                
+                puts_df_display = pd.DataFrame(put_data)
+                st.dataframe(puts_df_display, use_container_width=True, hide_index=True)
+            
+            # Quick order examples
+            st.markdown("---")
+            st.markdown("**🎯 QUICK ORDER EXAMPLES**")
+            
+            order_col1, order_col2 = st.columns(2)
+            
+            # Find ATM options for examples
+            atm_call = calls_filtered.iloc[(calls_filtered['strike'] - atm_strike).abs().argsort()[:1]]
+            atm_put = puts_filtered.iloc[(puts_filtered['strike'] - atm_strike).abs().argsort()[:1]]
+            
+            if not atm_call.empty and not atm_put.empty:
+                call_strike = atm_call.iloc[0]['strike']
+                call_ask = atm_call.iloc[0]['ask']
+                call_bid = atm_call.iloc[0]['bid']
+                
+                put_strike = atm_put.iloc[0]['strike']
+                put_ask = atm_put.iloc[0]['ask'] 
+                put_bid = atm_put.iloc[0]['bid']
+                
+                with order_col1:
+                    st.markdown(f"""
+                    <div style="background: #10b981; padding: 1rem; border-radius: 8px; color: white;">
+                        <h5 style="margin: 0; color: white;">🟢 BUY CALL ORDER</h5>
+                        <div style="margin: 0.5rem 0;">
+                            <strong>Symbol:</strong> {selected_symbol} {exp_short} ${call_strike:.0f}C<br>
+                            <strong>Action:</strong> BUY TO OPEN<br>
+                            <strong>Price:</strong> ${call_ask:.2f} (ASK)<br>
+                            <strong>Limit:</strong> ${call_ask:.2f} or better
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                with order_col2:
+                    st.markdown(f"""
+                    <div style="background: #dc2626; padding: 1rem; border-radius: 8px; color: white;">
+                        <h5 style="margin: 0; color: white;">🔴 BUY PUT ORDER</h5>
+                        <div style="margin: 0.5rem 0;">
+                            <strong>Symbol:</strong> {selected_symbol} {exp_short} ${put_strike:.0f}P<br>
+                            <strong>Action:</strong> BUY TO OPEN<br>
+                            <strong>Price:</strong> ${put_ask:.2f} (ASK)<br>
+                            <strong>Limit:</strong> ${put_ask:.2f} or better
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                # Trading instructions
+                st.markdown("---")
+                st.markdown("**📋 TRADING INSTRUCTIONS**")
+                
+                inst_col1, inst_col2 = st.columns(2)
+                
+                with inst_col1:
+                    st.markdown("""
+                    **🟢 TO BUY OPTIONS:**
+                    - Use **ASK price** (higher price)
+                    - Action: BUY TO OPEN
+                    - You pay the ASK price
+                    """)
+                
+                with inst_col2:
+                    st.markdown("""
+                    **🔴 TO SELL OPTIONS:**
+                    - Use **BID price** (lower price)  
+                    - Action: SELL TO CLOSE
+                    - You receive the BID price
+                    """)
+                    
+    except Exception as e:
+        st.warning("Unable to fetch live options prices. Market may be closed.")
+
 # === RISK METRICS ===
 st.markdown("### ⚠️ INSTITUTIONAL RISK METRICS")
 
