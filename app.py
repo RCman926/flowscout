@@ -435,8 +435,8 @@ with col_analysis2:
     </div>
     ''', unsafe_allow_html=True)
 
-# EXACT PREMIUM PRICING - CLEAR AND PROMINENT as requested
-st.markdown('### 💰 EXACT PREMIUM PRICING')
+# Options Pricing Matrix
+st.markdown('### 💼 Options Pricing Matrix')
 
 # Calculate premium pricing based on signal
 if basic_signal == "BUY_CALL":
@@ -944,7 +944,7 @@ with tab5:
                 
                 # 💰 EXACT PREMIUM PRICING (Your requested format)
                 st.markdown("---")
-                st.markdown("# 💰 EXACT OPTIONS PRICING")
+                st.markdown("# 💼 Options Pricing Matrix")
                 
                 # Calculate realistic premium pricing based on signal
                 if basic_signal == "BUY_CALL":
