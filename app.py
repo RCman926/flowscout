@@ -47,9 +47,26 @@ st.markdown("""
 st.title("🚀 Institutional Options Trading Platform")
 st.markdown("**Professional-Grade Trading Analytics with REAL Market Data**")
 
-# Symbol selection
+# Symbol selection - Compact clickable boxes
 symbols = ['AAPL', 'TSLA', 'NVDA', 'MSFT', 'GOOGL', 'AMZN', 'META', 'NFLX', 'SPY']
-selected_symbol = st.sidebar.selectbox("📈 Select Symbol", symbols)
+
+# Create compact symbol selector
+st.markdown("**Select Symbol:**")
+symbol_cols = st.columns(9)
+selected_symbol = 'AAPL'  # Default
+
+for i, symbol in enumerate(symbols):
+    with symbol_cols[i]:
+        if st.button(symbol, key=f"symbol_{symbol}", use_container_width=True):
+            selected_symbol = symbol
+            st.session_state.selected_symbol = symbol
+
+# Use session state to remember selection
+if 'selected_symbol' in st.session_state:
+    selected_symbol = st.session_state.selected_symbol
+else:
+    st.session_state.selected_symbol = 'AAPL'
+    selected_symbol = 'AAPL'
 
 @st.cache_data(ttl=60)
 def get_real_market_data(symbol):
