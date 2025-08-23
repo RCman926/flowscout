@@ -244,19 +244,26 @@ for i, (symbol, data) in enumerate(symbols_data.items()):
             st.session_state.selected_symbol = symbol
             st.rerun()
         
-        # Style the button to look like the original box
+        # Enhanced styling with stronger colors for clear call/put indication
         st.markdown(f'''
         <style>
         div[data-testid="stButton"] > button[key="{clickable_key}"] {{
             border: {border}; 
             border-radius: 8px; 
-            padding: 8px; 
+            padding: 12px; 
             text-align: center; 
-            background: linear-gradient(135deg, {color}15, {color}05);
-            color: {color};
+            background: linear-gradient(135deg, {color}40, {color}20) !important;
+            color: white !important;
             font-weight: bold;
             width: 100%;
             height: auto;
+            box-shadow: 0 2px 8px {color}30;
+            transition: all 0.2s ease;
+        }}
+        div[data-testid="stButton"] > button[key="{clickable_key}"]:hover {{
+            background: linear-gradient(135deg, {color}60, {color}40) !important;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px {color}40;
         }}
         </style>
         ''', unsafe_allow_html=True)
