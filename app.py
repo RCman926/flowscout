@@ -205,23 +205,26 @@ for symbol in symbols:
             "status": status
         }
 
-# Display prices in a clean grid layout
-price_cols = st.columns(6)  # 6 symbols per row
+# Display prices in a compact, clickable grid layout
+price_cols = st.columns(9)  # 9 symbols per row for more compact display
 for i, (symbol, data) in enumerate(symbols_data.items()):
-    with price_cols[i % 6]:
+    with price_cols[i % 9]:
         color = "#059669" if "+" in data["change"] else "#dc2626"
+        border = "2px solid #f59e0b" if symbol == st.session_state.get('selected_symbol', 'SPY') else "1px solid rgba(255,255,255,0.1)"
         
-        # Professional price display
-        st.markdown(f'''
-        <div style="background: linear-gradient(145deg, {color}, {color}dd); padding: 12px; border-radius: 6px; margin: 4px 0; transition: all 0.2s;">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <h4 style="margin: 0; color: white; font-weight: 700;">{symbol}</h4>
-                <span style="background: rgba(255,255,255,0.2); padding: 1px 4px; border-radius: 2px; font-size: 8px; color: white;">{data["status"]}</span>
-            </div>
-            <h3 style="margin: 6px 0 2px 0; color: white; font-weight: 600;">${data["price"]:.2f}</h3>
-            <p style="margin: 0; color: white; font-size: 11px; opacity: 0.9;">{data["change"]} ({data["pct"]})</p>
-        </div>
-        ''', unsafe_allow_html=True)
+        # Compact clickable price display
+        if st.button(
+            f"{symbol}\n${data['price']:.2f}\n{data['change']} ({data['pct']})",
+            key=f"price_{symbol}",
+            help=f"Click to select {symbol} - {data['status']}",
+            use_container_width=True
+        ):
+            st.session_state.selected_symbol = symbol
+            st.rerun()
+            
+        # Add a small status indicator below the button
+        status_color = "#f59e0b" if "PRE" in data["status"] or "AFTER" in data["status"] else "#10b981"
+        st.markdown(f'<p style="text-align: center; font-size: 8px; color: {status_color}; margin: 0; padding: 0;">{data["status"]}</p>', unsafe_allow_html=True)
 
 st.markdown("---")  # Separator
 
@@ -276,16 +279,26 @@ with st.sidebar:
     except Exception as e:
         st.markdown('**Quality Score:** Initializing...')
     
-    # Asset Selection
+    # Asset Selection (now synchronized with clickable prices)
     st.markdown('<div class="neural-card">', unsafe_allow_html=True)
     st.markdown('**Asset Selection**')
-    symbols = ["SPY", "QQQ", "TSLA", "AAPL", "MSFT", "NVDA", "AMZN", "GOOGL", "META", "AMD", "NFLX", "UBER", "COIN", "PLTR", "SOFI", "HOOD", "RBLX", "SNAP"]
+    
+    # Get the selected symbol from session state (set by clicking price boxes)
+    current_selection = st.session_state.get('selected_symbol', 'SPY')
+    symbol_index = symbols.index(current_selection) if current_selection in symbols else 0
+    
     selected_symbol = st.selectbox(
         "Primary Symbol",
         options=symbols,
-        index=0,
-        label_visibility="collapsed"
+        index=symbol_index,
+        label_visibility="collapsed",
+        key="sidebar_symbol_select"
     )
+    
+    # Update session state when changed via selectbox
+    if selected_symbol != st.session_state.get('selected_symbol'):
+        st.session_state.selected_symbol = selected_symbol
+        
     st.markdown('</div>', unsafe_allow_html=True)
     
     # Additional controls for sidebar go here if needed
