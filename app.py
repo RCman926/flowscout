@@ -50,41 +50,68 @@ st.markdown("**Professional-Grade Trading Analytics with REAL Market Data**")
 # Symbol selection - Color coded clickable boxes
 symbols = ['AAPL', 'TSLA', 'NVDA', 'MSFT', 'GOOGL', 'AMZN', 'META', 'NFLX', 'SPY']
 
-# Quick signal calculation for all symbols to color code buttons
+# Realistic signal calculation based on actual market conditions
 def get_quick_signal(symbol):
     try:
         indicators = calculate_technical_indicators(symbol)
-        if indicators is None:
-            return "CALL", "#059669"  # Default to call if no data
+        market_data = get_real_market_data(symbol)
         
+        if indicators is None or market_data is None:
+            return "CALL", "#059669"  # Default if no data
+        
+        # Balanced scoring based on real technical analysis
         score = 0
-        # More aggressive scoring - less holds, more actionable signals
-        if indicators['rsi'] < 35:
-            score += 3
-        elif indicators['rsi'] > 65:
-            score -= 3
-        elif indicators['rsi'] < 50:
+        
+        # RSI Analysis (most important factor)
+        rsi = indicators['rsi']
+        if rsi < 30:  # Oversold - bullish signal
+            score += 2
+        elif rsi > 70:  # Overbought - bearish signal  
+            score -= 2
+        elif rsi < 45:  # Slightly oversold
             score += 1
+        elif rsi > 55:  # Slightly overbought
+            score -= 1
+        # RSI 45-55 is neutral (score += 0)
+            
+        # MACD Analysis
+        if indicators['macd'] > indicators['macd_signal']:
+            score += 1  # Bullish momentum
         else:
+            score -= 1  # Bearish momentum
+            
+        # Price momentum from market data
+        if market_data['change_pct'] > 2:  # Strong upward move
+            score += 1
+        elif market_data['change_pct'] < -2:  # Strong downward move
             score -= 1
             
-        if indicators['macd'] > indicators['macd_signal']:
-            score += 2
-        else:
-            score -= 2
+        # Bollinger Bands position
+        bb_pos = indicators['bb_position']
+        if bb_pos < 20:  # Near lower band - oversold
+            score += 1
+        elif bb_pos > 80:  # Near upper band - overbought
+            score -= 1
             
-        # Aggressive signals - very few holds
-        if score > 1:
-            return "CALL", "#059669"  # Green for calls
-        elif score < -1:
-            return "PUT", "#dc2626"   # Red for puts
+        # Final signal determination - more balanced
+        if score >= 2:
+            return "CALL", "#059669"  # Strong bullish
+        elif score <= -2:
+            return "PUT", "#dc2626"   # Strong bearish
+        elif score == 1:
+            return "CALL", "#059669"  # Mild bullish
+        elif score == -1:
+            return "PUT", "#dc2626"   # Mild bearish
         else:
-            # Even neutral gets a slight bias toward calls (bullish market bias)
-            if score >= 0:
+            # True neutral - use price momentum as tiebreaker
+            if market_data['change_pct'] >= 0:
                 return "CALL", "#059669"
             else:
                 return "PUT", "#dc2626"
-    except:
+                
+    except Exception as e:
+        # Debug: print what's happening
+        print(f"Error calculating signal for {symbol}: {e}")
         return "CALL", "#059669"
 
 # Create compact symbol selector with color coding
