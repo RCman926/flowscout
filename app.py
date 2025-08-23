@@ -64,63 +64,26 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Professional Styling - Clean & Modern
+# Clean minimal styling
 st.markdown("""
 <style>
-    /* Main layout improvements */
     .main > div {
-        padding-top: 2rem;
-        background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+        padding-top: 1rem;
     }
     
-    /* Compact headers */
-    .main-title {
-        background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
-        padding: 1.5rem 1rem;
-        margin: -1rem -1rem 1rem -1rem;
-        border-radius: 0 0 15px 15px;
-        color: white;
-        text-align: center;
-        box-shadow: 0 4px 15px rgba(30, 64, 175, 0.2);
-    }
-    
-    /* Remove white boxes - dark minimal cards */
+    /* Remove visual clutter */
     .card-container {
         background: transparent;
-        padding: 0.5rem;
-        border-radius: 6px;
-        margin: 0.25rem 0;
+        padding: 0;
+        margin: 0;
         border: none;
         box-shadow: none;
     }
     
-    /* ODTE special styling */
-    .odte-container {
-        background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
-        padding: 2.5rem;
-        border-radius: 25px;
-        margin: 2rem 0;
-        color: white;
-        box-shadow: 0 8px 35px rgba(220, 38, 38, 0.4);
-    }
-    
-    /* Technical dashboard */
-    .tech-container {
-        background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-        padding: 2.5rem;
-        border-radius: 25px;
-        margin: 2rem 0;
-        color: white;
-        box-shadow: 0 10px 40px rgba(15, 23, 42, 0.5);
-    }
-    
-    /* Remove symbol grid white box */
     .symbol-grid {
         background: transparent;
-        padding: 0.5rem;
-        border-radius: 6px;
-        margin: 0.5rem 0;
-        box-shadow: none;
+        padding: 0;
+        margin: 0;
         border: none;
     }
     
@@ -810,8 +773,7 @@ if tech_indicators is None:
         'current_price': market_data['price']
     }
 
-# Show currently selected symbol
-st.markdown(f"### 📊 **Currently Analyzing: {selected_symbol}**")
+# Main metrics only
 
 # Display main metrics with real data
 col1, col2, col3, col4 = st.columns(4)
@@ -1171,32 +1133,6 @@ if call_data and put_data:
         st.metric("🔴 Put Volume", f"{put_volume:,}",
                  f"Ratio: {cp_ratio:.2f}")
 
-# === TECHNICAL ANALYSIS DASHBOARD ===
-st.markdown("---")
-st.markdown("**📈 Live Technical Analysis**")
-
-tech_col1, tech_col2, tech_col3, tech_col4 = st.columns(4)
-
-with tech_col1:
-    rsi_value = tech_indicators.get('rsi', 50)
-    rsi_color = "🟢" if rsi_value < 30 else "🔴" if rsi_value > 70 else "🟡"
-    st.metric("RSI", f"{rsi_color} {rsi_value:.1f}", "Oversold" if rsi_value < 30 else "Overbought" if rsi_value > 70 else "Neutral")
-
-with tech_col2:
-    macd_value = tech_indicators.get('macd', 0)
-    macd_signal = tech_indicators.get('macd_signal', 0)
-    macd_color = "🟢" if macd_value > macd_signal else "🔴"
-    st.metric("MACD", f"{macd_color} {macd_value:.3f}", f"Signal: {macd_signal:.3f}")
-
-with tech_col3:
-    williams_r = tech_indicators.get('williams_r', -50)
-    williams_color = "🟢" if williams_r < -80 else "🔴" if williams_r > -20 else "🟡"
-    st.metric("Williams %R", f"{williams_color} {williams_r:.1f}", "Oversold" if williams_r < -80 else "Overbought" if williams_r > -20 else "Neutral")
-
-with tech_col4:
-    vol_ratio = tech_indicators.get('volume_ratio', 1.0)
-    vol_color = "🟢" if vol_ratio > 1.5 else "🔴" if vol_ratio < 0.8 else "🟡"
-    st.metric("Volume", f"{vol_color} {vol_ratio:.1f}x", "High" if vol_ratio > 1.5 else "Low" if vol_ratio < 0.8 else "Normal")
 
 # === 0DTE QUICK RISK CHECK ===
 if days_to_exp == 0:
@@ -1524,104 +1460,22 @@ with summary_col3:
     trend_strength = "Strong" if confidence > 60 else "Moderate" if confidence > 40 else "Weak"
     st.metric("Signal Strength", trend_strength, f"{iv_estimate:.0f}% IV")
 
-# === ENHANCED MARKET INTELLIGENCE ===
-st.markdown("---")
-st.markdown("**🧠 Market Intelligence & Social Sentiment**")
-
-# Real-time market intelligence
-intel_col1, intel_col2, intel_col3, intel_col4 = st.columns(4)
-
-import random
-from datetime import datetime
-# Use date-based seed for stable daily data
-today = datetime.now().strftime('%Y-%m-%d')
-random.seed(hash(today + selected_symbol) % 1000000)
-
-community_active = random.randint(850, 1150)
-community_bullish = random.randint(45, 75)
-unusual_activity = random.randint(5, 25)
-dark_pool_flow = random.choice(["BULLISH", "BEARISH", "NEUTRAL"])
-
-with intel_col1:
-    st.metric("Active Traders", f"{community_active:,}", "🔥 Online")
-
-with intel_col2:
-    sentiment_text = "Bullish" if community_bullish > 60 else "Bearish" if community_bullish < 40 else "Mixed"
-    sentiment_color = "🟢" if community_bullish > 60 else "🔴" if community_bullish < 40 else "🟡"
-    st.metric(f"{selected_symbol} Sentiment", f"{sentiment_color} {sentiment_text}", f"{community_bullish}% bulls")
-
-with intel_col3:
-    unusual_color = "🔴" if unusual_activity > 15 else "🟡" if unusual_activity > 10 else "🟢"
-    unusual_status = "HIGH" if unusual_activity > 15 else "MEDIUM" if unusual_activity > 10 else "NORMAL"
-    st.metric("Unusual Activity", f"{unusual_color} {unusual_status}", f"{unusual_activity} alerts")
-
-with intel_col4:
-    flow_color = "🟢" if dark_pool_flow == "BULLISH" else "🔴" if dark_pool_flow == "BEARISH" else "🟡"
-    st.metric("Dark Pool Flow", f"{flow_color} {dark_pool_flow}", "Institutional")
 
 
-# === CONNECTION STATUS ===
-st.markdown("---")
-st.markdown("**📡 Platform Status**")
 
-status_col1, status_col2, status_col3 = st.columns(3)
-
-with status_col1:
-    # Market hours
-    from datetime import datetime
-    now = datetime.now()
-    market_open = now.replace(hour=9, minute=30, second=0, microsecond=0)
-    market_close = now.replace(hour=16, minute=0, second=0, microsecond=0)
-    
-    if market_open <= now <= market_close and now.weekday() < 5:
-        market_status = "🟢 OPEN"
-        market_note = "Live Trading"
-    else:
-        market_status = "🔴 CLOSED"
-        market_note = "After Hours"
-    
-    st.metric("Market", market_status, market_note)
-
-with status_col2:
-    # Connection mode
-    st.metric("Mode", "🔴 DEMO", "Simulated Data")
-
-with status_col3:
-    # Last update
-    last_update = now.strftime("%H:%M:%S")
-    st.metric("Updated", f"⏰ {last_update}", "Auto-refresh")
-
-# === SMART TELEGRAM ALERTS SYSTEM ===
-st.markdown("---")
-st.markdown("**📱 Smart Telegram Alerts System**")
-
-# Create alert settings columns
-alert_config_col1, alert_config_col2 = st.columns(2)
-
-with alert_config_col1:
-    # Test alert button
-    if st.button("🧪 Test Alert", help="Send test message to verify Telegram connection"):
-        if telegram_alerts.send_test_alert():
-            st.success("✅ Test alert sent to Telegram!")
-        else:
-            st.error("❌ Alert failed - check bot token")
-    
-    # Alert types configuration
-    st.markdown("**Alert Types:**")
-    alert_settings = {}
-    alert_settings['unusual_activity'] = st.checkbox("🚨 Unusual Options Activity", value=True)
-    alert_settings['price_targets'] = st.checkbox("🎯 Price Target Breaks", value=True)
-    alert_settings['volatility_spikes'] = st.checkbox("📊 Volatility Spikes", value=True)
-    alert_settings['trading_signals'] = st.checkbox("📈 Trading Signals", value=True)
-    alert_settings['dte_alerts'] = st.checkbox("🔥 0DTE Special Alerts", value=True)
-
-with alert_config_col2:
-    # Set default alert thresholds (removing sliders)
-    alert_settings['volume_threshold'] = 1000
-    alert_settings['ratio_threshold'] = 3.0
-    alert_settings['proximity_threshold'] = 0.01
-    alert_settings['iv_spike_threshold'] = 1.5
-    alert_settings['min_signal_confidence'] = 60
+# Simple alert setup - moved to sidebar
+alert_settings = {
+    'unusual_activity': True,
+    'price_targets': True, 
+    'volatility_spikes': True,
+    'trading_signals': True,
+    'dte_alerts': True,
+    'volume_threshold': 1000,
+    'ratio_threshold': 3.0,
+    'proximity_threshold': 0.01,
+    'iv_spike_threshold': 1.5,
+    'min_signal_confidence': 60
+}
 
 # Alert statistics
 alert_stats = telegram_alerts.get_alert_stats()
