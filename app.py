@@ -254,11 +254,46 @@ for i, symbol in enumerate(symbols):
     
     with cols[i]:
         is_selected = symbol == selected_symbol
-        border_color = "#fbbf24" if is_selected else color
         
+        # Color-coded signal boxes
+        signal_short = signal.replace("STRONG ", "").replace("BUY", "📈").replace("SELL", "📉").replace("NEUTRAL", "⚪")
+        border_style = "3px solid #fbbf24" if is_selected else "2px solid transparent"
+        
+        # Create color-coded clickable box
+        st.markdown(f"""
+        <style>
+        .symbol-box-{symbol.lower()} {{
+            background: {color} !important;
+            color: white !important;
+            border: {border_style} !important;
+            padding: 0.8rem 0.3rem !important;
+            border-radius: 8px !important;
+            text-align: center !important;
+            font-weight: bold !important;
+            margin: 0.2rem 0 !important;
+            cursor: pointer !important;
+            width: 100% !important;
+            transition: all 0.2s ease !important;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3) !important;
+        }}
+        .symbol-box-{symbol.lower()}:hover {{
+            transform: translateY(-2px) !important;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.4) !important;
+        }}
+        </style>
+        <div class="symbol-box-{symbol.lower()}">
+            <div style="font-size: 0.9rem; font-weight: bold; margin-bottom: 0.2rem;">{symbol}</div>
+            <div style="font-size: 0.8rem; margin: 0.1rem 0;">${price:.1f}</div>
+            <div style="font-size: 0.7rem; margin: 0.1rem 0; opacity: 0.9;">{change_pct:+.1f}%</div>
+            <div style="font-size: 0.7rem; margin-top: 0.2rem;">{signal_short} {confidence:.0f}%</div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Invisible button for selection functionality
         if st.button(
-            f"**{symbol}**\n${price:.1f}\n{change_pct:+.1f}%\n{confidence:.0f}%",
+            " ", 
             key=f"btn_{symbol}",
+            help=f"{symbol} - {signal} ({confidence:.0f}% confidence)",
             use_container_width=True
         ):
             st.session_state.selected_symbol = symbol
