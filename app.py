@@ -196,22 +196,36 @@ for symbol in symbols:
 price_cols = st.columns(9)  # 9 symbols per row for more compact display
 for i, (symbol, data) in enumerate(symbols_data.items()):
     with price_cols[i % 9]:
-        color = "#059669" if "+" in data["change"] else "#dc2626"
+        # Generate trading signal for this symbol to determine color
+        current_price = data['price']
+        price_change_pct = float(data['pct'].replace('%', '')) / 100
+        
+        # Simple signal logic based on price momentum and direction
+        if price_change_pct > 0.01:  # More than 1% gain
+            signal = "BUY_CALL"
+            color = "#059669"  # Green for call signals
+        elif price_change_pct < -0.01:  # More than 1% loss
+            signal = "BUY_PUT" 
+            color = "#dc2626"  # Red for put signals
+        else:
+            signal = "NO_TRADE"
+            color = "#6b7280"  # Gray for no trade
+        
         border = "2px solid #f59e0b" if symbol == st.session_state.get('selected_symbol', 'SPY') else "1px solid rgba(255,255,255,0.1)"
         
-        # Compact clickable price display
+        # Compact clickable price display with signal-based colors
         if st.button(
             f"{symbol}\n${data['price']:.2f}\n{data['change']} ({data['pct']})",
             key=f"price_{symbol}",
-            help=f"Click to select {symbol} - {data['status']}",
+            help=f"Click to select {symbol} - {signal} signal - {data['status']}",
             use_container_width=True
         ):
             st.session_state.selected_symbol = symbol
             st.rerun()
             
-        # Add a small status indicator below the button
-        status_color = "#f59e0b" if "PRE" in data["status"] or "AFTER" in data["status"] else "#10b981"
-        st.markdown(f'<p style="text-align: center; font-size: 8px; color: {status_color}; margin: 0; padding: 0;">{data["status"]}</p>', unsafe_allow_html=True)
+        # Add signal indicator below the button
+        signal_text = "📈 CALL" if signal == "BUY_CALL" else "📉 PUT" if signal == "BUY_PUT" else "⏸️ HOLD"
+        st.markdown(f'<p style="text-align: center; font-size: 8px; color: {color}; margin: 0; padding: 0; font-weight: bold;">{signal_text}</p>', unsafe_allow_html=True)
 
 st.markdown("---")  # Separator
 
