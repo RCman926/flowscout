@@ -1,0 +1,237 @@
+ Model Performance
+Confidence: 95.0% | Neural Score: 95.0
+
+Calls: 95.0% | Puts: 5.0%
+
+Model Approval: 98.0% | Predictability: 99.0%
+
+No Trade: 20.0% | Consensus: 0.950
+
+Updated: 02:22 ET
+
+Status: Active Trading
+
+📈 Performance Tracking
+Total Predictions: 0
+
+Accuracy: 0.0%
+
+30-Day Avg: 70.3%
+
+Best Day: 85.0%
+
+📊 Volume Analysis
+Volume Ratio: 5.7x
+
+Trend: Decreasing
+
+Institutional: 55%
+
+Recent Spikes: 2
+
+🚨 Real-time Alerts
+No active alerts
+
+🎯 Signal Validation & Predictability
+Overall Success Rate: 0.0%
+
+Calls Success: 0.0%
+
+Puts Success: 0.0%
+
+Profit Factor: 1.00
+
+Avg Profit: 0.0%
+
+Avg Loss: 0.0%
+
+Recent Signals:
+
+SPY BUY_CALL - ⏳ Pending
+
+SPY BUY_CALL - ⏳ Pending
+
+SPY BUY_CALL - ⏳ Pending
+
+Recommendations:
+
+• ⚠️ Success rate below 60% - consider adjusting signal criteria
+
+• 📉 Low profit factor - review risk management
+
+• 📊 Limited signal history - continue tracking for better analysis
+
+👥 Community Trading Hub
+Members: 12,866
+
+Online: 825
+
+Active Traders: 2,769
+
+Signals Today: 161
+
+Signals/Hour: 8
+
+Top Accuracy: 80.9%
+
+Community: Neutral
+
+Market Status: Active
+
+📊 SPY Community Sentiment
+Bullish: 49.3% | Bearish: 29.3% | Neutral: 21.4%
+
+24h Change: -10.5% | Votes: 479 | Confidence: 78.2%
+
+Key Drivers: Support/resistance levels, Volume surge, Sector rotation
+
+🔥 TRENDING
+
+Updated: 02:22
+
+🏆 Top Traders Leaderboard
+#3
+
+DeepValue_Pro ✓
+
+Options Flow • 5m ago
+
+Accuracy: 88.7%
+
+Recent: 8/10
+
+Followers: 1,465
+
+Profit Factor: 3.8x
+
+#4
+
+TechAnalyst_X ✓
+
+Swing Trading • 12m ago
+
+Accuracy: 83.2%
+
+Recent: 9/12
+
+Followers: 3,928
+
+Profit Factor: 2.3x
+
+#2
+
+OptionsWizard
+
+Options Flow • 1h ago
+
+Accuracy: 72.6%
+
+Recent: 5/7
+
+Followers: 2,635
+
+Profit Factor: 1.9x
+
+#5
+
+FlowMaster
+
+Swing Trading • 12m ago
+
+Accuracy: 69.8%
+
+Recent: 16/23
+
+Followers: 3,955
+
+Profit Factor: 3.7x
+
+#1
+
+QuantKing_2024 ✓
+
+Day Trading • 1m ago
+
+Accuracy: 68.8%
+
+Recent: 10/15
+
+Followers: 2,804
+
+Profit Factor: 4.4x
+
+
+🔥 Trending Trades & Ideas
+Popular trades loading...
+
+📋 Copy Trading Opportunities
+ProTrader_377
+
+Volume Analysis
+
+Monthly Return: +27.0%
+
+Win Rate: 66.4%
+
+Max DD: 8.7%
+
+Risk: Medium
+
+Followers: 180
+
+Fee: $49/mo
+
+ProTrader_796 ✅
+
+Technical Breakouts
+
+Monthly Return: +23.4%
+
+Win Rate: 60.3%
+
+Max DD: 10.1%
+
+Risk: Low
+
+Followers: 400
+
+Fee: $29/mo
+
+ProTrader_506
+
+Earnings Plays
+
+Monthly Return: +23.3%
+
+Win Rate: 72.3%
+
+Max DD: 7.9%
+
+Risk: Low
+
+Followers: 765
+
+Fee: $49/mo
+
+💬 Share Your Signal
+Symbol
+
+SPY
+Signal
+
+BUY_CALL
+Confidence %
+
+Timeframe
+
+Intraday
+
+Community Profit: $55,506
+
+Trending: SPY, TSLA, NVDA
+
+Market Mood: Aggressive
+
+Consensus: Mixed
+
+🏛️ Quantitative Analysis Engine
