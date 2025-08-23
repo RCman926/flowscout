@@ -1210,17 +1210,6 @@ if exp_result and len(exp_result) == 2:
                 else:
                     st.write("No put data available")
                     
-            # Volume summary for this expiration
-            st.markdown("---")
-            volume_col1, volume_col2, volume_col3 = st.columns(3)
-            
-            with volume_col1:
-                st.metric("Call Volume", f"{call_volume:,}", "📈")
-            with volume_col2:
-                cp_ratio = call_volume / max(1, put_volume)
-                st.metric("C/P Ratio", f"{cp_ratio:.2f}", "⚖️")
-            with volume_col3:
-                st.metric("Put Volume", f"{put_volume:,}", "📉")
             
         else:
             # If no data for selected expiration, use simple fallback
@@ -1236,64 +1225,79 @@ else:
     selected_exp_date = "Today"
 
 
-# === FLOW ANALYSIS - SIMPLIFIED ===
+# === YOUR FAVORITE CLEAN FLOW CHART IS BACK ===
 st.markdown("---")
-st.markdown("**📊 Options Flow Analysis**")
+st.markdown("**📊 Clean Flow Chart**")
 
 if call_data and put_data:
-    # Flow summary and detailed breakdown
-    flow_summary_col1, flow_summary_col2, flow_summary_col3 = st.columns(3)
-    
-    with flow_summary_col1:
-        st.metric("🟢 Total Call Volume", f"{call_volume:,}", 
+    # Your preferred simple flow chart
+    flow_col1, flow_col2, flow_col3 = st.columns([1, 2, 1])
+
+    with flow_col1:
+        st.metric("🟢 Call Volume", f"{call_volume:,}", 
                  "Strong" if call_volume > put_volume * 1.5 else "")
-    
-    with flow_summary_col2:
-        cp_ratio = call_volume / max(1, put_volume)
-        bias = "📈 CALL BIAS" if cp_ratio > 1.3 else "📉 PUT BIAS" if cp_ratio < 0.77 else "⚖️ BALANCED"
-        st.metric("Flow Direction", bias, f"C/P Ratio: {cp_ratio:.2f}")
-    
-    with flow_summary_col3:
-        st.metric("🔴 Total Put Volume", f"{put_volume:,}",
-                 "Strong" if put_volume > call_volume * 1.5 else "")
-    
-    # Detailed strike-by-strike flow breakdown
-    st.markdown("**📋 Volume by Strike Price:**")
-    if call_data and put_data:
-        import pandas as pd
+
+    with flow_col2:
+        # Simple left (green) right (red) chart you loved
+        fig = go.Figure()
         
-        # Create strike comparison table
-        strike_breakdown = []
-        for i, (call, put) in enumerate(zip(call_data[:5], put_data[:5])):
-            call_vol = int(call['Vol'].replace(',', ''))
-            put_vol = int(put['Vol'].replace(',', ''))
-            strike_breakdown.append({
-                'Strike': call['Strike'],
-                'Call Volume': f"{call_vol:,}",
-                'Put Volume': f"{put_vol:,}",
-                'Call %': f"{(call_vol/(call_vol+put_vol)*100):.0f}%" if call_vol+put_vol > 0 else "0%",
-                'Put %': f"{(put_vol/(call_vol+put_vol)*100):.0f}%" if call_vol+put_vol > 0 else "0%"
-            })
+        # Calculate flow percentages
+        total_volume = call_volume + put_volume
+        call_pct = (call_volume / max(1, total_volume)) * 100
+        put_pct = (put_volume / max(1, total_volume)) * 100
         
-        strike_df = pd.DataFrame(strike_breakdown)
-        st.dataframe(strike_df, use_container_width=True, hide_index=True)
+        # Clean left/right bars
+        fig.add_trace(go.Bar(
+            x=['CALLS', 'PUTS'],
+            y=[call_pct, put_pct],
+            marker_color=['#00ff00', '#ff0000'],
+            text=[f'{call_volume:,}', f'{put_volume:,}'],
+            textposition='auto',
+            width=[0.6, 0.6]
+        ))
         
-        # Add expiration info
-        import datetime
-        now = datetime.datetime.now()
+        # 0DTE outlook
+        from datetime import datetime
+        now = datetime.now()
         market_close = now.replace(hour=16, minute=0, second=0, microsecond=0)
         time_left = market_close - now
         hours_left = max(0, time_left.total_seconds() / 3600) if time_left.total_seconds() > 0 else 0
         
         dte_text = f"{days_to_exp}DTE" if days_to_exp > 0 else "0DTE 🔥"
         
-        exp_col1, exp_col2, exp_col3 = st.columns(3)
-        with exp_col1:
-            st.info(f"**Expiration:** {selected_exp_date}")
-        with exp_col2:
-            st.info(f"**Days to Expiry:** {dte_text}")
-        with exp_col3:
-            st.info(f"**Time Left:** {hours_left:.1f} hours")
+        if hours_left < 1:
+            outlook = "🔥 FINAL HOUR"
+            color = "#ff6600"
+        elif call_pct > put_pct * 1.5:
+            outlook = "📈 CALL BIAS"
+            color = "#00ff00"
+        elif put_pct > call_pct * 1.5:
+            outlook = "📉 PUT BIAS"
+            color = "#ff0000"
+        else:
+            outlook = "⚖️ BALANCED"
+            color = "#ffff00"
+        
+        # Clean layout
+        fig.update_layout(
+            title=f"{outlook} | {dte_text} | Exp: {selected_exp_date} | {hours_left:.1f}h left",
+            showlegend=False,
+            height=110,
+            margin=dict(l=0, r=0, t=30, b=0),
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='rgba(0,0,0,0)',
+            title_font_color=color,
+            title_font_size=11,
+            xaxis=dict(showgrid=False),
+            yaxis=dict(showgrid=False, range=[0, max(call_pct, put_pct) * 1.1])
+        )
+        
+        st.plotly_chart(fig, use_container_width=True, key="clean_flow_chart")
+
+    with flow_col3:
+        cp_ratio = call_volume / max(1, put_volume)
+        st.metric("🔴 Put Volume", f"{put_volume:,}",
+                 f"Ratio: {cp_ratio:.2f}")
 
 # === TECHNICAL ANALYSIS DASHBOARD ===
 st.markdown("---")
@@ -1322,23 +1326,23 @@ with tech_col4:
     vol_color = "🟢" if vol_ratio > 1.5 else "🔴" if vol_ratio < 0.8 else "🟡"
     st.metric("Volume", f"{vol_color} {vol_ratio:.1f}x", "High" if vol_ratio > 1.5 else "Low" if vol_ratio < 0.8 else "Normal")
 
-# === 0DTE RISK MANAGEMENT ===
+# === 0DTE QUICK RISK CHECK ===
 if days_to_exp == 0:
     st.markdown("---")
-    st.markdown("**🔥 0DTE Risk Management**")
+    st.markdown("**🔥 0DTE Risk Check**")
     
-    risk_col1, risk_col2, risk_col3, risk_col4 = st.columns(4)
+    risk_col1, risk_col2, risk_col3 = st.columns(3)
     
     with risk_col1:
-        import datetime
-        now = datetime.datetime.now()
+        from datetime import datetime
+        now = datetime.now()
         market_close = now.replace(hour=16, minute=0, second=0, microsecond=0)
         time_left = market_close - now
         hours_left = max(0, time_left.total_seconds() / 3600) if time_left.total_seconds() > 0 else 0
         
         if hours_left < 1:
             time_color = "🔴"
-            time_status = "DANGER"
+            time_status = "DANGER ZONE"
         elif hours_left < 2:
             time_color = "🟡"
             time_status = "CAUTION"
@@ -1349,52 +1353,16 @@ if days_to_exp == 0:
         st.metric("Time Left", f"{time_color} {hours_left:.1f}h", time_status)
     
     with risk_col2:
-        # Calculate gamma exposure risk
-        total_gamma = sum([float(call.get('Gamma', '0').replace(',', '')) for call in call_data[:5]]) if call_data else 0
-        gamma_risk = "HIGH" if total_gamma > 0.1 else "MEDIUM" if total_gamma > 0.05 else "LOW"
-        gamma_color = "🔴" if gamma_risk == "HIGH" else "🟡" if gamma_risk == "MEDIUM" else "🟢"
-        st.metric("Gamma Risk", f"{gamma_color} {gamma_risk}", f"Γ: {total_gamma:.3f}")
+        # Simple risk sizing
+        account_size = st.number_input("Account Size ($)", value=10000, min_value=1000, step=1000, key="risk_account")
+        max_risk = account_size * 0.02  # 2% max risk
+        st.metric("Max 0DTE Risk", f"${max_risk:.0f}", "2% rule")
     
     with risk_col3:
-        # Pin risk analysis
-        current_price = market_data.get('price', 100)
-        nearest_strike = min(call_data[:3], key=lambda x: abs(float(x['Strike'].replace('$', '')) - current_price)) if call_data else None
-        if nearest_strike:
-            pin_distance = abs(float(nearest_strike['Strike'].replace('$', '')) - current_price)
-            pin_risk = "HIGH" if pin_distance < current_price * 0.005 else "MEDIUM" if pin_distance < current_price * 0.01 else "LOW"
-            pin_color = "🔴" if pin_risk == "HIGH" else "🟡" if pin_risk == "MEDIUM" else "🟢"
-            st.metric("Pin Risk", f"{pin_color} {pin_risk}", f"${pin_distance:.2f} away")
-        else:
-            st.metric("Pin Risk", "🟡 UNKNOWN", "No data")
-    
-    with risk_col4:
-        # Theta burn calculation
-        total_theta = sum([abs(float(call.get('Theta', '0').replace(',', ''))) for call in call_data[:5]]) if call_data else 0
-        theta_risk = "HIGH" if total_theta > 0.1 else "MEDIUM" if total_theta > 0.05 else "LOW"
-        theta_color = "🔴" if theta_risk == "HIGH" else "🟡" if theta_risk == "MEDIUM" else "🟢"
-        st.metric("Theta Burn", f"{theta_color} {theta_risk}", f"Θ: -{total_theta:.3f}")
-
-# === POSITION SIZING CALCULATOR ===
-st.markdown("---")
-st.markdown("**💰 Smart Position Sizing**")
-
-pos_col1, pos_col2, pos_col3, pos_col4 = st.columns(4)
-
-with pos_col1:
-    account_size = st.number_input("Account Size ($)", value=10000, min_value=1000, step=1000)
-
-with pos_col2:
-    risk_percent = st.selectbox("Risk %", [1, 2, 3, 5], index=1)
-
-with pos_col3:
-    max_risk = account_size * (risk_percent / 100)
-    st.metric("Max Risk", f"${max_risk:.0f}", f"{risk_percent}% of account")
-
-with pos_col4:
-    if call_data:
-        avg_option_price = sum([float(call.get('Last', '0').replace('$', '')) for call in call_data[:3]]) / 3
-        max_contracts = int(max_risk / (avg_option_price * 100))
-        st.metric("Max Contracts", f"{max_contracts}", f"~${avg_option_price:.2f} avg")
+        if call_data:
+            avg_price = sum([float(call.get('Last', '0').replace('$', '')) for call in call_data[:3]]) / 3
+            max_contracts = int(max_risk / (avg_price * 100)) if avg_price > 0 else 0
+            st.metric("Max Contracts", f"{max_contracts}", f"@${avg_price:.2f}")
 
 def calculate_black_scholes_greeks(S, K, T, r, sigma, option_type='call'):
     """Calculate Black-Scholes price and Greeks"""
@@ -1776,60 +1744,16 @@ with intel_col4:
     flow_color = "🟢" if dark_pool_flow == "BULLISH" else "🔴" if dark_pool_flow == "BEARISH" else "🟡"
     st.metric("Dark Pool Flow", f"{flow_color} {dark_pool_flow}", "Institutional")
 
-# Volume Profile Analysis
-vol_profile_col1, vol_profile_col2 = st.columns(2)
 
-with vol_profile_col1:
-    # Create volume profile chart
-    fig_vol = go.Figure()
-    
-    # Simulate volume at different price levels
-    price_levels = [current_price * (1 + i * 0.002) for i in range(-10, 11)]
-    volumes = [random.randint(100, 1000) for _ in price_levels]
-    
-    fig_vol.add_trace(go.Bar(
-        y=price_levels,
-        x=volumes,
-        orientation='h',
-        marker_color='rgba(0, 123, 255, 0.7)',
-        name='Volume Profile'
-    ))
-    
-    fig_vol.update_layout(
-        title="Volume Profile",
-        height=200,
-        showlegend=False,
-        margin=dict(l=0, r=0, t=30, b=0),
-        xaxis_title="Volume",
-        yaxis_title="Price"
-    )
-    
-    st.plotly_chart(fig_vol, use_container_width=True)
-
-with vol_profile_col2:
-    # Key levels and support/resistance
-    st.markdown("**🎯 Key Levels:**")
-    support_level = current_price * 0.98
-    resistance_level = current_price * 1.02
-    
-    levels_data = [
-        {"Level": "Resistance", "Price": f"${resistance_level:.2f}", "Strength": "Strong"},
-        {"Level": "Current", "Price": f"${current_price:.2f}", "Strength": "Live"},
-        {"Level": "Support", "Price": f"${support_level:.2f}", "Strength": "Strong"}
-    ]
-    
-    import pandas as pd
-    levels_df = pd.DataFrame(levels_data)
-    st.dataframe(levels_df, use_container_width=True, hide_index=True)
-
-# === LIVE CONNECTION STATUS ===
+# === CONNECTION STATUS ===
 st.markdown("---")
-st.markdown("**📡 Connection & Data Status**")
+st.markdown("**📡 Platform Status**")
 
-status_col1, status_col2, status_col3, status_col4 = st.columns(4)
+status_col1, status_col2, status_col3 = st.columns(3)
 
 with status_col1:
-    # Market hours indicator
+    # Market hours
+    from datetime import datetime
     now = datetime.now()
     market_open = now.replace(hour=9, minute=30, second=0, microsecond=0)
     market_close = now.replace(hour=16, minute=0, second=0, microsecond=0)
@@ -1841,24 +1765,16 @@ with status_col1:
         market_status = "🔴 CLOSED"
         market_note = "After Hours"
     
-    st.metric("Market Status", market_status, market_note)
+    st.metric("Market", market_status, market_note)
 
 with status_col2:
-    # Data feed status
-    data_status = "🟢 LIVE" if random.choice([True, False]) else "🟡 DELAYED"
-    data_note = "Real-time" if "LIVE" in data_status else "15min delay"
-    st.metric("Data Feed", data_status, data_note)
+    # Connection mode
+    st.metric("Mode", "🔴 DEMO", "Simulated Data")
 
 with status_col3:
-    # IBKR connection status
-    ibkr_status = "🔴 SIMULATED"  # Since we're using simulated data
-    ibkr_note = "Demo Mode"
-    st.metric("IBKR API", ibkr_status, ibkr_note)
-
-with status_col4:
-    # Last update time
+    # Last update
     last_update = now.strftime("%H:%M:%S")
-    st.metric("Last Update", f"⏰ {last_update}", "Auto-refresh")
+    st.metric("Updated", f"⏰ {last_update}", "Auto-refresh")
 
 # === SMART TELEGRAM ALERTS SYSTEM ===
 st.markdown("---")
@@ -1935,17 +1851,19 @@ if 'call_data' in locals() and 'put_data' in locals() and alert_settings:
     )
     
     # Check 0DTE alerts if applicable
-    if 'days_to_exp' in locals() and days_to_exp == 0:
-        import datetime
-        now = datetime.datetime.now()
+    if days_to_exp == 0:
+        from datetime import datetime
+        now = datetime.now()
         market_close = now.replace(hour=16, minute=0, second=0, microsecond=0)
         time_left = market_close - now
         hours_left = max(0, time_left.total_seconds() / 3600) if time_left.total_seconds() > 0 else 0
         
-        if 'flow_direction' in locals() and 'momentum' in locals():
-            telegram_alerts.check_0dte_alerts(
-                selected_symbol, days_to_exp, flow_direction, momentum, hours_left, alert_settings
-            )
+        flow_direction = "CALL" if call_volume > put_volume else "PUT"
+        momentum = abs(call_volume - put_volume) / max(1, call_volume + put_volume) * 100
+        
+        telegram_alerts.check_0dte_alerts(
+            selected_symbol, days_to_exp, flow_direction, momentum, hours_left, alert_settings
+        )
 
 # Footer
 st.markdown("---")
