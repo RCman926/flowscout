@@ -92,8 +92,8 @@ with portfolio_col3:
     st.markdown("""
     <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); border: 1px solid #334155; padding: 12px; border-radius: 8px; margin: 5px 0;">
         <div style="color: #e2e8f0; font-size: 12px; font-weight: 600; margin-bottom: 6px;">DAILY P&L</div>
-        <div style="color: #059669; font-size: 18px; font-weight: bold; margin: 4px 0;">+$324.80</div>
-        <div style="color: #64748b; font-size: 10px; margin: 2px 0;">Today</div>
+        <div style="color: #6b7280; font-size: 18px; font-weight: bold; margin: 4px 0;">$0.00</div>
+        <div style="color: #64748b; font-size: 10px; margin: 2px 0;">Market Closed</div>
     </div>
     """, unsafe_allow_html=True)
 
