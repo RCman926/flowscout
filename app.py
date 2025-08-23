@@ -926,14 +926,82 @@ with rec_col3:
                  f"{((target - current_price) / current_price * 100):+.1f}%")
 
 
-# Get REAL options data only
-call_data, put_data, call_volume, put_volume, days_to_exp = get_real_options_data(selected_symbol)
+# Get REAL 0DTE options data specifically
+def get_0dte_options_data(symbol):
+    """Get 0DTE options data specifically for ultra-fast trading"""
+    try:
+        ticker = yf.Ticker(symbol)
+        exp_dates = ticker.options
+        if not exp_dates:
+            return None, None, 0, 0, None
+            
+        # Find TODAY's expiration (0DTE)
+        today = datetime.now().strftime('%Y-%m-%d')
+        dte_exp_date = None
+        
+        for exp_date in exp_dates:
+            exp_datetime = datetime.strptime(exp_date, '%Y-%m-%d')
+            days_left = (exp_datetime - datetime.now()).days
+            if days_left == 0:  # Found 0DTE
+                dte_exp_date = exp_date
+                break
+        
+        if not dte_exp_date:
+            # Use nearest expiration if no 0DTE available
+            dte_exp_date = exp_dates[0]
+        
+        options_chain = ticker.option_chain(dte_exp_date)
+        
+        if options_chain.calls.empty or options_chain.puts.empty:
+            return None, None, 0, 0, None
+            
+        # Process real calls data for 0DTE
+        calls = options_chain.calls.head(20)  # More data for 0DTE
+        call_data = []
+        for _, row in calls.iterrows():
+            call_data.append({
+                'Strike': f"${row['strike']:.0f}",
+                'Last': f"${row['lastPrice']:.2f}",
+                'Vol': f"{int(row['volume']) if pd.notna(row['volume']) else 0:,}",
+                'IV': f"{row['impliedVolatility']*100:.1f}%" if pd.notna(row['impliedVolatility']) else "N/A",
+                'Delta': "N/A",
+                'Gamma': "N/A"
+            })
+        
+        # Process real puts data for 0DTE
+        puts = options_chain.puts.head(20)  # More data for 0DTE
+        put_data = []
+        for _, row in puts.iterrows():
+            put_data.append({
+                'Strike': f"${row['strike']:.0f}",
+                'Last': f"${row['lastPrice']:.2f}",
+                'Vol': f"{int(row['volume']) if pd.notna(row['volume']) else 0:,}",
+                'IV': f"{row['impliedVolatility']*100:.1f}%" if pd.notna(row['impliedVolatility']) else "N/A",
+                'Delta': "N/A",
+                'Gamma': "N/A"
+            })
+        
+        # Real volume totals for 0DTE
+        call_volume = int(calls['volume'].sum()) if not calls['volume'].isna().all() else 0
+        put_volume = int(puts['volume'].sum()) if not puts['volume'].isna().all() else 0
+        
+        # Calculate days to expiration
+        exp_datetime = datetime.strptime(dte_exp_date, '%Y-%m-%d')
+        days_to_exp = (exp_datetime - datetime.now()).days
+        
+        return call_data, put_data, call_volume, put_volume, days_to_exp
+        
+    except Exception as e:
+        return None, None, 0, 0, None
+
+# Get REAL 0DTE options data only
+call_data, put_data, call_volume, put_volume, days_to_exp = get_0dte_options_data(selected_symbol)
 if call_data is None:
-    # If no real data available, show message instead of fake data
-    st.warning("⚠️ No real options data available for this symbol. Please select a different symbol with active options.")
+    # If no real 0DTE data available, show message
+    st.warning("⚠️ No 0DTE options data available for this symbol. Please select a symbol with 0DTE options.")
     st.stop()
 
-selected_exp_date = "Live Data"
+selected_exp_date = f"0DTE - {datetime.now().strftime('%m/%d')}"
 
 # === DETAILED OPTION EXPIRY ANALYSIS ===
 st.markdown("---")
@@ -1272,14 +1340,14 @@ def analyze_0dte_flow_direction(calls_data, puts_data, dte):
 # Data is already set up above for clean flow chart
 
 
-# === LIVE CLEAN FLOW CHART (ALWAYS ON) ===
+# === LIVE 0DTE FLOW CHART (SECOND-BY-SECOND) ===
 st.markdown("---")
-st.markdown("**📊 Live Clean Flow Chart**")
+st.markdown("**🔥 Live 0DTE Flow Chart**")
 
-# Auto-refresh every 30 seconds during market hours
+# ULTRA-FAST refresh every 5 seconds for 0DTE trading
 import time
 current_time = time.time()
-refresh_key = int(current_time // 30)  # Changes every 30 seconds
+refresh_key = int(current_time // 5)  # Changes every 5 seconds for 0DTE speed
 
 # Market hours check
 from datetime import datetime
@@ -1340,21 +1408,25 @@ if call_data and put_data and (call_volume > 0 or put_volume > 0):
             outlook = "⚖️ BALANCED"
             color = "#ffff00"
         
-        # Clean layout with live status
+        # Clean layout with live 0DTE status
+        minutes_left = int((hours_left * 60)) if hours_left > 0 else 0
+        seconds_display = f"{minutes_left}m" if minutes_left > 60 else f"{minutes_left}m"
+        
         fig.update_layout(
-            title=f"{outlook} | {dte_text} | {hours_left:.1f}h left | LIVE",
+            title=f"🔥 {outlook} | 0DTE | {seconds_display} LEFT | LIVE 5s",
             showlegend=False,
-            height=110,
-            margin=dict(l=0, r=0, t=30, b=0),
+            height=120,
+            margin=dict(l=0, r=0, t=35, b=0),
             paper_bgcolor='rgba(0,0,0,0)',
             plot_bgcolor='rgba(0,0,0,0)',
             title_font_color=color,
-            title_font_size=11,
-            xaxis=dict(showgrid=False),
+            title_font_size=12,
+            title_font_weight="bold",
+            xaxis=dict(showgrid=False, tickfont=dict(size=10)),
             yaxis=dict(showgrid=False, range=[0, max(call_pct, put_pct) * 1.1])
         )
         
-        st.plotly_chart(fig, use_container_width=True, key=f"live_flow_chart_{refresh_key}")
+        st.plotly_chart(fig, use_container_width=True, key=f"dte_flow_chart_{refresh_key}")
 
     with flow_col3:
         cp_ratio = call_volume / max(1, put_volume)
@@ -1379,31 +1451,43 @@ else:
             width=[0.6, 0.6]
         ))
         
-        market_status = "LIVE - Waiting for data..." if is_market_hours else "MARKET CLOSED"
+        market_status = "🔥 0DTE READY - Waiting for data..." if is_market_hours else "MARKET CLOSED"
         
         fig.update_layout(
-            title=f"📊 FLOW CHART READY | {market_status}",
+            title=f"🔥 0DTE FLOW CHART READY | {market_status}",
             showlegend=False,
-            height=110,
-            margin=dict(l=0, r=0, t=30, b=0),
+            height=120,
+            margin=dict(l=0, r=0, t=35, b=0),
             paper_bgcolor='rgba(0,0,0,0)',
             plot_bgcolor='rgba(0,0,0,0)',
             title_font_color="#666666",
-            title_font_size=11,
+            title_font_size=12,
+            title_font_weight="bold",
             xaxis=dict(showgrid=False),
             yaxis=dict(showgrid=False, range=[0, 100])
         )
         
-        st.plotly_chart(fig, use_container_width=True, key=f"standby_flow_chart_{refresh_key}")
+        st.plotly_chart(fig, use_container_width=True, key=f"dte_standby_chart_{refresh_key}")
 
     with flow_col3:
         st.metric("🔴 Put Volume", "Loading...", "Standby")
 
-# Live refresh indicator
+# Live 0DTE refresh indicator
 if is_market_hours:
-    st.caption(f"🔴 LIVE • Auto-refreshing every 30s • Last update: {now.strftime('%H:%M:%S')}")
+    st.caption(f"🔥 0DTE LIVE • Ultra-fast 5-second refresh • Last update: {now.strftime('%H:%M:%S')}")
+    
+    # Add countdown to market close for 0DTE urgency
+    time_left = market_close - now
+    total_minutes = int(time_left.total_seconds() // 60) if time_left.total_seconds() > 0 else 0
+    
+    if total_minutes < 60:
+        st.error(f"⚠️ 0DTE WARNING: Only {total_minutes} minutes until market close!")
+    elif total_minutes < 120:
+        st.warning(f"🟡 0DTE ALERT: {total_minutes} minutes left in trading day")
+    else:
+        st.success(f"🟢 0DTE ACTIVE: {total_minutes} minutes until close")
 else:
-    st.caption(f"Market closed • Next open: 9:30 AM • Chart ready for live data")
+    st.caption(f"Market closed • 0DTE chart ready for tomorrow's session")
 
 
 # === 0DTE QUICK RISK CHECK ===
