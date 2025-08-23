@@ -84,29 +84,27 @@ selected_symbol = 'AAPL'  # Default
 for i, symbol in enumerate(symbols):
     signal_type, button_color = get_quick_signal(symbol)
     with symbol_cols[i]:
-        # Custom styled button with color coding
-        button_html = f"""
-        <style>
-        .symbol-btn-{symbol} {{
-            background-color: {button_color} !important;
-            color: white !important;
-            border: none !important;
-            padding: 8px 12px !important;
-            border-radius: 6px !important;
-            font-weight: bold !important;
-            font-size: 14px !important;
-            width: 100% !important;
-            cursor: pointer !important;
-            margin: 2px 0 !important;
-        }}
-        .symbol-btn-{symbol}:hover {{
-            opacity: 0.8 !important;
-        }}
-        </style>
+        # Color coded clickable box using HTML
+        box_style = f"""
+        <div style="
+            background-color: {button_color};
+            color: white;
+            padding: 12px 8px;
+            border-radius: 8px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 14px;
+            margin: 2px;
+            cursor: pointer;
+            border: 2px solid transparent;
+        ">
+            {symbol}
+        </div>
         """
-        st.markdown(button_html, unsafe_allow_html=True)
+        st.markdown(box_style, unsafe_allow_html=True)
         
-        if st.button(f"{symbol}", key=f"symbol_{symbol}", use_container_width=True):
+        # Invisible button for functionality
+        if st.button(f"Select {symbol}", key=f"symbol_{symbol}", label_visibility="collapsed"):
             selected_symbol = symbol
             st.session_state.selected_symbol = symbol
 
