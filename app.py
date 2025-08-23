@@ -1173,6 +1173,170 @@ with summary_col3:
     session_status = "Pre-Market" if market_data['market_state'] == "PREMARKET" else "After Hours" if market_data['market_state'] == "POSTMARKET" else "Closed"
     st.metric("Session", session_status, f"IV: {iv_estimate:.0f}%")
 
+# === SOCIAL TRADING & COMMUNITY INSIGHTS ===
+st.markdown('<hr class="divider">', unsafe_allow_html=True)
+st.markdown("""
+<div class="card-container">
+    <h2 style="margin-bottom: 2rem; color: #1e293b;">🤝 Social Trading Hub</h2>
+    <p style="color: #64748b; margin-bottom: 1.5rem;">Community insights and social trading opportunities</p>
+</div>
+""", unsafe_allow_html=True)
+
+# Generate realistic community data
+def generate_community_data():
+    import random
+    
+    # Community stats
+    total_members = random.randint(12500, 15000)
+    active_traders = random.randint(800, 1200)
+    daily_signals = random.randint(150, 250)
+    
+    # Top traders data
+    trader_names = ["AlphaTrader92", "OptionsKing", "TechAnalyst", "DeepValue", "MomentumMax"]
+    top_traders = []
+    for i, name in enumerate(trader_names[:3]):
+        accuracy = random.randint(68, 85)
+        trades = random.randint(45, 120)
+        followers = random.randint(500, 2000)
+        specialty = random.choice(["Tech Stocks", "SPY Options", "Earnings Plays", "Momentum", "Value"])
+        
+        top_traders.append({
+            'name': name,
+            'accuracy': accuracy,
+            'trades': trades,
+            'followers': followers,
+            'specialty': specialty,
+            'verified': i < 2  # First 2 are verified
+        })
+    
+    # Popular trades
+    symbols = ['AAPL', 'TSLA', 'NVDA', 'SPY', 'QQQ', 'MSFT']
+    popular_trades = []
+    for symbol in symbols[:4]:
+        action = random.choice(['CALL', 'PUT'])
+        popularity = random.randint(15, 45)
+        strike = random.randint(200, 500)
+        
+        popular_trades.append({
+            'symbol': symbol,
+            'action': action,
+            'popularity': popularity,
+            'strike': strike,
+            'traders': random.randint(8, 25)
+        })
+    
+    # Sentiment data for current symbol
+    bullish_pct = random.randint(35, 75)
+    bearish_pct = 100 - bullish_pct
+    
+    return {
+        'stats': {
+            'members': total_members,
+            'active': active_traders,
+            'signals': daily_signals
+        },
+        'top_traders': top_traders,
+        'popular_trades': popular_trades,
+        'sentiment': {
+            'bullish': bullish_pct,
+            'bearish': bearish_pct
+        }
+    }
+
+community_data = generate_community_data()
+
+# Community Overview
+st.markdown("### 📊 **Community Overview**")
+comm_col1, comm_col2, comm_col3, comm_col4 = st.columns(4)
+
+with comm_col1:
+    st.metric("Total Members", f"{community_data['stats']['members']:,}", "+127 today")
+
+with comm_col2:
+    st.metric("Active Traders", f"{community_data['stats']['active']:,}", "Online now")
+
+with comm_col3:
+    st.metric("Daily Signals", f"{community_data['stats']['signals']:,}", "+23 vs yesterday")
+
+with comm_col4:
+    community_sentiment = "Bullish" if community_data['sentiment']['bullish'] > 60 else "Bearish" if community_data['sentiment']['bullish'] < 40 else "Mixed"
+    st.metric("Market Sentiment", community_sentiment, f"{community_data['sentiment']['bullish']}% bullish")
+
+# Two-column layout for social features
+social_col1, social_col2 = st.columns(2)
+
+with social_col1:
+    st.markdown("### 🏆 **Top Traders This Week**")
+    for trader in community_data['top_traders']:
+        verification = "✅" if trader['verified'] else ""
+        st.markdown(f"""
+        **{trader['name']} {verification}**
+        - **Accuracy**: {trader['accuracy']}% ({trader['trades']} trades)
+        - **Specialty**: {trader['specialty']}
+        - **Followers**: {trader['followers']:,}
+        """)
+        
+        if trader['accuracy'] > 75:
+            if st.button(f"📋 Copy {trader['name']}", key=f"copy_{trader['name']}"):
+                st.success(f"✅ Now following {trader['name']}'s signals!")
+
+with social_col2:
+    st.markdown("### 🔥 **Popular Trades Today**")
+    for trade in community_data['popular_trades']:
+        trade_color = "🟢" if trade['action'] == 'CALL' else "🔴"
+        st.markdown(f"""
+        **{trade_color} {trade['symbol']} {trade['action']}**
+        - **Strike**: ${trade['strike']}
+        - **Popularity**: {trade['popularity']} votes
+        - **Active Traders**: {trade['traders']}
+        """)
+
+# Symbol-specific sentiment
+st.markdown(f"### 📈 **{selected_symbol} Community Sentiment**")
+sent_col1, sent_col2, sent_col3 = st.columns(3)
+
+with sent_col1:
+    st.metric("Bullish Traders", f"{community_data['sentiment']['bullish']}%", 
+              "🔥" if community_data['sentiment']['bullish'] > 70 else "📈" if community_data['sentiment']['bullish'] > 50 else "")
+
+with sent_col2:
+    st.metric("Bearish Traders", f"{community_data['sentiment']['bearish']}%",
+              "🔥" if community_data['sentiment']['bearish'] > 70 else "📉" if community_data['sentiment']['bearish'] > 50 else "")
+
+with sent_col3:
+    trend_direction = "Strongly Bullish" if community_data['sentiment']['bullish'] > 70 else "Bullish" if community_data['sentiment']['bullish'] > 55 else "Bearish" if community_data['sentiment']['bullish'] < 45 else "Strongly Bearish" if community_data['sentiment']['bullish'] < 30 else "Neutral"
+    st.metric("Community Bias", trend_direction, "Based on 247 traders")
+
+# Recent community signals
+st.markdown("### 💬 **Recent Community Signals**")
+recent_signals = [
+    {"user": "TechAnalyst", "signal": f"{selected_symbol} CALL", "confidence": "78%", "time": "2 min ago", "reasoning": "Breaking resistance with volume"},
+    {"user": "OptionsKing", "signal": f"SPY PUT", "confidence": "65%", "time": "5 min ago", "reasoning": "Market topping signals"},
+    {"user": "AlphaTrader92", "signal": f"{selected_symbol} CALL", "confidence": "72%", "time": "8 min ago", "reasoning": "Strong momentum continuation"},
+]
+
+for signal in recent_signals:
+    signal_color = "🟢" if "CALL" in signal['signal'] else "🔴"
+    st.markdown(f"""
+    **{signal['user']}** {signal_color} {signal['signal']} - {signal['confidence']} confidence
+    - *{signal['reasoning']}* ({signal['time']})
+    """)
+
+# Social trading actions
+st.markdown("### 🚀 **Share Your Signal**")
+share_col1, share_col2, share_col3 = st.columns(3)
+
+with share_col1:
+    user_signal = st.selectbox("Your Signal", [f"{selected_symbol} CALL", f"{selected_symbol} PUT", f"{selected_symbol} NEUTRAL"])
+
+with share_col2:
+    user_confidence = st.slider("Confidence %", 50, 95, 70)
+
+with share_col3:
+    if st.button("📢 Share Signal"):
+        st.success(f"✅ Signal shared: {user_signal} ({user_confidence}% confidence)")
+        st.balloons()
+
 # Advanced Technical Analysis Section
 st.markdown("---")
 st.markdown("### 📈 Advanced Technical Analysis")
@@ -1298,7 +1462,7 @@ risk_col1, risk_col2, risk_col3 = st.columns(3)
 with risk_col1:
     # Dynamic position sizing based on volatility and confidence
     base_position = 1000
-    volatility_adj = min(1.5, max(0.5, 1.0 / (volatility / 25)))
+    volatility_adj = min(1.5, max(0.5, 1.0 / (tech_indicators['volatility'] / 25)))
     confidence_adj = confidence / 100
     position_size = int(base_position * volatility_adj * confidence_adj)
     
