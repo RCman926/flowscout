@@ -62,5 +62,37 @@
     "profit_loss": null,
     "validation_time": null,
     "success": null
+  },
+  {
+    "id": "SPY_20250823_023559",
+    "symbol": "SPY",
+    "signal_type": "BUY_CALL",
+    "confidence": 0.95,
+    "current_price": 635.6438610877232,
+    "predicted_price": 646.5488178824211,
+    "entry_premium": 0.24,
+    "target_premium": 0.36,
+    "timestamp": "2025-08-23T02:35:59.455092",
+    "status": "active",
+    "actual_outcome": null,
+    "profit_loss": null,
+    "validation_time": null,
+    "success": null
+  },
+  {
+    "id": "SPY_20250823_023604",
+    "symbol": "SPY",
+    "signal_type": "BUY_CALL",
+    "confidence": 0.7766510026723349,
+    "current_price": 636.4261820042798,
+    "predicted_price": 644.7818215138267,
+    "entry_premium": 0.24,
+    "target_premium": 0.36,
+    "timestamp": "2025-08-23T02:36:04.016089",
+    "status": "active",
+    "actual_outcome": null,
+    "profit_loss": null,
+    "validation_time": null,
+    "success": null
   }
 ]

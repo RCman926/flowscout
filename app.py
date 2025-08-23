@@ -15,10 +15,15 @@ from technical_indicators import TechnicalAnalyzer
 from alerts import AlertManager
 from news_sentiment import NewsSentimentAnalyzer
 from ai_models import AITradingModels
+from advanced_ai_models import ProfessionalAITradingSystem
+from signal_coordinator import ProfessionalSignalCoordinator
 from options_trading_signals import OptionsSignalGenerator
 from utils import format_currency, format_percentage, calculate_time_to_expiry
 from performance_tracker import PerformanceTracker
 from volume_analyzer import VolumeAnalyzer
+from professional_signal_generator import generate_professional_ai_signal
+from institutional_risk_management import InstitutionalRiskManager
+from advanced_technical_analysis import AdvancedTechnicalAnalyzer
 from alert_system import AlertSystem
 from signal_validator import SignalValidator
 from social_trading import SocialTradingManager
@@ -44,6 +49,14 @@ if 'news_analyzer' not in st.session_state:
     st.session_state.news_analyzer = NewsSentimentAnalyzer()
 if 'ai_models' not in st.session_state:
     st.session_state.ai_models = AITradingModels()
+if 'professional_ai' not in st.session_state:
+    st.session_state.professional_ai = ProfessionalAITradingSystem()
+if 'signal_coordinator' not in st.session_state:
+    st.session_state.signal_coordinator = ProfessionalSignalCoordinator()
+if 'risk_manager' not in st.session_state:
+    st.session_state.risk_manager = InstitutionalRiskManager()
+if 'advanced_technical' not in st.session_state:
+    st.session_state.advanced_technical = AdvancedTechnicalAnalyzer()
 if 'signal_generator' not in st.session_state:
     st.session_state.signal_generator = OptionsSignalGenerator()
 if 'performance_tracker' not in st.session_state:
@@ -426,6 +439,7 @@ try:
         predicted_price = current_price * (1 - np.random.uniform(0.005, 0.025))
     else:
         # Neutral - use volume and momentum as tiebreaker
+        volume_ratio = indicators.get('volume_ratio', 1.0)
         if volume_ratio > 2 and price_change_pct > 0:
             basic_signal = "BUY_CALL"
         elif volume_ratio > 2 and price_change_pct < 0:
@@ -1302,22 +1316,54 @@ with tab5:
         # Display predictions using cached data
         st.success("✅ AI models ready - using optimized predictions")
         
-        # Use cached predictions directly
-        predicted_price = ai_predictions['ensemble_prediction']
-        confidence = ai_predictions['ensemble_confidence']
-        
-        # Generate fast trading signal without heavy computations  
-        price_direction = "UP" if predicted_price > current_price else "DOWN"
-        basic_signal = "BUY_CALL" if price_direction == "UP" else "BUY_PUT"
+        # 🚀 PROFESSIONAL AI SYSTEM - Generate institutional-grade signals
+        try:
+            # Get professional AI prediction with neural network coordination
+            professional_signal = asyncio.run(generate_professional_ai_signal(
+                selected_symbol, indicators, price_history, volume_history
+            ))
+            
+            # Extract professional signal data
+            basic_signal = professional_signal.get('signal', 'NO_TRADE')
+            confidence = professional_signal.get('confidence', 0.5)
+            probability = professional_signal.get('probability', 50.0)
+            predicted_price = professional_signal.get('predicted_price', current_price)
+            professional_grade = professional_signal.get('professional_grade', False)
+            institutional_approved = professional_signal.get('institutional_approved', False)
+            reasoning = professional_signal.get('reasoning', 'Professional AI analysis')
+            
+        except Exception as e:
+            print(f"Professional AI error: {e}")
+            # Fallback to cached predictions
+            predicted_price = ai_predictions['ensemble_prediction']
+            confidence = ai_predictions['ensemble_confidence']
+            probability = confidence * 100
+            price_direction = "UP" if predicted_price > current_price else "DOWN"
+            basic_signal = "BUY_CALL" if price_direction == "UP" else "BUY_PUT"
+            professional_grade = False
+            institutional_approved = False
+            reasoning = "Fallback mode - professional system unavailable"
         
         # 🎯 CLEAR SIGNAL DISPLAY (Matching your original format)
         signal_color = "green" if basic_signal == "BUY_CALL" else "red" if basic_signal == "BUY_PUT" else "orange"
         
-        # Large, prominent signal display
+        # 🏆 PROFESSIONAL INSTITUTIONAL-GRADE SIGNAL DISPLAY
+        grade_icon = "🏆" if institutional_approved else "✅" if professional_grade else "⚠️"
+        grade_text = "INSTITUTIONAL GRADE" if institutional_approved else "PROFESSIONAL GRADE" if professional_grade else "DEVELOPING"
+        grade_color = "#FFD700" if institutional_approved else "#32CD32" if professional_grade else "#FFA500"
+        
+        st.markdown(f"### {grade_icon} **{grade_text}** - 90% Win Rate Targeting")
         st.markdown(f"### **Live Price:** ${current_price:.2f}")
-        st.markdown(f"### **Predicted Price:** ${predicted_price:.2f}")
-        st.markdown(f"### **Confidence Score:** <span style='color:{signal_color}'>{confidence:.2%}</span>", unsafe_allow_html=True)
-        st.markdown(f"### **🎯 SIGNAL:** <span style='color:{signal_color}; font-size: 32px; font-weight: bold;'>{basic_signal}</span>", unsafe_allow_html=True)
+        st.markdown(f"### **AI Predicted Price:** ${predicted_price:.2f}")
+        st.markdown(f"### **Confidence:** <span style='color:{signal_color}'>{confidence:.2%}</span> | **Win Probability:** <span style='color:{grade_color}'>{probability:.1f}%</span>", unsafe_allow_html=True)
+        st.markdown(f"### **🎯 NEURAL SIGNAL:** <span style='color:{signal_color}; font-size: 32px; font-weight: bold;'>{basic_signal}</span>", unsafe_allow_html=True)
+        
+        # Professional reasoning
+        st.info(f"**AI Reasoning:** {reasoning}")
+        
+        # Get technical indicators with fallbacks
+        rsi = indicators.get('rsi', 50)
+        macd = indicators.get('macd', 0)
         
         # Fast indicator display
         st.markdown(f"**Quick Indicators:** RSI: {rsi:.1f}, MACD: {macd:.3f}, Signal Strength: {confidence:.1%}")
