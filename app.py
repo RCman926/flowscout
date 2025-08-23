@@ -271,7 +271,7 @@ market_status_label = symbols_data.get(selected_symbol, {}).get("status", "MARKE
 # Get AI predictions and signals
 try:
     historical_data = asyncio.run(st.session_state.market_data.get_historical_data(selected_symbol, period="60d"))
-    indicators = st.session_state.technical_analyzer.calculate_comprehensive_indicators(historical_data)
+    indicators = st.session_state.technical_analyzer.calculate_all_indicators(historical_data['Close'], historical_data['Volume'])
     
     # Generate AI predictions
     predicted_price = current_price * (1 + np.random.uniform(-0.02, 0.02))  # Simulate AI prediction
