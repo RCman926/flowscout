@@ -1352,264 +1352,84 @@ if 'call_data' in locals() and 'put_data' in locals():
             st.metric("ATM Theta", atm_call.get('Theta', '-0.05'),
                      f"Vega: {atm_call.get('Vega', '0.10')}")
 
-# === INTERACTIVE CHARTS & TECHNICAL ANALYSIS ===
+# === ENHANCED FLOW VISUALIZATION ===
 st.markdown('<hr class="divider">', unsafe_allow_html=True)
-st.markdown("**📈 Advanced Charts & Technical Analysis**")
+st.markdown("**📊 Live Options Flow & Analysis**")
 
-@st.cache_data(ttl=60)  # Cache for 1 minute
-def get_enhanced_chart_data(symbol, period="5d"):
-    """Get enhanced chart data with technical indicators"""
-    try:
-        ticker = yf.Ticker(symbol)
+# Enhanced but clean flow chart - bring back the simple design you liked
+if 'call_data' in locals() and 'put_data' in locals():
+    # Clean flow visualization with 0DTE focus  
+    flow_col1, flow_col2, flow_col3 = st.columns([1, 2, 1])
+
+    with flow_col1:
+        st.metric("🟢 Call Volume", f"{call_volume:,}", 
+                 "Strong" if call_volume > put_volume * 1.5 else "")
+
+    with flow_col2:
+        # Your preferred clean flow chart with enhancements
+        fig = go.Figure()
         
-        # Get different timeframes
-        if period == "1d":
-            data = ticker.history(period="1d", interval="5m")
-        elif period == "5d":
-            data = ticker.history(period="5d", interval="15m")
-        elif period == "1mo":
-            data = ticker.history(period="1mo", interval="1h")
+        # Add flow bars with clean styling like before
+        fig.add_trace(go.Bar(
+            x=['Calls', 'Puts'],
+            y=[call_volume, put_volume],
+            marker_color=['#00ff00', '#ff0000'],
+            text=[f'{call_volume:,}', f'{put_volume:,}'],
+            textposition='auto',
+            name='Options Flow',
+            marker_line=dict(width=1, color='white')
+        ))
+        
+        # Add directional indicator (your enhancement request)
+        if call_volume > put_volume:
+            direction_text = "📈 CALL FLOW"
+            title_color = "#00ff00"
+        elif put_volume > call_volume:
+            direction_text = "📉 PUT FLOW" 
+            title_color = "#ff0000"
         else:
-            data = ticker.history(period="3mo", interval="1d")
+            direction_text = "⚖️ BALANCED"
+            title_color = "#ffff00"
         
-        if data.empty:
-            return None
-            
-        # Add technical indicators
-        data['SMA_20'] = data['Close'].rolling(window=20).mean()
-        data['SMA_50'] = data['Close'].rolling(window=50).mean()
-        data['BB_Upper'] = data['SMA_20'] + (data['Close'].rolling(window=20).std() * 2)
-        data['BB_Lower'] = data['SMA_20'] - (data['Close'].rolling(window=20).std() * 2)
+        # Keep it clean and compact like you prefer
+        fig.update_layout(
+            title=f"{direction_text}",
+            showlegend=False,
+            height=200,  # Keep it compact
+            margin=dict(l=0, r=0, t=30, b=0),
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='rgba(0,0,0,0)',
+            title_font_color=title_color,
+            title_font_size=14
+        )
         
-        # RSI calculation
-        delta = data['Close'].diff()
-        gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
-        loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
-        rs = gain / loss
-        data['RSI'] = 100 - (100 / (1 + rs))
-        
-        # MACD calculation
-        exp1 = data['Close'].ewm(span=12).mean()
-        exp2 = data['Close'].ewm(span=26).mean()
-        data['MACD'] = exp1 - exp2
-        data['MACD_Signal'] = data['MACD'].ewm(span=9).mean()
-        data['MACD_Histogram'] = data['MACD'] - data['MACD_Signal']
-        
-        # Volume analysis
-        data['Volume_SMA'] = data['Volume'].rolling(window=20).mean()
-        data['Volume_Ratio'] = data['Volume'] / data['Volume_SMA']
-        
-        # Support/Resistance levels
-        recent_highs = data['High'].rolling(window=20).max()
-        recent_lows = data['Low'].rolling(window=20).min()
-        
-        return data, recent_highs.iloc[-1], recent_lows.iloc[-1]
-        
-    except Exception as e:
-        return None
+        st.plotly_chart(fig, use_container_width=True)
 
-def create_advanced_price_chart(data, symbol, resistance, support):
-    """Create interactive price chart with technical indicators"""
-    fig = make_subplots(
-        rows=3, cols=1,
-        shared_xaxes=True,
-        vertical_spacing=0.05,
-        subplot_titles=(f'{symbol} Price Action', 'RSI & Volume', 'MACD'),
-        row_heights=[0.6, 0.2, 0.2]
-    )
-    
-    # Candlestick chart
-    fig.add_trace(
-        go.Candlestick(
-            x=data.index,
-            open=data['Open'],
-            high=data['High'],
-            low=data['Low'],
-            close=data['Close'],
-            name='Price',
-            increasing_line_color='#00ff00',
-            decreasing_line_color='#ff0000'
-        ),
-        row=1, col=1
-    )
-    
-    # Moving averages
-    fig.add_trace(
-        go.Scatter(x=data.index, y=data['SMA_20'], 
-                  name='SMA 20', line=dict(color='orange', width=2)),
-        row=1, col=1
-    )
-    fig.add_trace(
-        go.Scatter(x=data.index, y=data['SMA_50'], 
-                  name='SMA 50', line=dict(color='blue', width=2)),
-        row=1, col=1
-    )
-    
-    # Bollinger Bands
-    fig.add_trace(
-        go.Scatter(x=data.index, y=data['BB_Upper'], 
-                  name='BB Upper', line=dict(color='gray', width=1, dash='dash')),
-        row=1, col=1
-    )
-    fig.add_trace(
-        go.Scatter(x=data.index, y=data['BB_Lower'], 
-                  name='BB Lower', line=dict(color='gray', width=1, dash='dash'),
-                  fill='tonexty', fillcolor='rgba(128,128,128,0.1)'),
-        row=1, col=1
-    )
-    
-    # Support/Resistance lines
-    fig.add_hline(y=resistance, line_dash="dash", line_color="red", 
-                  annotation_text=f"Resistance: ${resistance:.2f}", row=1, col=1)
-    fig.add_hline(y=support, line_dash="dash", line_color="green", 
-                  annotation_text=f"Support: ${support:.2f}", row=1, col=1)
-    
-    # RSI
-    fig.add_trace(
-        go.Scatter(x=data.index, y=data['RSI'], 
-                  name='RSI', line=dict(color='purple', width=2)),
-        row=2, col=1
-    )
-    fig.add_hline(y=70, line_dash="dash", line_color="red", row=2, col=1)
-    fig.add_hline(y=30, line_dash="dash", line_color="green", row=2, col=1)
-    
-    # Volume bars
-    colors = ['green' if row['Close'] >= row['Open'] else 'red' for idx, row in data.iterrows()]
-    fig.add_trace(
-        go.Bar(x=data.index, y=data['Volume'], 
-               name='Volume', marker_color=colors, opacity=0.6),
-        row=2, col=1
-    )
-    
-    # MACD
-    fig.add_trace(
-        go.Scatter(x=data.index, y=data['MACD'], 
-                  name='MACD', line=dict(color='blue', width=2)),
-        row=3, col=1
-    )
-    fig.add_trace(
-        go.Scatter(x=data.index, y=data['MACD_Signal'], 
-                  name='Signal', line=dict(color='red', width=2)),
-        row=3, col=1
-    )
-    fig.add_trace(
-        go.Bar(x=data.index, y=data['MACD_Histogram'], 
-               name='Histogram', marker_color='gray', opacity=0.6),
-        row=3, col=1
-    )
-    
-    # Update layout
-    fig.update_layout(
-        title=f'{symbol} - Advanced Technical Analysis',
-        xaxis_rangeslider_visible=False,
-        height=800,
-        showlegend=True,
-        template='plotly_dark'
-    )
-    
-    # Remove gaps for weekends/holidays
-    fig.update_xaxes(rangebreaks=[dict(bounds=["sat", "mon"])])
-    
-    return fig
+    with flow_col3:
+        cp_ratio = call_volume / max(1, put_volume)
+        st.metric("🔴 Put Volume", f"{put_volume:,}",
+                 f"Ratio: {cp_ratio:.2f}")
 
-def analyze_technical_signals(data, symbol):
-    """Analyze technical signals and provide trading insights"""
-    if data is None or data.empty:
-        return "No data available"
-    
-    current_price = data['Close'].iloc[-1]
-    sma_20 = data['SMA_20'].iloc[-1]
-    sma_50 = data['SMA_50'].iloc[-1]
-    rsi = data['RSI'].iloc[-1]
-    macd = data['MACD'].iloc[-1]
-    macd_signal = data['MACD_Signal'].iloc[-1]
-    
-    signals = []
-    
-    # Trend analysis
-    if current_price > sma_20 > sma_50:
-        signals.append("🟢 **Strong Uptrend** - Price above both moving averages")
-    elif current_price < sma_20 < sma_50:
-        signals.append("🔴 **Strong Downtrend** - Price below both moving averages")
-    elif current_price > sma_20:
-        signals.append("🟡 **Weak Uptrend** - Price above SMA20 but mixed signals")
-    else:
-        signals.append("🟡 **Weak Downtrend** - Price below SMA20")
-    
-    # RSI analysis
-    if rsi > 70:
-        signals.append(f"⚠️ **Overbought** - RSI: {rsi:.1f} (Consider puts)")
-    elif rsi < 30:
-        signals.append(f"⚠️ **Oversold** - RSI: {rsi:.1f} (Consider calls)")
-    else:
-        signals.append(f"✅ **Neutral RSI** - RSI: {rsi:.1f} (Balanced)")
-    
-    # MACD analysis
-    if macd > macd_signal and macd > 0:
-        signals.append("🟢 **MACD Bullish** - Strong upward momentum")
-    elif macd < macd_signal and macd < 0:
-        signals.append("🔴 **MACD Bearish** - Strong downward momentum")
-    else:
-        signals.append("🟡 **MACD Mixed** - Weak momentum signals")
-    
-    # Volume analysis
-    recent_vol_ratio = data['Volume_Ratio'].iloc[-1]
-    if recent_vol_ratio > 2:
-        signals.append(f"📊 **High Volume** - {recent_vol_ratio:.1f}x average (Strong conviction)")
-    elif recent_vol_ratio < 0.5:
-        signals.append(f"📊 **Low Volume** - {recent_vol_ratio:.1f}x average (Weak conviction)")
-    
-    return signals
-
-# Chart timeframe selector
-timeframe_col1, timeframe_col2, timeframe_col3 = st.columns([1, 2, 1])
-
-with timeframe_col2:
-    chart_period = st.selectbox(
-        "Chart Timeframe",
-        ["1d", "5d", "1mo", "3mo"],
-        index=1,
-        help="Select timeframe for technical analysis"
-    )
-
-# Get chart data
-chart_result = get_enhanced_chart_data(selected_symbol, chart_period)
-
-if chart_result:
-    chart_data, resistance_level, support_level = chart_result
-    
-    # Create and display chart
-    price_chart = create_advanced_price_chart(chart_data, selected_symbol, resistance_level, support_level)
-    st.plotly_chart(price_chart, use_container_width=True)
-    
-    # Technical analysis summary
-    tech_col1, tech_col2 = st.columns(2)
-    
-    with tech_col1:
-        st.markdown("**🔍 Technical Signals**")
-        signals = analyze_technical_signals(chart_data, selected_symbol)
-        for signal in signals:
-            st.markdown(f"- {signal}")
-    
-    with tech_col2:
-        st.markdown("**📊 Key Levels**")
-        current_price = chart_data['Close'].iloc[-1]
-        daily_change = ((current_price - chart_data['Close'].iloc[-2]) / chart_data['Close'].iloc[-2]) * 100
+    # 0DTE-specific enhancements you requested
+    if 'days_to_exp' in locals() and days_to_exp == 0:
+        dte_col1, dte_col2, dte_col3 = st.columns(3)
         
-        st.metric("Current Price", f"${current_price:.2f}", f"{daily_change:+.2f}%")
-        st.metric("Resistance", f"${resistance_level:.2f}", 
-                 f"{((resistance_level - current_price) / current_price * 100):+.1f}%")
-        st.metric("Support", f"${support_level:.2f}", 
-                 f"{((support_level - current_price) / current_price * 100):+.1f}%")
+        with dte_col1:
+            flow_direction, flow_color, momentum = analyze_0dte_flow_direction(call_data, put_data, days_to_exp)
+            st.metric("0DTE Flow", flow_direction, f"{momentum:.0f}% momentum")
         
-        # IV Rank estimation
-        vol_20d = chart_data['Close'].pct_change().rolling(20).std() * np.sqrt(252) * 100
-        current_iv = vol_20d.iloc[-1]
-        st.metric("Historical Vol", f"{current_iv:.1f}%", 
-                 "20-day annualized")
-
-else:
-    st.warning("Unable to load chart data. Please try again or select a different symbol.")
+        with dte_col2:
+            total_premium = sum([float(call.get('Last', '0').replace('$', '')) * int(call.get('Vol', '0').replace(',', '')) for call in call_data]) + \
+                           sum([float(put.get('Last', '0').replace('$', '')) * int(put.get('Vol', '0').replace(',', '')) for put in put_data])
+            st.metric("Premium Flow", f"${total_premium:,.0f}", "0DTE")
+        
+        with dte_col3:
+            import datetime
+            now = datetime.datetime.now()
+            market_close = now.replace(hour=16, minute=0, second=0, microsecond=0)
+            time_left = market_close - now
+            hours_left = max(0, time_left.total_seconds() / 3600) if time_left.total_seconds() > 0 else 0
+            st.metric("Time Left", f"{hours_left:.1f}h", "⚠️ Decay" if hours_left < 2 else "Active")
 
 # Clean Summary
 st.markdown("---")
