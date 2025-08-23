@@ -745,10 +745,8 @@ with col1:
 with col2:
     # Get institutional signal with reasoning
     signal, signal_color, confidence = calculate_institutional_signal(selected_symbol)
-    reasoning = generate_signal_reasoning(selected_symbol, signal, confidence)
-    st.metric("Institutional Signal", signal, f"{confidence:.0f}% confidence")
-    with st.expander("📊 Signal Analysis"):
-        st.markdown(reasoning)
+    confidence_emoji = "🟢" if confidence > 60 else "🟡" if confidence > 40 else "🔴"
+    st.metric("Trading Signal", f"{confidence_emoji} {signal}", f"{confidence:.0f}% confidence")
 
 with col3:
     # Real options volume for selected symbol
@@ -766,7 +764,7 @@ with col4:
 st.markdown('<hr class="divider">', unsafe_allow_html=True)
 st.markdown("""
 <div class="card-container">
-    <h2 style="margin-bottom: 1.5rem; color: #1e293b;">🎯 Institutional Trading Recommendations</h2>
+    <h3 style="margin-bottom: 1rem; color: #1e293b;">🎯 Trading Recommendations</h3>
 </div>
 """, unsafe_allow_html=True)
 
@@ -777,7 +775,7 @@ current_price = market_data['price']
 # === LIVE OPTIONS DATA ===
 st.markdown("""
 <div class="card-container">
-    <h2 style="margin-bottom: 1.5rem; color: #1e293b;">📊 Live Options Chain - {symbol}</h2>
+    <h3 style="margin-bottom: 1rem; color: #1e293b;">📊 Options Chain - {symbol}</h3>
 </div>
 """.format(symbol=selected_symbol), unsafe_allow_html=True)
 
@@ -1173,391 +1171,58 @@ with summary_col3:
     session_status = "Pre-Market" if market_data['market_state'] == "PREMARKET" else "After Hours" if market_data['market_state'] == "POSTMARKET" else "Closed"
     st.metric("Session", session_status, f"IV: {iv_estimate:.0f}%")
 
-# === SOCIAL TRADING & COMMUNITY INSIGHTS ===
+# === COMPACT SOCIAL TRADING ===
 st.markdown('<hr class="divider">', unsafe_allow_html=True)
 st.markdown("""
 <div class="card-container">
-    <h2 style="margin-bottom: 2rem; color: #1e293b;">🤝 Social Trading Hub</h2>
-    <p style="color: #64748b; margin-bottom: 1.5rem;">Community insights and social trading opportunities</p>
+    <h3 style="margin-bottom: 1rem; color: #1e293b;">🤝 Community Trading</h3>
 </div>
 """, unsafe_allow_html=True)
 
-# Generate realistic community data
-def generate_community_data():
-    import random
+# Compact community data
+import random
+community_active = random.randint(850, 1150)
+community_bullish = random.randint(45, 75)
+
+# Quick community overview
+community_col1, community_col2, community_col3 = st.columns(3)
+
+with community_col1:
+    st.metric("Active Traders", f"{community_active:,}", "Online now")
+
+with community_col2:
+    sentiment_text = "Bullish" if community_bullish > 60 else "Bearish" if community_bullish < 40 else "Mixed"
+    st.metric(f"{selected_symbol} Sentiment", sentiment_text, f"{community_bullish}% bullish")
+
+with community_col3:
+    top_signal = random.choice(["CALL", "PUT"])
+    signal_emoji = "🟢" if top_signal == "CALL" else "🔴"
+    st.metric("Top Signal", f"{signal_emoji} {top_signal}", f"{random.randint(15, 35)} traders")
+
+# Compact trader leaderboard
+with st.expander("🏆 Top Traders & Recent Signals"):
+    leader_col1, leader_col2 = st.columns(2)
     
-    # Community stats
-    total_members = random.randint(12500, 15000)
-    active_traders = random.randint(800, 1200)
-    daily_signals = random.randint(150, 250)
+    with leader_col1:
+        st.markdown("**🏆 This Week**")
+        st.markdown("• **AlphaTrader92** ✅ - 82% accuracy")
+        st.markdown("• **OptionsKing** - 76% accuracy") 
+        st.markdown("• **TechAnalyst** - 71% accuracy")
     
-    # Top traders data
-    trader_names = ["AlphaTrader92", "OptionsKing", "TechAnalyst", "DeepValue", "MomentumMax"]
-    top_traders = []
-    for i, name in enumerate(trader_names[:3]):
-        accuracy = random.randint(68, 85)
-        trades = random.randint(45, 120)
-        followers = random.randint(500, 2000)
-        specialty = random.choice(["Tech Stocks", "SPY Options", "Earnings Plays", "Momentum", "Value"])
-        
-        top_traders.append({
-            'name': name,
-            'accuracy': accuracy,
-            'trades': trades,
-            'followers': followers,
-            'specialty': specialty,
-            'verified': i < 2  # First 2 are verified
-        })
-    
-    # Popular trades
-    symbols = ['AAPL', 'TSLA', 'NVDA', 'SPY', 'QQQ', 'MSFT']
-    popular_trades = []
-    for symbol in symbols[:4]:
-        action = random.choice(['CALL', 'PUT'])
-        popularity = random.randint(15, 45)
-        strike = random.randint(200, 500)
-        
-        popular_trades.append({
-            'symbol': symbol,
-            'action': action,
-            'popularity': popularity,
-            'strike': strike,
-            'traders': random.randint(8, 25)
-        })
-    
-    # Sentiment data for current symbol
-    bullish_pct = random.randint(35, 75)
-    bearish_pct = 100 - bullish_pct
-    
-    return {
-        'stats': {
-            'members': total_members,
-            'active': active_traders,
-            'signals': daily_signals
-        },
-        'top_traders': top_traders,
-        'popular_trades': popular_trades,
-        'sentiment': {
-            'bullish': bullish_pct,
-            'bearish': bearish_pct
-        }
-    }
+    with leader_col2:
+        st.markdown("**💬 Recent Signals**")
+        st.markdown(f"• 🟢 **{selected_symbol} CALL** - 78% conf (2m ago)")
+        st.markdown("• 🔴 **SPY PUT** - 65% conf (5m ago)")
+        st.markdown(f"• 🟢 **{selected_symbol} CALL** - 72% conf (8m ago)")
 
-community_data = generate_community_data()
+# Simple signal sharing
+signal_share_col1, signal_share_col2 = st.columns(2)
+with signal_share_col1:
+    user_pick = st.selectbox("Share Signal", [f"{selected_symbol} CALL", f"{selected_symbol} PUT", "Watching"], key="social_signal")
+with signal_share_col2:
+    if st.button("📢 Share", key="share_btn"):
+        st.success("✅ Signal shared with community!")
 
-# Community Overview
-st.markdown("### 📊 **Community Overview**")
-comm_col1, comm_col2, comm_col3, comm_col4 = st.columns(4)
-
-with comm_col1:
-    st.metric("Total Members", f"{community_data['stats']['members']:,}", "+127 today")
-
-with comm_col2:
-    st.metric("Active Traders", f"{community_data['stats']['active']:,}", "Online now")
-
-with comm_col3:
-    st.metric("Daily Signals", f"{community_data['stats']['signals']:,}", "+23 vs yesterday")
-
-with comm_col4:
-    community_sentiment = "Bullish" if community_data['sentiment']['bullish'] > 60 else "Bearish" if community_data['sentiment']['bullish'] < 40 else "Mixed"
-    st.metric("Market Sentiment", community_sentiment, f"{community_data['sentiment']['bullish']}% bullish")
-
-# Two-column layout for social features
-social_col1, social_col2 = st.columns(2)
-
-with social_col1:
-    st.markdown("### 🏆 **Top Traders This Week**")
-    for trader in community_data['top_traders']:
-        verification = "✅" if trader['verified'] else ""
-        st.markdown(f"""
-        **{trader['name']} {verification}**
-        - **Accuracy**: {trader['accuracy']}% ({trader['trades']} trades)
-        - **Specialty**: {trader['specialty']}
-        - **Followers**: {trader['followers']:,}
-        """)
-        
-        if trader['accuracy'] > 75:
-            if st.button(f"📋 Copy {trader['name']}", key=f"copy_{trader['name']}"):
-                st.success(f"✅ Now following {trader['name']}'s signals!")
-
-with social_col2:
-    st.markdown("### 🔥 **Popular Trades Today**")
-    for trade in community_data['popular_trades']:
-        trade_color = "🟢" if trade['action'] == 'CALL' else "🔴"
-        st.markdown(f"""
-        **{trade_color} {trade['symbol']} {trade['action']}**
-        - **Strike**: ${trade['strike']}
-        - **Popularity**: {trade['popularity']} votes
-        - **Active Traders**: {trade['traders']}
-        """)
-
-# Symbol-specific sentiment
-st.markdown(f"### 📈 **{selected_symbol} Community Sentiment**")
-sent_col1, sent_col2, sent_col3 = st.columns(3)
-
-with sent_col1:
-    st.metric("Bullish Traders", f"{community_data['sentiment']['bullish']}%", 
-              "🔥" if community_data['sentiment']['bullish'] > 70 else "📈" if community_data['sentiment']['bullish'] > 50 else "")
-
-with sent_col2:
-    st.metric("Bearish Traders", f"{community_data['sentiment']['bearish']}%",
-              "🔥" if community_data['sentiment']['bearish'] > 70 else "📉" if community_data['sentiment']['bearish'] > 50 else "")
-
-with sent_col3:
-    trend_direction = "Strongly Bullish" if community_data['sentiment']['bullish'] > 70 else "Bullish" if community_data['sentiment']['bullish'] > 55 else "Bearish" if community_data['sentiment']['bullish'] < 45 else "Strongly Bearish" if community_data['sentiment']['bullish'] < 30 else "Neutral"
-    st.metric("Community Bias", trend_direction, "Based on 247 traders")
-
-# Recent community signals
-st.markdown("### 💬 **Recent Community Signals**")
-recent_signals = [
-    {"user": "TechAnalyst", "signal": f"{selected_symbol} CALL", "confidence": "78%", "time": "2 min ago", "reasoning": "Breaking resistance with volume"},
-    {"user": "OptionsKing", "signal": f"SPY PUT", "confidence": "65%", "time": "5 min ago", "reasoning": "Market topping signals"},
-    {"user": "AlphaTrader92", "signal": f"{selected_symbol} CALL", "confidence": "72%", "time": "8 min ago", "reasoning": "Strong momentum continuation"},
-]
-
-for signal in recent_signals:
-    signal_color = "🟢" if "CALL" in signal['signal'] else "🔴"
-    st.markdown(f"""
-    **{signal['user']}** {signal_color} {signal['signal']} - {signal['confidence']} confidence
-    - *{signal['reasoning']}* ({signal['time']})
-    """)
-
-# Social trading actions
-st.markdown("### 🚀 **Share Your Signal**")
-share_col1, share_col2, share_col3 = st.columns(3)
-
-with share_col1:
-    user_signal = st.selectbox("Your Signal", [f"{selected_symbol} CALL", f"{selected_symbol} PUT", f"{selected_symbol} NEUTRAL"])
-
-with share_col2:
-    user_confidence = st.slider("Confidence %", 50, 95, 70)
-
-with share_col3:
-    if st.button("📢 Share Signal"):
-        st.success(f"✅ Signal shared: {user_signal} ({user_confidence}% confidence)")
-        st.balloons()
-
-# Advanced Technical Analysis Section
+# Clean professional footer
 st.markdown("---")
-st.markdown("### 📈 Advanced Technical Analysis")
-
-tech_col1, tech_col2, tech_col3, tech_col4 = st.columns(4)
-
-with tech_col1:
-    rsi = tech_indicators['rsi']
-    rsi_status = "OVERBOUGHT" if rsi > 70 else "OVERSOLD" if rsi < 30 else "NEUTRAL"
-    rsi_color = "#dc2626" if rsi > 70 else "#059669" if rsi < 30 else "#f59e0b"
-    st.markdown(f'''
-    <div class="metric-card">
-        <div style="color: #e2e8f0; font-size: 12px; font-weight: 600; margin-bottom: 6px;">RSI (14)</div>
-        <div style="color: {rsi_color}; font-size: 16px; font-weight: bold; margin: 4px 0;">{rsi:.1f}</div>
-        <div style="color: #64748b; font-size: 10px; margin: 2px 0;">{rsi_status}</div>
-    </div>
-    ''', unsafe_allow_html=True)
-
-with tech_col2:
-    macd_diff = tech_indicators['macd'] - tech_indicators['macd_signal']
-    macd_status = "BULLISH" if macd_diff > 0 else "BEARISH"
-    macd_color = "#059669" if macd_diff > 0 else "#dc2626"
-    st.markdown(f'''
-    <div class="metric-card">
-        <div style="color: #e2e8f0; font-size: 12px; font-weight: 600; margin-bottom: 6px;">MACD</div>
-        <div style="color: {macd_color}; font-size: 16px; font-weight: bold; margin: 4px 0;">{macd_diff:.3f}</div>
-        <div style="color: #64748b; font-size: 10px; margin: 2px 0;">{macd_status}</div>
-    </div>
-    ''', unsafe_allow_html=True)
-
-with tech_col3:
-    stoch_k = tech_indicators['stoch_k']
-    stoch_status = "OVERBOUGHT" if stoch_k > 80 else "OVERSOLD" if stoch_k < 20 else "NEUTRAL"
-    stoch_color = "#dc2626" if stoch_k > 80 else "#059669" if stoch_k < 20 else "#f59e0b"
-    st.markdown(f'''
-    <div class="metric-card">
-        <div style="color: #e2e8f0; font-size: 12px; font-weight: 600; margin-bottom: 6px;">STOCHASTIC %K</div>
-        <div style="color: {stoch_color}; font-size: 16px; font-weight: bold; margin: 4px 0;">{stoch_k:.1f}</div>
-        <div style="color: #64748b; font-size: 10px; margin: 2px 0;">{stoch_status}</div>
-    </div>
-    ''', unsafe_allow_html=True)
-
-with tech_col4:
-    momentum = tech_indicators['momentum_5d']
-    momentum_status = "STRONG ↑" if momentum > 3 else "UP ↗" if momentum > 1 else "STRONG ↓" if momentum < -3 else "DOWN ↘" if momentum < -1 else "FLAT →"
-    momentum_color = "#059669" if momentum > 1 else "#dc2626" if momentum < -1 else "#f59e0b"
-    st.markdown(f'''
-    <div class="metric-card">
-        <div style="color: #e2e8f0; font-size: 12px; font-weight: 600; margin-bottom: 6px;">5D MOMENTUM</div>
-        <div style="color: {momentum_color}; font-size: 16px; font-weight: bold; margin: 4px 0;">{momentum:.1f}%</div>
-        <div style="color: #64748b; font-size: 10px; margin: 2px 0;">{momentum_status}</div>
-    </div>
-    ''', unsafe_allow_html=True)
-
-# Options Greeks Section
-st.markdown("---")
-st.markdown("### 🔢 Options Greeks Calculator")
-
-current_price = tech_indicators['current_price']
-strike_price = round(current_price / 5) * 5
-time_to_expiry = 30/365
-risk_free_rate = 0.05
-implied_vol = tech_indicators['volatility'] / 100
-
-def calculate_greeks(S, K, T, r, sigma, option_type='call'):
-    try:
-        if T <= 0 or sigma <= 0:
-            return {'delta': 0, 'gamma': 0, 'theta': 0, 'vega': 0}
-        d1 = (np.log(S/K) + (r + 0.5*sigma**2)*T) / (sigma*np.sqrt(T))
-        d2 = d1 - sigma*np.sqrt(T)
-        
-        if option_type == 'call':
-            delta = norm.cdf(d1)
-        else:
-            delta = norm.cdf(d1) - 1
-            
-        gamma = norm.pdf(d1) / (S*sigma*np.sqrt(T))
-        theta = -S*norm.pdf(d1)*sigma/(2*np.sqrt(T))/365
-        vega = S*norm.pdf(d1)*np.sqrt(T)/100
-        
-        return {
-            'delta': float(delta),
-            'gamma': float(gamma),
-            'theta': float(theta),
-            'vega': float(vega)
-        }
-    except:
-        return {'delta': 0, 'gamma': 0, 'theta': 0, 'vega': 0}
-
-call_greeks = calculate_greeks(current_price, strike_price, time_to_expiry, risk_free_rate, implied_vol, 'call')
-put_greeks = calculate_greeks(current_price, strike_price, time_to_expiry, risk_free_rate, implied_vol, 'put')
-
-greeks_col1, greeks_col2 = st.columns(2)
-
-with greeks_col1:
-    st.markdown(f"**Call Options (Strike: ${strike_price})**")
-    st.markdown(f'''
-    <div class="metric-card">
-        <div style="color: #059669; font-size: 14px; margin: 4px 0;">Delta: {call_greeks['delta']:.3f}</div>
-        <div style="color: #059669; font-size: 14px; margin: 4px 0;">Gamma: {call_greeks['gamma']:.4f}</div>
-        <div style="color: #dc2626; font-size: 14px; margin: 4px 0;">Theta: {call_greeks['theta']:.3f}</div>
-        <div style="color: #f59e0b; font-size: 14px; margin: 4px 0;">Vega: {call_greeks['vega']:.3f}</div>
-    </div>
-    ''', unsafe_allow_html=True)
-
-with greeks_col2:
-    st.markdown(f"**Put Options (Strike: ${strike_price})**")
-    st.markdown(f'''
-    <div class="metric-card">
-        <div style="color: #dc2626; font-size: 14px; margin: 4px 0;">Delta: {put_greeks['delta']:.3f}</div>
-        <div style="color: #059669; font-size: 14px; margin: 4px 0;">Gamma: {put_greeks['gamma']:.4f}</div>
-        <div style="color: #dc2626; font-size: 14px; margin: 4px 0;">Theta: {put_greeks['theta']:.3f}</div>
-        <div style="color: #f59e0b; font-size: 14px; margin: 4px 0;">Vega: {put_greeks['vega']:.3f}</div>
-    </div>
-    ''', unsafe_allow_html=True)
-
-# Risk Management Section
-st.markdown("---")
-st.markdown("### ⚠️ Advanced Risk Management")
-
-risk_col1, risk_col2, risk_col3 = st.columns(3)
-
-with risk_col1:
-    # Dynamic position sizing based on volatility and confidence
-    base_position = 1000
-    volatility_adj = min(1.5, max(0.5, 1.0 / (tech_indicators['volatility'] / 25)))
-    confidence_adj = confidence / 100
-    position_size = int(base_position * volatility_adj * confidence_adj)
-    
-    st.markdown(f'''
-    <div class="metric-card">
-        <div style="color: #e2e8f0; font-size: 12px; font-weight: 600; margin-bottom: 6px;">POSITION SIZE</div>
-        <div style="color: #f59e0b; font-size: 16px; font-weight: bold; margin: 4px 0;">${position_size}</div>
-        <div style="color: #64748b; font-size: 10px; margin: 2px 0;">Volatility Adjusted</div>
-    </div>
-    ''', unsafe_allow_html=True)
-
-with risk_col2:
-    # Dynamic exposure based on signal strength
-    max_exposure = 30
-    exposure_pct = min(max_exposure, confidence * 0.4)
-    st.markdown(f'''
-    <div class="metric-card">
-        <div style="color: #e2e8f0; font-size: 12px; font-weight: 600; margin-bottom: 6px;">EXPOSURE</div>
-        <div style="color: #059669; font-size: 16px; font-weight: bold; margin: 4px 0;">{exposure_pct:.1f}%</div>
-        <div style="color: #64748b; font-size: 10px; margin: 2px 0;">Signal Based</div>
-    </div>
-    ''', unsafe_allow_html=True)
-
-with risk_col3:
-    # VaR calculation (simplified)
-    var_95 = volatility * 1.65 / np.sqrt(252) * 100  # 95% VaR for 1 day
-    st.markdown(f'''
-    <div class="metric-card">
-        <div style="color: #e2e8f0; font-size: 12px; font-weight: 600; margin-bottom: 6px;">DAILY VaR (95%)</div>
-        <div style="color: #dc2626; font-size: 16px; font-weight: bold; margin: 4px 0;">{var_95:.2f}%</div>
-        <div style="color: #64748b; font-size: 10px; margin: 2px 0;">Maximum Loss</div>
-    </div>
-    ''', unsafe_allow_html=True)
-
-# Multi-Symbol Scanner
-st.markdown("---")
-st.markdown("### 🔍 Institutional Signal Scanner")
-
-scanner_data = []
-for sym in symbols:
-    try:
-        signal_info = calculate_institutional_signal(sym)
-        data = get_real_market_data(sym)
-        indicators = calculate_advanced_technical_indicators(sym)
-        
-        if data is None or indicators is None:
-            continue
-        
-        signal_type, signal_color, signal_confidence = signal_info
-        
-        scanner_data.append({
-            'Symbol': sym,
-            'Price': f"${data['price']:.2f}",
-            'Change %': f"{data['change_pct']:+.2f}%",
-            'RSI': f"{indicators['rsi']:.1f}",
-            'Signal': signal_type,
-            'Confidence': f"{signal_confidence:.0f}%",
-            'Volatility': f"{indicators['volatility']:.1f}%"
-        })
-    except:
-        continue
-
-if scanner_data:
-    scanner_df = pd.DataFrame(scanner_data)
-    st.dataframe(scanner_df, use_container_width=True)
-
-# Final Signal Display
-st.markdown("---")
-signal_col1, signal_col2 = st.columns([5, 1])
-
-with signal_col1:
-    pass  # Empty space
-
-with signal_col2:
-    final_signal, final_color, final_confidence = calculate_institutional_signal(selected_symbol)
-    st.markdown(f'''
-    <div style="margin-top: 20px; text-align: center;">
-        <div class="signal-button" style="background: {final_color};">
-            {final_signal}
-        </div>
-        <div style="margin-top: 10px; color: #64748b; font-size: 14px;">
-            Confidence: {final_confidence:.0f}%
-        </div>
-        <div style="margin-top: 5px; color: #64748b; font-size: 12px;">
-            Institutional Grade
-        </div>
-    </div>
-    ''', unsafe_allow_html=True)
-
-# Footer
-st.markdown("---")
-st.markdown("**✅ INSTITUTIONAL-GRADE SIGNALS - Advanced Multi-Factor Analysis**")
-st.caption(f"Last updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | Enhanced Technical Analysis Engine")
-
-# Auto-refresh
-if st.sidebar.button("🔄 Refresh Analysis"):
-    st.cache_data.clear()
-    st.rerun()
+st.markdown("*Real-time institutional-grade options analytics • Updated every 30 seconds*")
