@@ -386,16 +386,16 @@ for i, (symbol, data) in enumerate(symbols_data.items()):
         except (ValueError, TypeError):
             price_change_pct = 0.0
         
-        # SIMPLE: Calls = GREEN, Puts = RED
+        # PROFESSIONAL COLORS: Calls = GREEN, Puts = RED
         if price_change_pct > 0:  # ANY gain = CALL = GREEN
             signal = "CALL"
-            color = "#00ff00"  # Bright green
+            color = "#059669"  # Professional green
         elif price_change_pct < 0:  # ANY loss = PUT = RED  
             signal = "PUT"
-            color = "#ff0000"  # Bright red
+            color = "#dc2626"  # Professional red
         else:
             signal = "HOLD"
-            color = "#808080"  # Gray
+            color = "#6b7280"  # Professional gray
         
         border = "2px solid #f59e0b" if symbol == st.session_state.get('selected_symbol', 'SPY') else "1px solid rgba(255,255,255,0.1)"
         
