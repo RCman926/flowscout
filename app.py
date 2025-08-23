@@ -173,8 +173,8 @@ with st.sidebar:
         except:
             # Live fallback with realistic extended hours simulation
             import random
-            fallback_prices = {"SPY": 445.67, "QQQ": 389.12, "TSLA": 248.73}
-            fallback_changes = {"SPY": 2.34, "QQQ": 1.89, "TSLA": -3.21}
+            fallback_prices = {"SPY": 635.55, "QQQ": 571.82, "TSLA": 320.11}
+            fallback_changes = {"SPY": -2.55, "QQQ": 3.78, "TSLA": -4.90}
             
             # Simulate market status based on time
             from datetime import datetime
@@ -575,7 +575,8 @@ with vol_col3:
 tab1, tab2, tab3, tab4, tab5 = st.tabs(["Options Flow", "Options Chain", "Greeks Analysis", "Flow Heatmap", "AI Predictions"])
 
 with tab1:
-    st.subheader("Real-Time Options Flow")
+    st.markdown('### 🔥 Live Options Flow')
+    st.markdown('*Institutional-level options activity tracking*')
     
     # Options flow data
     try:
@@ -592,7 +593,12 @@ with tab1:
             
             # Display unusual activity alerts
             if not unusual_flows.empty:
-                st.warning(f"🚨 {len(unusual_flows)} Unusual Options Activities Detected!")
+                st.markdown(f'''
+            <div style="background: linear-gradient(90deg, #ef4444, #dc2626); padding: 15px; border-radius: 8px; color: white; margin: 10px 0;">
+                <h4 style="margin: 0; color: white;">🚨 {len(unusual_flows)} UNUSUAL ACTIVITIES DETECTED</h4>
+                <p style="margin: 5px 0 0 0; font-size: 12px; opacity: 0.9;">High-volume institutional trades identified</p>
+            </div>
+            ''', unsafe_allow_html=True)
                 
                 for _, row in unusual_flows.head(5).iterrows():
                     with st.container():
