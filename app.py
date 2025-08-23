@@ -62,7 +62,7 @@ def get_real_market_data(symbol):
         prev_close = hist['Close'][-2] if len(hist) > 1 else current_price
         change = current_price - prev_close
         change_pct = (change / prev_close) * 100
-        volume = int(hist['Volume'][-1]) if not pd.isna(hist['Volume'][-1]) else 0
+        volume = int(hist['Volume'].iloc[-1]) if not pd.isna(hist['Volume'].iloc[-1]) else 0
         
         return {
             'symbol': symbol,
@@ -84,7 +84,10 @@ def get_institutional_flow_data(symbol):
         if not exp_dates:
             return None
             
-        current_price = get_real_market_data(symbol)['price']
+        market_data = get_real_market_data(symbol)
+        if not market_data:
+            return None
+        current_price = market_data['price']
         
         # Analyze multiple expiries for flow patterns
         flow_analysis = []
@@ -414,7 +417,7 @@ with flow_col2:
 # === INSTITUTIONAL TRADING OPPORTUNITIES ===
 st.markdown("### 🎯 INSTITUTIONAL TRADING OPPORTUNITIES")
 
-if flow_data['analysis']:
+if flow_data and flow_data['analysis']:
     best_flow = max(flow_data['analysis'], key=lambda x: x['call_premium'] + x['put_premium'])
     exp_short = datetime.strptime(best_flow['exp_date'], '%Y-%m-%d').strftime('%m/%d')
     
