@@ -935,6 +935,129 @@ if call_data is None:
 
 selected_exp_date = "Live Data"
 
+# === OPTION EXPIRY DATES ===
+st.markdown("---")
+st.markdown("**📅 Option Expiry Dates**")
+
+try:
+    ticker = yf.Ticker(selected_symbol)
+    exp_dates = ticker.options
+    if exp_dates:
+        exp_col1, exp_col2, exp_col3 = st.columns(3)
+        
+        with exp_col1:
+            # Show next 3 expiry dates
+            for i, exp_date in enumerate(exp_dates[:3]):
+                exp_datetime = datetime.strptime(exp_date, '%Y-%m-%d')
+                days_left = (exp_datetime - datetime.now()).days
+                
+                if days_left == 0:
+                    st.metric(f"🔥 {exp_date}", "0DTE", "TODAY!")
+                elif days_left == 1:
+                    st.metric(f"⚡ {exp_date}", "1DTE", "TOMORROW")
+                else:
+                    st.metric(f"📅 {exp_date}", f"{days_left}DTE", f"{days_left} days")
+        
+        with exp_col2:
+            # Weekly vs Monthly
+            weekly_count = len([d for d in exp_dates if (datetime.strptime(d, '%Y-%m-%d') - datetime.now()).days <= 7])
+            monthly_count = len(exp_dates) - weekly_count
+            st.metric("Weekly Options", f"{weekly_count}", "Available")
+            st.metric("Monthly Options", f"{monthly_count}", "Available")
+        
+        with exp_col3:
+            # Expiry summary
+            total_exp = len(exp_dates)
+            nearest_exp = exp_dates[0] if exp_dates else "None"
+            st.metric("Total Expiries", f"{total_exp}", "Available")
+            st.metric("Nearest Expiry", nearest_exp, "Date")
+    else:
+        st.warning("No option expiry dates available for this symbol")
+except:
+    st.warning("Unable to fetch expiry dates")
+
+# === KEY OPTION BUYING CHART ===
+st.markdown("---")
+st.markdown("**🎯 Key Option Buying Chart**")
+
+if call_data and put_data:
+    current_price = market_data['price']
+    
+    # Create buying opportunities with profit targets
+    buying_col1, buying_col2 = st.columns(2)
+    
+    with buying_col1:
+        st.markdown("**🟢 CALL OPTIONS TO BUY**")
+        
+        # Find good call strikes with profit targets
+        call_strikes = []
+        for call in call_data[:5]:  # Top 5 strikes
+            strike_price = float(call['Strike'].replace('$', ''))
+            option_price = float(call['Last'].replace('$', ''))
+            distance = abs(strike_price - current_price) / current_price
+            
+            # Calculate profit targets
+            low_profit = option_price * 1.25   # 25% profit
+            med_profit = option_price * 1.50   # 50% profit  
+            high_profit = option_price * 2.00  # 100% profit
+            
+            call_strikes.append({
+                'Strike': f"${strike_price:.0f}",
+                'Buy Price': f"${option_price:.2f}",
+                'Low Target': f"${low_profit:.2f}",
+                'Med Target': f"${med_profit:.2f}", 
+                'High Target': f"${high_profit:.2f}",
+                'Distance': f"{distance*100:.1f}%"
+            })
+        
+        # Display as clean table
+        if call_strikes:
+            df_calls = pd.DataFrame(call_strikes)
+            st.dataframe(df_calls, use_container_width=True, hide_index=True)
+    
+    with buying_col2:
+        st.markdown("**🔴 PUT OPTIONS TO BUY**")
+        
+        # Find good put strikes with profit targets
+        put_strikes = []
+        for put in put_data[:5]:  # Top 5 strikes
+            strike_price = float(put['Strike'].replace('$', ''))
+            option_price = float(put['Last'].replace('$', ''))
+            distance = abs(strike_price - current_price) / current_price
+            
+            # Calculate profit targets
+            low_profit = option_price * 1.25   # 25% profit
+            med_profit = option_price * 1.50   # 50% profit
+            high_profit = option_price * 2.00  # 100% profit
+            
+            put_strikes.append({
+                'Strike': f"${strike_price:.0f}",
+                'Buy Price': f"${option_price:.2f}",
+                'Low Target': f"${low_profit:.2f}",
+                'Med Target': f"${med_profit:.2f}",
+                'High Target': f"${high_profit:.2f}",
+                'Distance': f"{distance*100:.1f}%"
+            })
+        
+        # Display as clean table
+        if put_strikes:
+            df_puts = pd.DataFrame(put_strikes)
+            st.dataframe(df_puts, use_container_width=True, hide_index=True)
+    
+    # Profit targets summary
+    st.markdown("---")
+    profit_col1, profit_col2, profit_col3 = st.columns(3)
+    
+    with profit_col1:
+        st.metric("🟢 Low Profit", "25%", "Conservative")
+    with profit_col2:
+        st.metric("🟡 Medium Profit", "50%", "Balanced")  
+    with profit_col3:
+        st.metric("🔴 High Profit", "100%", "Aggressive")
+
+else:
+    st.warning("No options data available for buying chart")
+
 # REMOVED ALL FAKE DATA FUNCTIONS
 
 def analyze_0dte_flow_direction(calls_data, puts_data, dte):
@@ -1018,7 +1141,7 @@ if call_data and put_data:
         time_left = market_close - now
         hours_left = max(0, time_left.total_seconds() / 3600) if time_left.total_seconds() > 0 else 0
         
-        dte_text = f"{days_to_exp}DTE" if days_to_exp > 0 else "0DTE 🔥"
+        dte_text = f"{days_to_exp}DTE" if days_to_exp is not None and days_to_exp > 0 else "0DTE 🔥"
         
         if hours_left < 1:
             outlook = "🔥 FINAL HOUR"
@@ -1056,7 +1179,7 @@ if call_data and put_data:
 
 
 # === 0DTE QUICK RISK CHECK ===
-if days_to_exp == 0:
+if days_to_exp is not None and days_to_exp == 0:
     st.markdown("---")
     st.markdown("**🔥 0DTE Risk Check**")
     
@@ -1327,7 +1450,7 @@ if 'call_data' in locals() and 'put_data' in locals():
         # Find ATM option for summary
         atm_idx = len(call_data) // 2
         atm_call = call_data[atm_idx] if atm_idx < len(call_data) else call_data[0]
-        atm_put = put_data[atm_idx] if atm_idx < len(put_data) else put_data[0]
+        atm_put = put_data[atm_idx] if put_data and atm_idx < len(put_data) else put_data[0] if put_data else {}
         
         with greeks_col1:
             st.metric("ATM Call Delta", atm_call.get('Delta', '0.50'), 
@@ -1344,7 +1467,7 @@ if 'call_data' in locals() and 'put_data' in locals():
 
 
     # 0DTE-specific enhancements you requested
-    if 'days_to_exp' in locals() and days_to_exp == 0:
+    if days_to_exp is not None and days_to_exp == 0:
         dte_col1, dte_col2, dte_col3 = st.columns(3)
         
         with dte_col1:
@@ -1352,8 +1475,8 @@ if 'call_data' in locals() and 'put_data' in locals():
             st.metric("0DTE Flow", flow_direction, f"{momentum:.0f}% momentum")
         
         with dte_col2:
-            total_premium = sum([float(call.get('Last', '0').replace('$', '')) * int(call.get('Vol', '0').replace(',', '')) for call in call_data]) + \
-                           sum([float(put.get('Last', '0').replace('$', '')) * int(put.get('Vol', '0').replace(',', '')) for put in put_data])
+            total_premium = sum([float(call.get('Last', '0').replace('$', '')) * int(call.get('Vol', '0').replace(',', '')) for call in call_data or []]) + \
+                           sum([float(put.get('Last', '0').replace('$', '')) * int(put.get('Vol', '0').replace(',', '')) for put in put_data or []])
             st.metric("Premium Flow", f"${total_premium:,.0f}", "0DTE")
         
         with dte_col3:
@@ -1414,7 +1537,7 @@ st.session_state['alert_settings'] = alert_settings
 
 # === REAL-TIME ALERT MONITORING ===
 # Run alerts for current data if we have options data
-if 'call_data' in locals() and 'put_data' in locals() and alert_settings:
+if call_data and put_data and alert_settings:
     current_price = market_data['price']
     
     # Check unusual options activity
@@ -1441,7 +1564,7 @@ if 'call_data' in locals() and 'put_data' in locals() and alert_settings:
     )
     
     # Check 0DTE alerts if applicable
-    if days_to_exp == 0:
+    if days_to_exp is not None and days_to_exp == 0:
         from datetime import datetime
         now = datetime.now()
         market_close = now.replace(hour=16, minute=0, second=0, microsecond=0)
