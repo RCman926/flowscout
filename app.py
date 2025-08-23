@@ -373,7 +373,7 @@ for i, symbol in enumerate(symbols):
         if st.button(
             " ", 
             key=f"btn_{symbol}",
-            help=f"{signal} - {confidence:.0f}% confidence"
+            help=f"{symbol} - Click to analyze"
         ):
             st.session_state.selected_symbol = symbol
             st.rerun()
