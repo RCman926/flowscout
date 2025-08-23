@@ -190,10 +190,10 @@ symbols_data = {}
 for symbol in symbols:
         # Fast price simulation for instant loading
     base_prices = {
-        "SPY": 445.20, "QQQ": 378.45, "TSLA": 245.80, "AAPL": 195.89, "MSFT": 428.90,
-        "NVDA": 875.30, "AMZN": 145.20, "GOOGL": 142.85, "META": 485.60, "AMD": 142.75,
-        "NFLX": 485.30, "UBER": 62.15, "COIN": 85.45, "PLTR": 25.80, "SOFI": 8.45,
-        "HOOD": 14.25, "RBLX": 45.20, "SNAP": 11.85
+        "SPY": 645.31, "QQQ": 498.75, "TSLA": 268.50, "AAPL": 224.80, "MSFT": 441.85,
+        "NVDA": 138.25, "AMZN": 186.40, "GOOGL": 178.95, "META": 582.30, "AMD": 122.40,
+        "NFLX": 758.80, "UBER": 72.45, "COIN": 248.65, "PLTR": 67.20, "SOFI": 15.85,
+        "HOOD": 35.80, "RBLX": 52.15, "SNAP": 10.25
     }
     
     base_price = base_prices.get(symbol, 100.0)
