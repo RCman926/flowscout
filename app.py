@@ -19,33 +19,140 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS for professional styling
+# Professional Styling - Clean & Modern
 st.markdown("""
 <style>
-.metric-card {
-    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-    border: 1px solid #334155;
-    padding: 12px;
-    border-radius: 8px;
-    margin: 5px 0;
-}
-.signal-button {
-    padding: 15px 25px;
-    border-radius: 8px;
-    border: none;
-    font-weight: bold;
-    font-size: 18px;
-    color: white;
-    text-align: center;
-    display: block;
-    width: 100%;
-}
+    /* Main layout improvements */
+    .main > div {
+        padding-top: 2rem;
+        background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+    }
+    
+    /* Beautiful headers */
+    .main-title {
+        background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+        padding: 3rem 2rem;
+        margin: -2rem -2rem 3rem -2rem;
+        border-radius: 0 0 30px 30px;
+        color: white;
+        text-align: center;
+        box-shadow: 0 10px 40px rgba(30, 64, 175, 0.3);
+    }
+    
+    /* Card containers */
+    .card-container {
+        background: white;
+        padding: 2rem;
+        border-radius: 20px;
+        margin: 1.5rem 0;
+        box-shadow: 0 4px 25px rgba(0,0,0,0.08);
+        border: 1px solid #f1f5f9;
+        transition: all 0.3s ease;
+    }
+    
+    .card-container:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 35px rgba(0,0,0,0.12);
+    }
+    
+    /* ODTE special styling */
+    .odte-container {
+        background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+        padding: 2.5rem;
+        border-radius: 25px;
+        margin: 2rem 0;
+        color: white;
+        box-shadow: 0 8px 35px rgba(220, 38, 38, 0.4);
+    }
+    
+    /* Technical dashboard */
+    .tech-container {
+        background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+        padding: 2.5rem;
+        border-radius: 25px;
+        margin: 2rem 0;
+        color: white;
+        box-shadow: 0 10px 40px rgba(15, 23, 42, 0.5);
+    }
+    
+    /* Symbol selector grid */
+    .symbol-grid {
+        background: white;
+        padding: 2rem;
+        border-radius: 20px;
+        margin: 1.5rem 0;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+    }
+    
+    /* Metrics styling */
+    .stMetric {
+        background: white;
+        padding: 1.2rem;
+        border-radius: 12px;
+        margin: 0.5rem 0;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+        border-left: 4px solid #3b82f6;
+        transition: all 0.3s ease;
+    }
+    
+    .stMetric:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+    }
+    
+    /* Clean dividers */
+    .divider {
+        border: none;
+        height: 3px;
+        background: linear-gradient(90deg, transparent, #3b82f6, transparent);
+        margin: 3rem 0;
+        border-radius: 3px;
+    }
+    
+    /* Button improvements */
+    .stButton > button {
+        border-radius: 12px !important;
+        border: none !important;
+        padding: 0.8rem 1.5rem !important;
+        font-weight: 600 !important;
+        transition: all 0.3s ease !important;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1) !important;
+    }
+    
+    .stButton > button:hover {
+        transform: translateY(-1px) !important;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.2) !important;
+    }
+    
+    /* Text improvements */
+    h1, h2, h3 {
+        color: #1e293b !important;
+        font-weight: 700 !important;
+        margin-bottom: 1rem !important;
+    }
+    
+    /* Expander styling */
+    .streamlit-expanderHeader {
+        background: #f8fafc !important;
+        border-radius: 10px !important;
+        border: 1px solid #e2e8f0 !important;
+    }
+    
+    /* Remove default margins */
+    .block-container {
+        padding-top: 2rem !important;
+        padding-bottom: 2rem !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
-# Main header
-st.title("🚀 Institutional Options Trading Platform")
-st.markdown("**Professional-Grade Trading Analytics with REAL Market Data**")
+# Beautiful header
+st.markdown("""
+<div class="main-title">
+    <h1 style="margin: 0; font-size: 3rem; font-weight: 800;">🏛️ Institutional Options Platform</h1>
+    <p style="margin: 1rem 0 0 0; font-size: 1.2rem; opacity: 0.9;">AI-powered trading signals with professional-grade analytics</p>
+</div>
+""", unsafe_allow_html=True)
 
 # Symbol selection - Color coded clickable boxes
 symbols = ['AAPL', 'TSLA', 'NVDA', 'MSFT', 'GOOGL', 'AMZN', 'META', 'NFLX', 'SPY']
@@ -212,7 +319,7 @@ def calculate_advanced_technical_indicators(symbol):
                 tr = np.maximum(high_prices[-14:] - low_prices[-14:], 
                                np.maximum(np.abs(high_prices[-14:] - close_prices[-15:-1]),
                                         np.abs(low_prices[-14:] - close_prices[-15:-1])))
-                adx_strength = min(100, np.mean(plus_dm + minus_dm) / np.mean(tr) * 100) if np.mean(tr) > 0 else 25
+                adx_strength = min(100.0, float(np.mean(plus_dm + minus_dm) / np.mean(tr) * 100)) if np.mean(tr) > 0 else 25.0
             else:
                 adx_strength = 25
         else:
@@ -526,8 +633,13 @@ def calculate_institutional_signal(symbol):
     except Exception as e:
         return "NEUTRAL", "#6b7280", 25  # Low confidence default
 
-# Create compact symbol selector with advanced color coding
-st.markdown("**Select Symbol:** 🟢 **Strong CALL** | 🟢 *Mild CALL* | ⚫ *NEUTRAL* | 🔴 *Mild PUT* | 🔴 **Strong PUT**")
+# Elegant symbol selector
+st.markdown("""
+<div class="symbol-grid">
+    <h3 style="margin-bottom: 1.5rem; color: #1e293b;">📊 Select Symbol for Analysis</h3>
+    <p style="color: #64748b; margin-bottom: 1rem;">🟢 <strong>CALL Signals</strong> | ⚫ <em>NEUTRAL</em> | 🔴 <strong>PUT Signals</strong></p>
+</div>
+""", unsafe_allow_html=True)
 symbol_cols = st.columns(9)
 selected_symbol = 'AAPL'  # Default
 
@@ -648,8 +760,12 @@ with col4:
     st.metric("Market Status", market_data['market_state'])
 
 # === INSTITUTIONAL TRADING RECOMMENDATIONS ===
-st.markdown("---")
-st.markdown("### 🎯 **Institutional Trading Recommendations**")
+st.markdown('<hr class="divider">', unsafe_allow_html=True)
+st.markdown("""
+<div class="card-container">
+    <h2 style="margin-bottom: 1.5rem; color: #1e293b;">🎯 Institutional Trading Recommendations</h2>
+</div>
+""", unsafe_allow_html=True)
 
 # Get detailed options recommendations
 signal, signal_color, confidence = calculate_institutional_signal(selected_symbol)
@@ -659,8 +775,12 @@ if signal in ["CALL", "PUT", "NEUTRAL"]:
     st.markdown(f"**🚀 {signal} Signal - {confidence:.0f}% Confidence**")
     
     # === ODTE (0 Days to Expiration) Section ===
-    st.markdown("---")
-    st.markdown("### ⚡ **0DTE SAME-DAY EXPIRATION PLAYS**")
+    st.markdown("""
+    <div class="odte-container">
+        <h2 style="margin-bottom: 1.5rem; color: white;">⚡ 0DTE SAME-DAY EXPIRATION PLAYS</h2>
+        <p style="opacity: 0.9; margin-bottom: 2rem;">High-risk, high-reward same-day options strategies</p>
+    </div>
+    """, unsafe_allow_html=True)
     
     if signal == "CALL":
         # ODTE CALL plays - very tight strikes
@@ -747,8 +867,13 @@ if signal in ["CALL", "PUT", "NEUTRAL"]:
     - **Cut Losses Fast**: Don't hold losing ODTE past stop loss
     """)
     
-    st.markdown("---")
-    st.markdown("### 📅 **STANDARD EXPIRATION PLAYS**")
+    st.markdown('<hr class="divider">', unsafe_allow_html=True)
+    st.markdown("""
+    <div class="card-container">
+        <h3 style="margin-bottom: 1.5rem; color: #1e293b;">📅 Standard Expiration Strategies</h3>
+        <p style="color: #64748b; margin-bottom: 1.5rem;">Conservative to moderate risk options plays</p>
+    </div>
+    """, unsafe_allow_html=True)
     
     if signal == "CALL":
         # CALL recommendations
@@ -830,8 +955,12 @@ elif signal == "NEUTRAL":
     st.markdown(f"⚫ **NEUTRAL SIGNAL - {confidence:.0f}% Confidence**")
     
     # === ODTE Neutral Strategy ===
-    st.markdown("---")
-    st.markdown("### ⚡ **0DTE NEUTRAL STRATEGIES**")
+    st.markdown("""
+    <div class="odte-container">
+        <h3 style="margin-bottom: 1.5rem; color: white;">⚡ 0DTE NEUTRAL STRATEGIES</h3>
+        <p style="opacity: 0.9; margin-bottom: 1.5rem;">Range-bound and volatility plays for same-day expiration</p>
+    </div>
+    """, unsafe_allow_html=True)
     
     col1, col2, col3 = st.columns(3)
     
@@ -865,8 +994,13 @@ elif signal == "NEUTRAL":
         - **Time**: Monitor closely
         """)
     
-    st.markdown("---")
-    st.markdown("### 📊 **NEUTRAL MARKET ANALYSIS**")
+    st.markdown('<hr class="divider">', unsafe_allow_html=True)
+    st.markdown("""
+    <div class="card-container">
+        <h3 style="margin-bottom: 1.5rem; color: #1e293b;">📊 Neutral Market Analysis</h3>
+        <p style="color: #64748b; margin-bottom: 1.5rem;">Professional guidance for uncertain market conditions</p>
+    </div>
+    """, unsafe_allow_html=True)
     st.markdown("**📊 INSTITUTIONAL ANALYSIS RECOMMENDATIONS**")
     
     col1, col2, col3 = st.columns(3)
@@ -904,7 +1038,12 @@ else:
 
 # Portfolio Performance Section
 st.markdown("---")
-st.markdown("### 📊 **Real-Time Technical Dashboard**")
+st.markdown("""
+<div class="tech-container">
+    <h2 style="margin-bottom: 2rem; color: white;">📊 Real-Time Technical Dashboard</h2>
+    <p style="opacity: 0.9; margin-bottom: 2rem;">Live technical indicators and market analysis</p>
+</div>
+""", unsafe_allow_html=True)
 
 # Display comprehensive technical analysis
 col1, col2, col3, col4 = st.columns(4)
@@ -930,8 +1069,13 @@ with col4:
     st.metric("CCI", f"{tech_indicators['cci']:.1f}")
     st.metric("ADX Strength", f"{tech_indicators['adx_strength']:.1f}")
 
-st.markdown("---")
-st.markdown("### 💼 Portfolio Performance")
+st.markdown('<hr class="divider">', unsafe_allow_html=True)
+st.markdown("""
+<div class="card-container">
+    <h2 style="margin-bottom: 2rem; color: #1e293b;">💼 Portfolio Performance Analytics</h2>
+    <p style="color: #64748b; margin-bottom: 1.5rem;">Track your trading performance and risk metrics</p>
+</div>
+""", unsafe_allow_html=True)
 
 portfolio_col1, portfolio_col2, portfolio_col3, portfolio_col4 = st.columns(4)
 
