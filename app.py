@@ -232,8 +232,8 @@ def calculate_institutional_signal(symbol):
         elif signal_score <= 40 and confidence >= 50:
             return "SELL", "#ef4444", confidence  # RED
         else:
-            # Low confidence signals become NEUTRAL
-            return "NEUTRAL", "#6b7280", min(confidence, 45)
+            # ALL low confidence or weak signals become NEUTRAL (GRAY/BLUE)
+            return "NEUTRAL", "#64748b", min(confidence, 45)  # NEUTRAL GRAY
             
     except Exception as e:
         return "NEUTRAL", "#6b7280", 25
@@ -307,7 +307,7 @@ for row_start in range(0, len(symbols), 8):
             is_selected = symbol == selected_symbol
             
             # Color-coded signal boxes
-            signal_short = signal.replace("STRONG ", "").replace("BUY", "📈").replace("SELL", "📉").replace("NEUTRAL", "⚪")
+            signal_short = signal.replace("STRONG ", "").replace("BUY", "📈").replace("SELL", "📉").replace("NEUTRAL", "➖")
             border_style = "3px solid #fbbf24" if is_selected else "2px solid transparent"
             
             # Create color-coded clickable box
