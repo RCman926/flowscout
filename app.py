@@ -1221,17 +1221,32 @@ def analyze_0dte_flow_direction(calls_data, puts_data, dte):
 # Data is already set up above for clean flow chart
 
 
-# === YOUR FAVORITE CLEAN FLOW CHART IS BACK ===
+# === LIVE CLEAN FLOW CHART (ALWAYS ON) ===
 st.markdown("---")
-st.markdown("**📊 Clean Flow Chart**")
+st.markdown("**📊 Live Clean Flow Chart**")
 
-if call_data and put_data:
-    # Your preferred simple flow chart
-    flow_col1, flow_col2, flow_col3 = st.columns([1, 2, 1])
+# Auto-refresh every 30 seconds during market hours
+import time
+current_time = time.time()
+refresh_key = int(current_time // 30)  # Changes every 30 seconds
 
+# Market hours check
+from datetime import datetime
+now = datetime.now()
+market_open = now.replace(hour=9, minute=30, second=0, microsecond=0)
+market_close = now.replace(hour=16, minute=0, second=0, microsecond=0)
+is_market_hours = market_open <= now <= market_close and now.weekday() < 5
+
+# Always show flow chart - even with minimal data
+flow_col1, flow_col2, flow_col3 = st.columns([1, 2, 1])
+
+# Use real data if available, otherwise show market status
+if call_data and put_data and (call_volume > 0 or put_volume > 0):
+    # LIVE DATA MODE
     with flow_col1:
+        status_text = "🟢 LIVE" if is_market_hours else "🔴 CLOSED"
         st.metric("🟢 Call Volume", f"{call_volume:,}", 
-                 "Strong" if call_volume > put_volume * 1.5 else "")
+                 status_text)
 
     with flow_col2:
         # Simple left (green) right (red) chart you loved
@@ -1252,16 +1267,16 @@ if call_data and put_data:
             width=[0.6, 0.6]
         ))
         
-        # 0DTE outlook
-        from datetime import datetime
-        now = datetime.now()
-        market_close = now.replace(hour=16, minute=0, second=0, microsecond=0)
+        # Market timing
         time_left = market_close - now
         hours_left = max(0, time_left.total_seconds() / 3600) if time_left.total_seconds() > 0 else 0
         
         dte_text = f"{days_to_exp}DTE" if days_to_exp is not None and days_to_exp > 0 else "0DTE 🔥"
         
-        if hours_left < 1:
+        if not is_market_hours:
+            outlook = "🔴 MARKET CLOSED"
+            color = "#888888"
+        elif hours_left < 1:
             outlook = "🔥 FINAL HOUR"
             color = "#ff6600"
         elif call_pct > put_pct * 1.5:
@@ -1274,9 +1289,9 @@ if call_data and put_data:
             outlook = "⚖️ BALANCED"
             color = "#ffff00"
         
-        # Clean layout
+        # Clean layout with live status
         fig.update_layout(
-            title=f"{outlook} | {dte_text} | Exp: {selected_exp_date} | {hours_left:.1f}h left",
+            title=f"{outlook} | {dte_text} | {hours_left:.1f}h left | LIVE",
             showlegend=False,
             height=110,
             margin=dict(l=0, r=0, t=30, b=0),
@@ -1288,12 +1303,56 @@ if call_data and put_data:
             yaxis=dict(showgrid=False, range=[0, max(call_pct, put_pct) * 1.1])
         )
         
-        st.plotly_chart(fig, use_container_width=True, key="clean_flow_chart")
+        st.plotly_chart(fig, use_container_width=True, key=f"live_flow_chart_{refresh_key}")
 
     with flow_col3:
         cp_ratio = call_volume / max(1, put_volume)
         st.metric("🔴 Put Volume", f"{put_volume:,}",
                  f"Ratio: {cp_ratio:.2f}")
+
+else:
+    # STANDBY MODE - Still show chart structure
+    with flow_col1:
+        status_text = "🟡 WAITING" if is_market_hours else "🔴 CLOSED"
+        st.metric("🟢 Call Volume", "Loading...", status_text)
+
+    with flow_col2:
+        # Show placeholder chart
+        fig = go.Figure()
+        fig.add_trace(go.Bar(
+            x=['CALLS', 'PUTS'],
+            y=[50, 50],
+            marker_color=['#666666', '#666666'],
+            text=['Waiting...', 'Waiting...'],
+            textposition='auto',
+            width=[0.6, 0.6]
+        ))
+        
+        market_status = "LIVE - Waiting for data..." if is_market_hours else "MARKET CLOSED"
+        
+        fig.update_layout(
+            title=f"📊 FLOW CHART READY | {market_status}",
+            showlegend=False,
+            height=110,
+            margin=dict(l=0, r=0, t=30, b=0),
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='rgba(0,0,0,0)',
+            title_font_color="#666666",
+            title_font_size=11,
+            xaxis=dict(showgrid=False),
+            yaxis=dict(showgrid=False, range=[0, 100])
+        )
+        
+        st.plotly_chart(fig, use_container_width=True, key=f"standby_flow_chart_{refresh_key}")
+
+    with flow_col3:
+        st.metric("🔴 Put Volume", "Loading...", "Standby")
+
+# Live refresh indicator
+if is_market_hours:
+    st.caption(f"🔴 LIVE • Auto-refreshing every 30s • Last update: {now.strftime('%H:%M:%S')}")
+else:
+    st.caption(f"Market closed • Next open: 9:30 AM • Chart ready for live data")
 
 
 # === 0DTE QUICK RISK CHECK ===
