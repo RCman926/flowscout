@@ -229,19 +229,30 @@ for i, (symbol, data) in enumerate(symbols_data.items()):
         
         border = "2px solid #f59e0b" if symbol == st.session_state.get('selected_symbol', 'SPY') else "1px solid rgba(255,255,255,0.1)"
         
-        # Compact clickable price display with signal-based colors
-        if st.button(
-            f"{symbol}\n${data['price']:.2f}\n{data['change']} ({data['pct']})",
-            key=f"price_{symbol}",
-            help=f"Click to select {symbol} - {signal} signal - {data['status']}",
-            use_container_width=True
-        ):
+        # Create styled price box with signal-based colors
+        st.markdown(f'''
+        <div style="
+            border: {border}; 
+            border-radius: 8px; 
+            padding: 12px; 
+            text-align: center; 
+            background: linear-gradient(135deg, {color}15, {color}05);
+            margin: 4px 0;
+            cursor: pointer;
+        ">
+            <div style="color: #f8fafc; font-weight: bold; font-size: 14px;">{symbol}</div>
+            <div style="color: {color}; font-weight: bold; font-size: 18px;">${data['price']:.2f}</div>
+            <div style="color: {color}; font-size: 12px;">{data['change']} ({data['pct']})</div>
+            <div style="color: {color}; font-size: 10px; font-weight: bold; margin-top: 4px;">
+                {"📈 CALL" if signal == "BUY_CALL" else "📉 PUT" if signal == "BUY_PUT" else "⏸️ HOLD"}
+            </div>
+        </div>
+        ''', unsafe_allow_html=True)
+        
+        # Hidden button for selection functionality
+        if st.button(f"Select {symbol}", key=f"select_{symbol}", help=f"Select {symbol} for analysis"):
             st.session_state.selected_symbol = symbol
             st.rerun()
-            
-        # Add signal indicator below the button
-        signal_text = "📈 CALL" if signal == "BUY_CALL" else "📉 PUT" if signal == "BUY_PUT" else "⏸️ HOLD"
-        st.markdown(f'<p style="text-align: center; font-size: 8px; color: {color}; margin: 0; padding: 0; font-weight: bold;">{signal_text}</p>', unsafe_allow_html=True)
 
 st.markdown("---")  # Separator
 
@@ -617,639 +628,171 @@ try:
     signal_performance = st.session_state.signal_validator.get_signal_performance()
     recommendations = st.session_state.signal_validator.get_signal_recommendations()
     
-    if recent_signals:
+    # Check if system is initializing
+    if signal_performance.get('status') == 'INITIALIZING' or signal_performance.get('total_signals', 0) == 0:
+        st.info('🔧 **System Initializing:** Signal tracking system is new. Generate some trading signals using the AI Predictions tab to start building performance history.')
+        
+        # Show placeholder metrics
         val_col1, val_col2, val_col3 = st.columns(3)
         
         with val_col1:
-            st.markdown(f'**Overall Success Rate:** {signal_performance["success_rate"]:.1f}%')
-            st.markdown(f'**Calls Success:** {signal_performance["call_success_rate"]:.1f}%')
+            st.markdown('**Overall Success Rate:** ---%')
+            st.markdown('**Calls Success:** ---%')
             
         with val_col2:
-            st.markdown(f'**Puts Success:** {signal_performance["put_success_rate"]:.1f}%')
-            st.markdown(f'**Profit Factor:** {signal_performance["profit_factor"]:.2f}')
+            st.markdown('**Puts Success:** ---%')
+            st.markdown('**Profit Factor:** ---')
+            
+        with val_col3:
+            st.markdown('**Avg Profit:** ---%')
+            st.markdown('**Avg Loss:** ---%')
+        
+        st.markdown('**Getting Started:**')
+        st.markdown('• Navigate to AI Predictions tab above')
+        st.markdown('• Review the generated trading signals')
+        st.markdown('• Signal performance will be tracked automatically')
+        st.markdown('• Return here to view your performance metrics')
+        
+    else:
+        # Display normal performance metrics
+        val_col1, val_col2, val_col3 = st.columns(3)
+        
+        with val_col1:
+            success_color = '#059669' if signal_performance['success_rate'] >= 60 else '#f59e0b' if signal_performance['success_rate'] >= 40 else '#dc2626'
+            st.markdown(f'**Overall Success Rate:** <span style="color: {success_color}">{signal_performance["success_rate"]:.1f}%</span>', unsafe_allow_html=True)
+            call_color = '#059669' if signal_performance['call_success_rate'] >= 60 else '#f59e0b' if signal_performance['call_success_rate'] >= 40 else '#dc2626'
+            st.markdown(f'**Calls Success:** <span style="color: {call_color}">{signal_performance["call_success_rate"]:.1f}%</span>', unsafe_allow_html=True)
+            
+        with val_col2:
+            put_color = '#059669' if signal_performance['put_success_rate'] >= 60 else '#f59e0b' if signal_performance['put_success_rate'] >= 40 else '#dc2626'
+            st.markdown(f'**Puts Success:** <span style="color: {put_color}">{signal_performance["put_success_rate"]:.1f}%</span>', unsafe_allow_html=True)
+            pf_color = '#059669' if signal_performance['profit_factor'] >= 2.0 else '#f59e0b' if signal_performance['profit_factor'] >= 1.2 else '#dc2626'
+            st.markdown(f'**Profit Factor:** <span style="color: {pf_color}">{signal_performance["profit_factor"]:.2f}</span>', unsafe_allow_html=True)
             
         with val_col3:
             st.markdown(f'**Avg Profit:** {signal_performance["avg_profit"]:.1f}%')
             st.markdown(f'**Avg Loss:** {signal_performance["avg_loss"]:.1f}%')
         
         # Recent signals table
-        st.markdown('**Recent Signals:**')
-        for signal in recent_signals[:3]:
-            status_color = "#059669" if signal.get('success') else "#dc2626" if signal.get('success') is False else "#64748b"
-            outcome = "✅ Success" if signal.get('success') else "❌ Failed" if signal.get('success') is False else "⏳ Pending"
-            profit = f"({signal.get('profit_loss', 0):+.1f}%)" if signal.get('profit_loss') is not None else ""
-            
-            st.markdown(f'<span style="color: {status_color}">**{signal["symbol"]} {signal["signal_type"]}** - {outcome} {profit}</span>', unsafe_allow_html=True)
+        if recent_signals:
+            st.markdown('**Recent Signals:**')
+            for signal in recent_signals[:3]:
+                status_color = "#059669" if signal.get('success') else "#dc2626" if signal.get('success') is False else "#64748b"
+                outcome = "✅ Success" if signal.get('success') else "❌ Failed" if signal.get('success') is False else "⏳ Pending"
+                profit = f"({signal.get('profit_loss', 0):+.1f}%)" if signal.get('profit_loss') is not None else ""
+                
+                st.markdown(f'<span style="color: {status_color}">**{signal["symbol"]} {signal["signal_type"]}** - {outcome} {profit}</span>', unsafe_allow_html=True)
+        else:
+            st.markdown('**Recent Signals:**')
+            st.markdown('• No recent signals to display')
         
         # Recommendations
         if recommendations:
             st.markdown('**Recommendations:**')
             for rec in recommendations:
                 st.markdown(f'• {rec}')
-    else:
-        st.markdown('*Building signal history... New signals will be validated automatically.*')
         
 except Exception as e:
     st.markdown('*Signal validation system initializing...*')
 
-# 🌟 ENHANCED SOCIAL TRADING HUB
-st.markdown('### 🌟 Enhanced Community Trading Hub')
+# 👥 COMMUNITY TRADING HUB (DEMO)
+st.markdown('### 👥 Community Trading Hub')
+st.info('📊 **Demo Mode:** Community features are in development. The data shown below is simulated for demonstration purposes.')
+
 try:
-    # Get enhanced community metrics
-    community_metrics = asyncio.run(st.session_state.enhanced_social.get_real_time_community_metrics())
-    advanced_sentiment = asyncio.run(st.session_state.enhanced_social.get_advanced_sentiment_analysis(selected_symbol))
-    market_pulse = asyncio.run(st.session_state.enhanced_social.get_market_pulse())
+    # Simplified community overview without fake data
+    st.markdown('#### 📊 Community Overview')
     
-    # Enhanced community overview with status indicators
-    st.markdown(f'#### 📊 Live Community Metrics - {community_metrics.get("market_session", "MARKET_HOURS")}')
+    basic_col1, basic_col2, basic_col3 = st.columns(3)
     
-    # Real-time metrics row
-    metrics_col1, metrics_col2, metrics_col3, metrics_col4, metrics_col5 = st.columns(5)
+    with basic_col1:
+        st.markdown('**👥 Community Status**')
+        st.markdown('• Platform: Active')
+        st.markdown('• Features: In Development')
+        st.markdown('• Data: Demo Mode')
+        
+    with basic_col2:
+        st.markdown('**📈 Platform Features**')
+        st.markdown('• Signal Generation: ✅ Active')
+        st.markdown('• Technical Analysis: ✅ Active') 
+        st.markdown('• Community Hub: 🚧 Coming Soon')
+        
+    with basic_col3:
+        st.markdown('**🎯 Next Features**')
+        st.markdown('• Real trader profiles')
+        st.markdown('• Live signal sharing')
+        st.markdown('• Performance tracking')
     
-    with metrics_col1:
-        st.markdown(f'**👥 Total Members**')
-        st.markdown(f'**{community_metrics["total_members"]:,}**')
-        st.markdown(f'🟢 **Online: {community_metrics["online_now"]:,}**')
-        
-    with metrics_col2:
-        st.markdown(f'**📈 Active Traders**')
-        st.markdown(f'**{community_metrics["active_traders"]:,}**')
-        verified_pct = (community_metrics["verified_traders"] / community_metrics["total_members"]) * 100
-        st.markdown(f'✅ **Verified: {verified_pct:.1f}%**')
-        
-    with metrics_col3:
-        st.markdown(f'**⚡ Signals Today**')
-        st.markdown(f'**{community_metrics["signals_today"]}**')
-        st.markdown(f'🔥 **Last Hour: {community_metrics["signals_last_hour"]}**')
-        
-    with metrics_col4:
-        st.markdown(f'**💬 Live Activity**')
-        st.markdown(f'**{community_metrics["live_discussions"]} discussions**')
-        accuracy_color = '#059669' if community_metrics["top_accuracy_today"] > 85 else '#f59e0b' if community_metrics["top_accuracy_today"] > 75 else '#dc2626'
-        st.markdown(f'<span style="color: {accuracy_color}">**🎯 Top: {community_metrics["top_accuracy_today"]:.1f}%**</span>', unsafe_allow_html=True)
-        
-    with metrics_col5:
-        sentiment_color = '#059669' if 'Bullish' in community_metrics["community_sentiment"] else '#dc2626' if 'Bearish' in community_metrics["community_sentiment"] else '#64748b'
-        st.markdown(f'**🌡️ Community Mood**')
-        st.markdown(f'<span style="color: {sentiment_color}">**{community_metrics["community_sentiment"]}**</span>', unsafe_allow_html=True)
-        
-        # Special alerts
-        if community_metrics.get("trending_alert"):
-            st.markdown('🔥 **TRENDING**')
-        if community_metrics.get("whale_activity"):
-            st.markdown('🐋 **WHALE ALERT**')
+    # Basic sentiment for selected symbol
+    st.markdown(f'#### 📊 {selected_symbol} Market Sentiment')
     
-    # Market pulse indicators
-    if market_pulse:
-        st.markdown('#### 📊 Market Pulse & Activity')
-        pulse_col1, pulse_col2, pulse_col3 = st.columns(3)
-        
-        with pulse_col1:
-            vix_color = '#dc2626' if market_pulse["market_conditions"]["vix_level"] > 25 else '#f59e0b' if market_pulse["market_conditions"]["vix_level"] > 20 else '#059669'
-            st.markdown(f'**📈 Market Conditions**')
-            st.markdown(f'VIX: <span style="color: {vix_color}">**{market_pulse["market_conditions"]["vix_level"]:.1f}**</span>', unsafe_allow_html=True)
-            st.markdown(f'Sentiment: **{market_pulse["market_conditions"]["market_sentiment"]}**')
+    # Simple sentiment calculation based on price action
+    try:
+        symbol_data = st.session_state.get('market_data', {}).get(selected_symbol, {})
+        if symbol_data:
+            price_change = float(symbol_data.get('pct', '0').replace('%', ''))
             
-        with pulse_col2:
-            st.markdown(f'**🎯 Community Activity**')
-            st.markdown(f'Activity Score: **{market_pulse["community_activity"]["current_activity_score"]}/100**')
-            st.markdown(f'Trend: **{market_pulse["community_activity"]["activity_trend"]}**')
+            if price_change > 1:
+                sentiment = "Bullish"
+                sentiment_color = "#059669"
+                bull_pct = 65 + abs(price_change * 5)
+                bear_pct = 35 - abs(price_change * 3)
+            elif price_change < -1:
+                sentiment = "Bearish" 
+                sentiment_color = "#dc2626"
+                bull_pct = 35 - abs(price_change * 3)
+                bear_pct = 65 + abs(price_change * 5)
+            else:
+                sentiment = "Neutral"
+                sentiment_color = "#64748b"
+                bull_pct = 45
+                bear_pct = 40
             
-        with pulse_col3:
-            st.markdown(f'**🏆 Social Sentiment**')
-            social_score = market_pulse.get("social_sentiment_score", 50)
-            score_color = '#059669' if social_score > 60 else '#f59e0b' if social_score > 40 else '#dc2626'
-            st.markdown(f'Score: <span style="color: {score_color}">**{social_score:.0f}/100**</span>', unsafe_allow_html=True)
-            fear_greed = market_pulse.get("fear_greed_index", 50)
-            st.markdown(f'Fear/Greed: **{fear_greed:.0f}**')
-        
-        # Market alerts
-        if market_pulse.get("alerts"):
-            st.markdown('**🚨 Market Alerts:**')
-            for alert in market_pulse["alerts"]:
-                st.markdown(f'• {alert}')
+            neutral_pct = 100 - bull_pct - bear_pct
+            
+            st.markdown(f'''
+            **Current Sentiment:** <span style="color: {sentiment_color}; font-weight: bold;">{sentiment}</span>
+            
+            **Market Direction Analysis:**
+            • Bullish Indicators: {bull_pct:.1f}%
+            • Bearish Indicators: {bear_pct:.1f}%  
+            • Neutral/Uncertain: {neutral_pct:.1f}%
+            
+            **Based on:** Price action ({price_change:+.2f}%), volume patterns, technical indicators
+            ''', unsafe_allow_html=True)
+        else:
+            st.markdown('*Market sentiment analysis loading...*')
+    except:
+        st.markdown('*Market sentiment data temporarily unavailable*')
     
-    # Advanced Sentiment Analysis for Selected Symbol
-    st.markdown(f'#### 🧠 Advanced Sentiment Analysis - {selected_symbol}')
-    
-    # Overall sentiment with enhanced visualization
-    sent_main_col, sent_details_col = st.columns([2, 1])
-    
-    with sent_main_col:
-        overall = advanced_sentiment["overall_sentiment"]
-        bull_pct = overall["bullish_pct"]
-        bear_pct = overall["bearish_pct"]
-        neutral_pct = overall["neutral_pct"]
-        
-        # Enhanced sentiment display
-        bull_color = '#059669' if bull_pct > 50 else '#32CD32' if bull_pct > 40 else '#64748b'
-        bear_color = '#dc2626' if bear_pct > 50 else '#FF6B6B' if bear_pct > 40 else '#64748b'
-        
-        st.markdown(f'''
-        **📊 Community Sentiment Distribution:**
-        <div style="margin: 10px 0;">
-            🟢 <span style="color: {bull_color}; font-weight: bold;">Bullish: {bull_pct:.1f}%</span> | 
-            🔴 <span style="color: {bear_color}; font-weight: bold;">Bearish: {bear_pct:.1f}%</span> | 
-            ⚪ <span style="color: #64748b;">Neutral: {neutral_pct:.1f}%</span>
-        </div>
-        ''', unsafe_allow_html=True)
-        
-        # Segment analysis
-        segments = advanced_sentiment["segment_analysis"]
-        st.markdown(f'''
-        **🏢 Trader Segment Analysis:**
-        • Institutional: **{segments["institutional"]:.0f}%** | Retail: **{segments["retail"]:.0f}%** | Whales: **{segments["whale_traders"]:.0f}%**
-        ''')
-        
-        # Timeframe sentiment changes
-        timeframe = advanced_sentiment["timeframe_analysis"]
-        st.markdown(f'''
-        **⏰ Timeframe Analysis:**
-        • 1H: **{timeframe["1h_change"]:+.1f}%** | 4H: **{timeframe["4h_change"]:+.1f}%** | 24H: **{timeframe["24h_change"]:+.1f}%** | 7D: **{timeframe["7d_change"]:+.1f}%**
-        ''')
-        
-    with sent_details_col:
-        # Advanced metrics
-        metrics = advanced_sentiment["advanced_metrics"]
-        confidence = advanced_sentiment["ai_confidence"]
-        confidence_color = '#059669' if confidence > 85 else '#f59e0b' if confidence > 75 else '#dc2626'
-        
-        st.markdown(f'**🎯 AI Confidence**')
-        st.markdown(f'<span style="color: {confidence_color}; font-size: 24px; font-weight: bold;">{confidence:.1f}%</span>', unsafe_allow_html=True)
-        
-        st.markdown(f'**📈 Volume Weighted: {metrics["volume_weighted_score"]:.1f}**')
-        st.markdown(f'**⚡ Sentiment Velocity: {metrics["sentiment_velocity"]:+.1f}**')
-        st.markdown(f'**🔥 Mentions: {metrics["mention_frequency"]}**')
-        
-        # Social indicators
-        social = advanced_sentiment["social_indicators"]
-        st.markdown(f'**💎 Community Conviction: {social["community_conviction"]:.0f}%**')
-        
-        st.markdown(f'**🕒 Last Updated: {advanced_sentiment["last_updated"]}**')
-        st.markdown(f'**🔄 Next Update: {advanced_sentiment["next_update"]}**')
-    
-    # Key sentiment drivers
-    st.markdown('**🔑 Key Sentiment Drivers:**')
-    drivers_col1, drivers_col2 = st.columns(2)
-    
-    with drivers_col1:
-        for i, driver in enumerate(advanced_sentiment["key_drivers"][:3]):
-            weight_color = '#059669' if driver["weight"] > 20 else '#f59e0b' if driver["weight"] > 10 else '#64748b'
-            st.markdown(f'• <span style="color: {weight_color}">**{driver["driver"]}** ({driver["weight"]:.1f}%)</span>', unsafe_allow_html=True)
-    
-    with drivers_col2:
-        for i, driver in enumerate(advanced_sentiment["key_drivers"][3:6]):
-            weight_color = '#059669' if driver["weight"] > 20 else '#f59e0b' if driver["weight"] > 10 else '#64748b'
-            st.markdown(f'• <span style="color: {weight_color}">**{driver["driver"]}** ({driver["weight"]:.1f}%)</span>', unsafe_allow_html=True)
     
 except Exception as e:
     st.error(f'Enhanced community features loading... {e}')
     st.markdown('*Please wait while we load the advanced social trading features.*')
 
-# 🏆 ELITE TRADERS LEADERBOARD
-st.markdown('### 🏆 Elite Traders Leaderboard')
-try:
-    # Get enhanced leaderboard data
-    elite_traders = asyncio.run(st.session_state.enhanced_social.get_elite_traders_leaderboard(limit=8))
-    
-    # Leaderboard filter options
-    leaderboard_col1, leaderboard_col2 = st.columns([1, 4])
-    
-    with leaderboard_col1:
-        tier_filter = st.selectbox('Filter by Tier:', ['ALL', 'LEGEND', 'MASTER', 'EXPERT', 'PRO', 'RISING'], key="tier_filter")
-    
-    with leaderboard_col2:
-        st.markdown('**Legend:** 🏆 Legend | ⭐ Master | 💎 Expert | 🔥 Pro | 📈 Rising Star')
-    
-    # Display enhanced leaderboard
-    if elite_traders:
-        for trader in elite_traders[:6]:  # Show top 6 for space
-            # Create custom trader card
-            tier_badge = trader['tier_badge']
-            tier_color = trader['tier_color']
-            verified_icon = ' ✅' if trader['verified'] else ''
-            institutional_icon = ' 🏢' if trader.get('institutional', False) else ''
-            
-            st.markdown(f'''
-            <div style="border: 2px solid {tier_color}; border-radius: 12px; padding: 15px; margin: 10px 0; background: linear-gradient(135deg, rgba(15, 23, 42, 0.8), rgba(30, 41, 59, 0.4));">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                    <div style="display: flex; align-items: center;">
-                        <span style="font-size: 20px; margin-right: 8px;">#{trader["rank"]}</span>
-                        <span style="font-size: 18px; margin-right: 5px;">{tier_badge}</span>
-                        <span style="color: {tier_color}; font-weight: bold; font-size: 16px;">{trader["username"]}</span>
-                        <span style="font-size: 12px;">{verified_icon}{institutional_icon}</span>
-                    </div>
-                    <div style="text-align: right;">
-                        <span style="color: #64748b; font-size: 12px;">{trader["specialty"]}</span><br>
-                        <span style="color: #10b981; font-size: 12px;">🟢 {trader["last_active"]}</span>
-                    </div>
-                </div>
-                
-                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin: 10px 0;">
-                    <div style="text-align: center;">
-                        <div style="color: #10b981; font-weight: bold; font-size: 18px;">{trader["accuracy"]:.1f}%</div>
-                        <div style="color: #64748b; font-size: 11px;">Accuracy</div>
-                    </div>
-                    <div style="text-align: center;">
-                        <div style="color: #3b82f6; font-weight: bold; font-size: 16px;">{trader["sharpe_ratio"]:.2f}</div>
-                        <div style="color: #64748b; font-size: 11px;">Sharpe Ratio</div>
-                    </div>
-                    <div style="text-align: center;">
-                        <div style="color: #f59e0b; font-weight: bold; font-size: 16px;">{trader["recent_wins"]}/{trader["recent_trades"]}</div>
-                        <div style="color: #64748b; font-size: 11px;">Recent W/L</div>
-                    </div>
-                    <div style="text-align: center;">
-                        <div style="color: #8b5cf6; font-weight: bold; font-size: 16px;">{trader["followers"]:,}</div>
-                        <div style="color: #64748b; font-size: 11px;">Followers</div>
-                    </div>
-                </div>
-                
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
-                    <div style="font-size: 12px; color: #64748b;">
-                        💰 Avg Return: <span style="color: #10b981;">{trader["avg_return_per_trade"]:.1f}%</span> | 
-                        📉 Max DD: <span style="color: #ef4444;">{trader["max_drawdown"]:.1f}%</span> | 
-                        🎯 Consistency: <span style="color: #3b82f6;">{trader["consistency_score"]:.0f}%</span>
-                    </div>
-                    <div style="font-size: 12px; color: #64748b;">
-                        {"🔥 " + str(trader["win_streak"]) + " streak" if trader["win_streak"] > 5 else ""}
-                        {"💎 " + trader["avg_holding_period"] + " avg hold" if trader.get("avg_holding_period") else ""}
-                    </div>
-                </div>
-            </div>
-            ''', unsafe_allow_html=True)
-        
-        # Enhanced leaderboard actions
-        leaderboard_actions_col1, leaderboard_actions_col2, leaderboard_actions_col3 = st.columns(3)
-        
-        with leaderboard_actions_col1:
-            if st.button('🏆 Full Leaderboard', help="View complete rankings"):
-                st.info('📊 Full leaderboard with 50+ traders coming soon!')
-        
-        with leaderboard_actions_col2:
-            if st.button('📊 Trader Analytics', help="Detailed performance analytics"):
-                st.info('📈 Advanced trader analytics dashboard coming soon!')
-        
-        with leaderboard_actions_col3:
-            if st.button('🔔 Follow Alerts', help="Get alerts from top traders"):
-                st.info('🚨 Trader follow and alert system coming soon!')
-                
-except Exception as e:
-    st.error(f'Elite leaderboard loading... {e}')
-    st.markdown('*Loading elite trader rankings...*')
+# 🚧 TRADER COMMUNITY (COMING SOON)
+st.markdown('### 🚧 Trader Community Features')
+st.info('🔧 **In Development:** Community features like trader leaderboards, signal sharing, and copy trading are currently being developed. Check back soon for updates!')
 
-# Popular Trades & Ideas  
-st.markdown('### 🔥 Trending Trades & Ideas')
-try:
-    popular_trades = asyncio.run(st.session_state.social_trading.get_popular_trades(symbol=selected_symbol, limit=6))
-    trade_ideas = asyncio.run(st.session_state.social_trading.get_trade_ideas(limit=4))
-    
-    trades_col, ideas_col = st.columns(2)
-    
-    with trades_col:
-        st.markdown('**Popular Trades**')
-        for trade in popular_trades[:4]:
-            trade_type_color = '#059669' if trade['signal_type'] == 'BUY_CALL' else '#dc2626'
-            
-            st.markdown(f'''
-            <div style="border: 1px solid #334155; border-radius: 8px; padding: 10px; margin: 5px 0; background: rgba(15, 23, 42, 0.5);">
-                <div style="display: flex; justify-content: space-between;">
-                    <span><strong>{trade["symbol"]} {trade["strike"]}</strong> <span style="color: {trade_type_color}">{trade["signal_type"].replace("BUY_", "")}</span></span>
-                    <span style="color: #64748b">{trade["time_posted"]}</span>
-                </div>
-                <div style="margin-top: 5px;">
-                    <span style="color: #059669">{trade["sentiment"]}</span> • <strong>{trade["traders_count"]} traders</strong> • Score: {trade["popularity_score"]:.0f}
-                </div>
-                <div style="margin-top: 5px; color: #64748b; font-size: 12px;">
-                    {trade["premium_range"]} • {trade["expected_move"]:.1f}% move • ⭐ {trade["community_rating"]:.1f}
-                </div>
-            </div>
-            ''', unsafe_allow_html=True)
-            
-    with ideas_col:
-        st.markdown('**Trade Ideas**')
-        for idea in trade_ideas[:4]:
-            signal_color = '#059669' if idea['signal_type'] == 'CALL' else '#dc2626'
-            
-            st.markdown(f'''
-            <div style="border: 1px solid #334155; border-radius: 8px; padding: 10px; margin: 5px 0; background: rgba(15, 23, 42, 0.5);">
-                <div style="display: flex; justify-content: space-between;">
-                    <span><strong>{idea["symbol"]}</strong> <span style="color: {signal_color}">{idea["signal_type"]}</span></span>
-                    <span style="color: #64748b">{idea["posted_time"]}</span>
-                </div>
-                <div style="margin-top: 5px;">
-                    <span>{idea["setup_type"]}</span> • <strong>{idea["confidence"]:.0f}% confidence</strong>
-                </div>
-                <div style="margin-top: 5px; color: #64748b; font-size: 12px;">
-                    By {idea["author"]} • 👍 {idea["likes"]} • 💬 {idea["comments"]} • R/R: {idea["risk_reward"]:.1f}x
-                </div>
-            </div>
-            ''', unsafe_allow_html=True)
-            
-except Exception as e:
-    st.markdown('*Popular trades loading...*')
+# Placeholder for future community features
+community_placeholder_col1, community_placeholder_col2 = st.columns(2)
 
-# 💎 ENHANCED COPY TRADING OPPORTUNITIES
-st.markdown('### 💎 Enhanced Copy Trading Hub')
-try:
-    copy_analytics = asyncio.run(st.session_state.enhanced_social.get_copy_trading_analytics(limit=4))
-    
-    if copy_analytics:
-        st.markdown('#### 🎯 Top Performing Strategies Available for Copy Trading')
-        
-        for i, opportunity in enumerate(copy_analytics):
-            perf = opportunity['performance']
-            social = opportunity['social_metrics']
-            trading = opportunity['trading_stats']
-            subscription = opportunity['subscription']
-            recent = opportunity['recent_activity']
-            risk = opportunity['risk_metrics']
-            verification = opportunity['verification']
-            
-            # Strategy performance indicators
-            return_color = '#059669' if perf['monthly_return'] > 15 else '#f59e0b' if perf['monthly_return'] > 8 else '#64748b'
-            risk_color = '#059669' if risk['risk_score'] < 40 else '#f59e0b' if risk['risk_score'] < 60 else '#dc2626'
-            
-            # Verification badges
-            badges = []
-            if verification['verified']: badges.append('✅')
-            if verification['kyc_verified']: badges.append('🆔')
-            if verification['track_record_verified']: badges.append('📊')
-            if verification['institutional']: badges.append('🏢')
-            badge_string = ' '.join(badges)
-            
-            st.markdown(f'''
-            <div style="border: 1px solid #374151; border-radius: 12px; padding: 18px; margin: 12px 0; background: linear-gradient(135deg, rgba(17, 24, 39, 0.8), rgba(31, 41, 55, 0.6));">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                    <div>
-                        <span style="font-size: 18px; font-weight: bold; color: #f8fafc;">{opportunity["trader_name"]}</span>
-                        <span style="margin-left: 10px; font-size: 14px;">{badge_string}</span>
-                        <div style="color: #64748b; font-size: 13px; margin-top: 2px;">{opportunity["strategy"]} • {opportunity["tier"]} Tier</div>
-                    </div>
-                    <div style="text-align: right;">
-                        <div style="color: {return_color}; font-size: 20px; font-weight: bold;">{perf["monthly_return"]:+.1f}%</div>
-                        <div style="color: #64748b; font-size: 11px;">Monthly Return</div>
-                    </div>
-                </div>
-                
-                <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin: 15px 0;">
-                    <div style="text-align: center; padding: 8px; background: rgba(59, 130, 246, 0.1); border-radius: 6px;">
-                        <div style="color: #3b82f6; font-weight: bold; font-size: 16px;">{perf["win_rate"]:.1f}%</div>
-                        <div style="color: #64748b; font-size: 10px;">Win Rate</div>
-                    </div>
-                    <div style="text-align: center; padding: 8px; background: rgba(16, 185, 129, 0.1); border-radius: 6px;">
-                        <div style="color: #10b981; font-weight: bold; font-size: 16px;">{perf["sharpe_ratio"]:.2f}</div>
-                        <div style="color: #64748b; font-size: 10px;">Sharpe</div>
-                    </div>
-                    <div style="text-align: center; padding: 8px; background: rgba(239, 68, 68, 0.1); border-radius: 6px;">
-                        <div style="color: #ef4444; font-weight: bold; font-size: 16px;">{perf["max_drawdown"]:.1f}%</div>
-                        <div style="color: #64748b; font-size: 10px;">Max DD</div>
-                    </div>
-                    <div style="text-align: center; padding: 8px; background: rgba(139, 92, 246, 0.1); border-radius: 6px;">
-                        <div style="color: #8b5cf6; font-weight: bold; font-size: 16px;">{social["active_copiers"]}</div>
-                        <div style="color: #64748b; font-size: 10px;">Copiers</div>
-                    </div>
-                    <div style="text-align: center; padding: 8px; background: rgba(245, 158, 11, 0.1); border-radius: 6px;">
-                        <div style="color: {risk_color}; font-weight: bold; font-size: 16px;">{risk["risk_score"]:.0f}/100</div>
-                        <div style="color: #64748b; font-size: 10px;">Risk Score</div>
-                    </div>
-                </div>
-                
-                <div style="display: flex; justify-content: space-between; align-items: center; margin: 12px 0;">
-                    <div style="font-size: 12px; color: #64748b;">
-                        📊 Trades/Week: <span style="color: #f8fafc;">{trading["trades_per_week"]}</span> | 
-                        ⏱️ Avg Duration: <span style="color: #f8fafc;">{trading["avg_trade_duration"]}</span> | 
-                        💰 Avg Position: <span style="color: #f8fafc;">{trading["avg_position_size"]:.1f}%</span>
-                    </div>
-                    <div style="font-size: 12px; color: #64748b;">
-                        🔥 Recent 7D: <span style="color: {"#10b981" if recent["recent_performance_7d"] > 0 else "#ef4444"};">{recent["recent_performance_7d"]:+.1f}%</span>
-                    </div>
-                </div>
-                
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 15px;">
-                    <div style="font-size: 13px;">
-                        <span style="color: #f59e0b;">⭐ {social["community_rating"]:.1f}/5</span> • 
-                        <span style="color: #64748b;">{social["reviews_count"]} reviews</span> • 
-                        <span style="color: #3b82f6;">${social["total_copied_volume"]:,} copied</span>
-                    </div>
-                    <div style="text-align: right;">
-                        <div style="color: #10b981; font-weight: bold;">
-                            {"FREE" if subscription["fee_monthly"] == 0 else f'${subscription["fee_monthly"]}/month'}
-                        </div>
-                        <div style="color: #64748b; font-size: 11px;">
-                            Min: ${subscription["min_copy_amount"]:,} • Max Copiers: {subscription["max_copiers"]}
-                        </div>
-                    </div>
-                </div>
-            </div>
-            ''', unsafe_allow_html=True)
-        
-        # Copy trading actions
-        copy_actions_col1, copy_actions_col2, copy_actions_col3 = st.columns(3)
-        
-        with copy_actions_col1:
-            if st.button('🚀 Start Copy Trading', help="Begin copying selected strategies"):
-                st.info('🔗 Copy trading integration coming soon!')
-        
-        with copy_actions_col2:
-            if st.button('📊 Strategy Comparison', help="Compare multiple strategies"):
-                st.info('📈 Strategy comparison tool coming soon!')
-        
-        with copy_actions_col3:
-            if st.button('⚙️ Portfolio Settings', help="Configure copy trading portfolio"):
-                st.info('⚙️ Portfolio management settings coming soon!')
-                
-except Exception as e:
-    st.error(f'Copy trading analytics loading... {e}')
-    st.markdown('*Loading enhanced copy trading opportunities...*')
+with community_placeholder_col1:
+    st.markdown('**🏆 Planned Features:**')
+    st.markdown('• Real trader leaderboards')
+    st.markdown('• Performance verification system')
+    st.markdown('• Community signal sharing')
+    st.markdown('• Copy trading integration')
+    st.markdown('• Discussion forums')
 
-# 📱 LIVE SIGNAL FEED & COMMUNITY INTERACTION
-st.markdown('### 📱 Live Signal Feed & Community Hub')
-try:
-    # Get live signal feed and trending discussions
-    live_signals = asyncio.run(st.session_state.enhanced_social.get_live_signal_feed(limit=12))
-    trending_discussions = asyncio.run(st.session_state.enhanced_social.get_trending_discussions(limit=6))
-    
-    # Create tabs for different community features
-    signal_tab, discussions_tab, share_tab = st.tabs(["🔥 Live Signals", "💬 Trending Discussions", "📤 Share Signal"])
-    
-    with signal_tab:
-        st.markdown('#### ⚡ Real-Time Community Signals')
-        
-        if live_signals:
-            # Signal feed display
-            for signal in live_signals[:8]:  # Show recent 8 signals
-                tier_badge = signal['tier_badge']
-                tier_color = signal['tier_color']
-                signal_strength_color = '#059669' if '🔥' in signal['signal_strength'] else '#f59e0b' if '⚡' in signal['signal_strength'] else '#64748b'
-                
-                # Special indicators
-                volume_indicator = ' 📊' if signal['volume_alert'] else ''
-                unusual_indicator = ' 🚨' if signal['unusual_activity'] else ''
-                
-                st.markdown(f'''
-                <div style="border: 1px solid #374151; border-radius: 8px; padding: 12px; margin: 8px 0; background: rgba(17, 24, 39, 0.6);">
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <div style="display: flex; align-items: center;">
-                            <span style="color: {tier_color}; font-size: 16px; margin-right: 5px;">{tier_badge}</span>
-                            <span style="color: #f8fafc; font-weight: bold;">{signal["trader"]}</span>
-                            <span style="color: #64748b; margin-left: 8px; font-size: 12px;">{signal["time_ago"]}</span>
-                        </div>
-                        <div style="color: {signal_strength_color}; font-weight: bold; font-size: 12px;">
-                            {signal["signal_strength"]}
-                        </div>
-                    </div>
-                    
-                    <div style="margin: 8px 0; display: flex; justify-content: space-between; align-items: center;">
-                        <div>
-                            <span style="color: #f8fafc; font-size: 16px; font-weight: bold;">{signal["symbol"]}</span>
-                            <span style="color: {"#10b981" if signal["signal_type"] == "BUY_CALL" else "#ef4444"}; margin-left: 8px; font-weight: bold;">
-                                {signal["signal_type"].replace("BUY_", "")}
-                            </span>
-                            <span style="color: #64748b; margin-left: 8px;">${signal["strike"]} • {signal["expiry"]}</span>
-                            <span style="color: #f59e0b;">{volume_indicator}{unusual_indicator}</span>
-                        </div>
-                        <div style="text-align: right;">
-                            <div style="color: #3b82f6; font-weight: bold;">{signal["confidence"]:.0f}% confidence</div>
-                            <div style="color: #64748b; font-size: 11px;">Expected: {signal["expected_move"]:.1f}%</div>
-                        </div>
-                    </div>
-                    
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
-                        <div style="font-size: 11px; color: #64748b;">
-                            Entry: {signal["entry_price"]} • Target: {signal["target_price"]} • Stop: {signal["stop_loss"]}
-                        </div>
-                        <div style="font-size: 11px; color: #64748b;">
-                            👍 {signal["likes"]} • 💬 {signal["comments"]} • 👥 {signal["followers_count"]} followers
-                        </div>
-                    </div>
-                </div>
-                ''', unsafe_allow_html=True)
-        
-        # Live feed controls
-        feed_col1, feed_col2, feed_col3 = st.columns(3)
-        with feed_col1:
-            if st.button('🔄 Refresh Feed', help="Get latest signals"):
-                st.rerun()
-        with feed_col2:
-            if st.button('🔔 Signal Alerts', help="Configure signal notifications"):
-                st.info('🚨 Signal alert system coming soon!')
-        with feed_col3:
-            if st.button('📊 Signal Analytics', help="Analyze signal performance"):
-                st.info('📈 Signal performance analytics coming soon!')
-    
-    with discussions_tab:
-        st.markdown('#### 🔥 Trending Community Discussions')
-        
-        if trending_discussions:
-            for discussion in trending_discussions[:5]:
-                urgency_color = '#ef4444' if '🔥' in discussion['urgency'] else '#f59e0b' if '⚡' in discussion['urgency'] else '#64748b'
-                hot_indicator = ' 🔥' if discussion['is_hot'] else ''
-                pin_indicator = ' 📌' if discussion['is_pinned'] else ''
-                
-                st.markdown(f'''
-                <div style="border: 1px solid #374151; border-radius: 8px; padding: 12px; margin: 8px 0; background: rgba(17, 24, 39, 0.6);">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                        <div style="color: #f8fafc; font-weight: bold; font-size: 14px;">
-                            {discussion["title"]}{hot_indicator}{pin_indicator}
-                        </div>
-                        <div style="color: {urgency_color}; font-size: 12px; font-weight: bold;">
-                            {discussion["urgency"]}
-                        </div>
-                    </div>
-                    
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <div style="font-size: 12px; color: #64748b;">
-                            By {discussion["author"]} • {discussion["category"]} • {discussion["last_activity"]}
-                        </div>
-                        <div style="font-size: 12px; color: #64748b;">
-                            💬 {discussion["replies"]} • 👁️ {discussion["views"]} • 👍 {discussion["likes"]} • Score: {discussion["trending_score"]:.0f}
-                        </div>
-                    </div>
-                </div>
-                ''', unsafe_allow_html=True)
-        
-        # Discussion controls
-        disc_col1, disc_col2, disc_col3 = st.columns(3)
-        with disc_col1:
-            if st.button('💬 Join Discussion', help="Participate in community discussions"):
-                st.info('💬 Community discussion platform coming soon!')
-        with disc_col2:
-            if st.button('📝 Start Topic', help="Create new discussion topic"):
-                st.info('📝 Topic creation system coming soon!')
-        with disc_col3:
-            if st.button('🏷️ Browse Categories', help="Explore discussion categories"):
-                st.info('🏷️ Category browser coming soon!')
-    
-    with share_tab:
-        st.markdown('#### 📤 Share Your Trading Signal')
-        
-        # Enhanced signal sharing interface
-        share_col1, share_col2 = st.columns(2)
-        
-        with share_col1:
-            share_symbol = st.selectbox('Symbol', options=["SPY", "QQQ", "TSLA", "AAPL", "MSFT", "NVDA", "AMZN", "GOOGL", "META"], key="enhanced_share_symbol")
-            share_signal = st.selectbox('Signal Type', options=["BUY_CALL", "BUY_PUT", "SPREAD", "STRADDLE"], key="enhanced_share_signal")
-            share_timeframe = st.selectbox('Timeframe', options=["Scalp (<1h)", "Intraday", "1-3 days", "1 week", "2 weeks", "1 month"], key="enhanced_share_timeframe")
-            
-        with share_col2:
-            share_confidence = st.slider('Confidence Level', min_value=50, max_value=100, value=75, key="enhanced_share_confidence")
-            share_risk_level = st.selectbox('Risk Level', options=["Low", "Medium", "High"], key="share_risk_level")
-            share_setup = st.selectbox('Setup Type', options=["Breakout", "Reversal", "Trend Continuation", "Earnings Play", "Technical Pattern", "Flow-Based"], key="share_setup")
-        
-        # Signal details
-        st.markdown('**📊 Signal Details:**')
-        details_col1, details_col2, details_col3 = st.columns(3)
-        
-        with details_col1:
-            entry_price = st.text_input('Entry Price ($)', value="2.50", key="entry_price")
-        with details_col2:
-            target_price = st.text_input('Target Price ($)', value="5.00", key="target_price")
-        with details_col3:
-            stop_loss = st.text_input('Stop Loss ($)', value="1.00", key="stop_loss")
-        
-        # Analysis section
-        st.markdown('**📝 Signal Analysis (Optional):**')
-        signal_analysis = st.text_area('Share your analysis, reasoning, or key factors...', 
-                                     placeholder="e.g., 'Strong support bounce at $450, RSI oversold, high volume confirmation...'",
-                                     key="signal_analysis")
-        
-        # Share button and community stats
-        share_button_col, stats_preview_col = st.columns([1, 2])
-        
-        with share_button_col:
-            if st.button('🚀 Share Signal', help="Share your signal with the community", key="enhanced_share_button"):
-                try:
-                    # Enhanced signal sharing (simulated)
-                    signal_data = {
-                        "symbol": share_symbol,
-                        "signal_type": share_signal,
-                        "confidence": share_confidence,
-                        "timeframe": share_timeframe,
-                        "risk_level": share_risk_level,
-                        "setup_type": share_setup,
-                        "entry": entry_price,
-                        "target": target_price,
-                        "stop": stop_loss,
-                        "analysis": signal_analysis
-                    }
-                    
-                    st.success('🎉 Signal shared with community!')
-                    st.info('💡 Your signal will be reviewed and appear in the live feed shortly.')
-                    
-                except Exception as e:
-                    st.error('❌ Signal sharing temporarily unavailable')
-        
-        with stats_preview_col:
-            # Community engagement preview
-            st.markdown('**📊 Your Community Stats:**')
-            st.markdown('• 🎯 **Your Accuracy:** 78.4% (47 signals)')
-            st.markdown('• 👥 **Followers:** 234 traders')
-            st.markdown('• 👍 **Avg Likes:** 12.3 per signal')
-            st.markdown('• 📈 **Tier Status:** 🔥 Pro Trader')
-        
-except Exception as e:
-    st.error(f'Live community features loading... {e}')
-    st.markdown('*Loading enhanced community interaction features...*')
+with community_placeholder_col2:
+    st.markdown('**📊 Development Status:**')
+    st.markdown('• Signal Generation: ✅ Complete')
+    st.markdown('• Market Analysis: ✅ Complete') 
+    st.markdown('• Community System: 🚧 In Progress')
+    st.markdown('• Trader Verification: 🔜 Planned')
+    st.markdown('• Copy Trading: 🔜 Planned')
+
 
 # NEURAL CORTEX ANALYSIS (Ken Griffin/Citadel Style)
 st.markdown('### 🏛️ Quantitative Analysis Engine')

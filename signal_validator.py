@@ -9,6 +9,7 @@ class SignalValidator:
     def __init__(self):
         self.signals_file = "signal_history.json"
         self.validation_file = "signal_validation.json"
+        self.recent_signals = []  # Initialize as empty list
         self.ensure_files_exist()
     
     def ensure_files_exist(self):
@@ -219,12 +220,17 @@ class SignalValidator:
                 "call_success_rate": call_success,
                 "put_success_rate": put_success,
                 "profit_factor": abs(avg_profit / avg_loss) if avg_loss != 0 else 1,
-                "last_updated": datetime.now().isoformat()
+                "last_updated": datetime.now().isoformat(),
+                "status": "ACTIVE"
             }
             
         except Exception as e:
             print(f"Performance calculation error: {e}")
             return self._get_default_performance()
+    
+    def get_recent_performance(self, days=30):
+        """Get recent performance - alias for backward compatibility"""
+        return self.get_signal_performance(days)
     
     def _get_default_performance(self):
         """Return default performance metrics"""
@@ -238,7 +244,9 @@ class SignalValidator:
             "call_success_rate": 0,
             "put_success_rate": 0,
             "profit_factor": 1,
-            "last_updated": datetime.now().isoformat()
+            "last_updated": datetime.now().isoformat(),
+            "status": "INITIALIZING",
+            "message": "Signal tracking system is initializing. Generate some signals to see performance metrics."
         }
     
     def get_recent_signals(self, limit=10):
