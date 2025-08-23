@@ -322,94 +322,35 @@ with signal_col2:
     </div>
     ''', unsafe_allow_html=True)
 
-# METRICS ROW (like the reference image)
-st.markdown('### 📊 Quantitative Model Metrics')
-met_col1, met_col2, met_col3, met_col4, met_col5, met_col6 = st.columns(6)
+# Professional metrics display
+st.markdown('### 📊 Model Performance')
 
-with met_col1:
-    confidence_pct = confidence * 100
-    st.markdown(f'''
-    <div class="metric-card">
-        <h3 style="color: #3b82f6; margin: 0;">{confidence_pct:.1f}%</h3>
-        <p style="color: #94a3b8; margin: 0;">Confidence</p>
-    </div>
-    ''', unsafe_allow_html=True)
+confidence_pct = confidence * 100
+neural_score = min(95.0, confidence_pct + 10)
+cortex_approval = min(98.0, confidence_pct + 15)
+predictability = min(99.0, confidence_pct + 20)
+consensus = round(confidence, 3)
+current_time = datetime.now().strftime("%I:%M ET")
 
-with met_col2:
-    neural_score = min(95.0, confidence_pct + 10)
-    st.markdown(f'''
-    <div class="metric-card">
-        <h3 style="color: #059669; margin: 0;">{neural_score:.1f}</h3>
-        <p style="color: #94a3b8; margin: 0;">Neural Score</p>
-    </div>
-    ''', unsafe_allow_html=True)
-
-with met_col3:
-    cortex_approval = min(98.0, confidence_pct + 15)
-    st.markdown(f'''
-    <div class="metric-card">
-        <h3 style="color: #8b5cf6; margin: 0;">{cortex_approval:.1f}%</h3>
-        <p style="color: #94a3b8; margin: 0;">Cortex Approval</p>
-    </div>
-    ''', unsafe_allow_html=True)
-
-with met_col4:
-    predictability = min(99.0, confidence_pct + 20)
-    st.markdown(f'''
-    <div class="metric-card">
-        <h3 style="color: #10b981; margin: 0;">{predictability:.1f}%</h3>
-        <p style="color: #94a3b8; margin: 0;">Predictability</p>
-    </div>
-    ''', unsafe_allow_html=True)
-
-with met_col5:
-    consensus = round(confidence, 3)
-    st.markdown(f'''
-    <div class="metric-card">
-        <h3 style="color: #f59e0b; margin: 0;">{consensus:.3f}</h3>
-        <p style="color: #94a3b8; margin: 0;">Consensus</p>
-    </div>
-    ''', unsafe_allow_html=True)
-
-with met_col6:
-    current_time = datetime.now().strftime("%I:%M%p")
-    st.markdown(f'''
-    <div class="metric-card">
-        <h3 style="color: #6b7280; margin: 0;">{current_time}</h3>
-        <p style="color: #94a3b8; margin: 0;">Updated</p>
-    </div>
-    ''', unsafe_allow_html=True)
-
-# NEURAL NETWORK PROBABILITY DISPLAY
-prob_col1, prob_col2, prob_col3 = st.columns(3)
-
+# Call/Put probabilities
 call_prob = confidence_pct if basic_signal == "BUY_CALL" else (100 - confidence_pct)
 put_prob = confidence_pct if basic_signal == "BUY_PUT" else (100 - confidence_pct)
 no_trade_prob = max(0, 100 - call_prob - put_prob) if basic_signal == "NO_TRADE" else 20
 
-with prob_col1:
-    st.markdown(f'''
-    <div class="neural-card">
-        <h4 style="color: #059669; margin: 0;">Call Probability</h4>
-        <h2 style="color: #059669; margin: 10px 0;">{call_prob:.1f}%</h2>
-    </div>
-    ''', unsafe_allow_html=True)
+# Clean professional metrics layout
+metrics_col1, metrics_col2, metrics_col3 = st.columns(3)
 
-with prob_col2:
-    st.markdown(f'''
-    <div class="neural-card">
-        <h4 style="color: #dc2626; margin: 0;">Put Probability</h4>
-        <h2 style="color: #dc2626; margin: 10px 0;">{put_prob:.1f}%</h2>
-    </div>
-    ''', unsafe_allow_html=True)
-
-with prob_col3:
-    st.markdown(f'''
-    <div class="neural-card">
-        <h4 style="color: #6b7280; margin: 0;">No Trade Probability</h4>
-        <h2 style="color: #6b7280; margin: 10px 0;">{no_trade_prob:.1f}%</h2>
-    </div>
-    ''', unsafe_allow_html=True)
+with metrics_col1:
+    st.markdown(f'**Confidence:** {confidence_pct:.1f}% | **Neural Score:** {neural_score:.1f}')
+    st.markdown(f'**Calls:** {call_prob:.1f}% | **Puts:** {put_prob:.1f}%')
+    
+with metrics_col2:
+    st.markdown(f'**Model Approval:** {cortex_approval:.1f}% | **Predictability:** {predictability:.1f}%')
+    st.markdown(f'**No Trade:** {no_trade_prob:.1f}% | **Consensus:** {consensus:.3f}')
+    
+with metrics_col3:
+    st.markdown(f'**Updated:** {current_time}')
+    st.markdown(f'**Status:** Active Trading')
 
 # NEURAL CORTEX ANALYSIS (Ken Griffin/Citadel Style)
 st.markdown('### 🏛️ Quantitative Analysis Engine')
@@ -590,24 +531,20 @@ with tab1:
             
             # Display unusual activity alerts
             if not unusual_flows.empty:
-                st.markdown(f'''
-            <div style="background: linear-gradient(90deg, #ef4444, #dc2626); padding: 15px; border-radius: 8px; color: white; margin: 10px 0;">
-                <h4 style="margin: 0; color: white;">🚨 {len(unusual_flows)} UNUSUAL ACTIVITIES DETECTED</h4>
-                <p style="margin: 5px 0 0 0; font-size: 12px; opacity: 0.9;">High-volume institutional trades identified</p>
-            </div>
-            ''', unsafe_allow_html=True)
+                st.markdown(f'**🚨 {len(unusual_flows)} unusual activities** - institutional trades detected')
                 
+                # Create clean options flow table
+                flow_display_data = []
                 for _, row in unusual_flows.head(5).iterrows():
-                    with st.container():
-                        col_a, col_b, col_c, col_d = st.columns(4)
-                        with col_a:
-                            st.write(f"**{row['type']} {row['strike']}C/P**")
-                        with col_b:
-                            st.write(f"Vol: {row['volume']:,.0f}")
-                        with col_c:
-                            st.write(f"Premium: {format_currency(row['premium'])}")
-                        with col_d:
-                            st.write(f"Unusual: {row['unusual_factor']:.1f}x")
+                    flow_display_data.append({
+                        'Type': f"{row['type']} {row['strike']}",
+                        'Volume': f"{row['volume']:,.0f}",
+                        'Premium': format_currency(row['premium']),
+                        'Unusual Factor': f"{row['unusual_factor']:.1f}x"
+                    })
+                
+                if flow_display_data:
+                    st.dataframe(pd.DataFrame(flow_display_data), use_container_width=True, hide_index=True)
             
             # Display full flow table
             st.dataframe(
