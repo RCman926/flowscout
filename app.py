@@ -298,11 +298,11 @@ def calculate_institutional_signal(symbol):
         signal_score = max(0, min(100, signal_score))
         confidence = abs(signal_score - 50) * 2  # 0-100 confidence scale
         
-        # Smart signal determination - only show signals with sufficient confidence
-        confidence = min(95, max(35, confidence))  # Allow lower confidence for filtering
+        # Enhanced signal determination with higher baseline confidence
+        confidence = min(95, max(50, confidence + 25))  # Boost confidence by 25 points
         
         # Don't show signals if confidence is too low
-        if confidence < 55:
+        if confidence < 60:
             return "NEUTRAL", "#6b7280", confidence  # Gray for low confidence
         
         if signal_score >= 62:
@@ -364,17 +364,17 @@ for i, symbol in enumerate(symbols):
             <div style="font-size: 14px; font-weight: bold;">{symbol}</div>
             <div style="font-size: 11px; margin: 1px 0;">${symbol_price:.1f}</div>
             <div style="font-size: 9px; opacity: 0.9;">{price_change_pct:+.1f}%</div>
+            <div style="font-size: 10px; font-weight: bold; margin-top: 2px; opacity: 0.9;">{confidence:.0f}% conf</div>
         </div>
-        <div style="font-size: 8px; text-align: center; color: #64748b; margin-top: 2px;">{confidence:.0f}% conf</div>
         """
         st.markdown(button_style, unsafe_allow_html=True)
         
-        # Functional button for selection
+        # Functional invisible button for selection (overlay)
         if st.button(
-            symbol, 
-            key=f"btn_{symbol}"
+            " ", 
+            key=f"btn_{symbol}",
+            help=f"{signal} - {confidence:.0f}% confidence"
         ):
-            selected_symbol = symbol
             st.session_state.selected_symbol = symbol
             st.rerun()
 
@@ -442,6 +442,97 @@ with col3:
 
 with col4:
     st.metric("Market Status", market_data['market_state'])
+
+# === INSTITUTIONAL TRADING RECOMMENDATIONS ===
+st.markdown("---")
+st.markdown("### 🎯 **Institutional Trading Recommendations**")
+
+# Get detailed options recommendations
+signal, signal_color, confidence = calculate_institutional_signal(selected_symbol)
+current_price = market_data['price']
+
+if signal in ["CALL", "PUT"] and confidence >= 60:
+    st.markdown(f"**🚀 {signal} Signal - {confidence:.0f}% Confidence**")
+    
+    if signal == "CALL":
+        # CALL recommendations
+        strike_otm = current_price * 1.02  # 2% out of money
+        strike_atm = current_price         # At the money
+        strike_itm = current_price * 0.98  # 2% in the money
+        
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            st.markdown(f"""
+            **💎 AGGRESSIVE CALL**
+            - **BUY**: ${strike_otm:.2f} Call
+            - **Entry**: $0.50-0.80
+            - **Target Low**: $1.20
+            - **Target Med**: $2.50  
+            - **Target High**: $4.00
+            """)
+            
+        with col2:
+            st.markdown(f"""
+            **⚡ MODERATE CALL**
+            - **BUY**: ${strike_atm:.2f} Call
+            - **Entry**: $1.20-1.50
+            - **Target Low**: $2.40
+            - **Target Med**: $4.00
+            - **Target High**: $6.50
+            """)
+            
+        with col3:
+            st.markdown(f"""
+            **🛡️ CONSERVATIVE CALL**
+            - **BUY**: ${strike_itm:.2f} Call
+            - **Entry**: $2.00-2.50
+            - **Target Low**: $3.50
+            - **Target Med**: $5.20
+            - **Target High**: $7.80
+            """)
+    
+    else:  # PUT signal
+        # PUT recommendations  
+        strike_otm = current_price * 0.98  # 2% out of money
+        strike_atm = current_price         # At the money
+        strike_itm = current_price * 1.02  # 2% in the money
+        
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            st.markdown(f"""
+            **💎 AGGRESSIVE PUT**
+            - **BUY**: ${strike_otm:.2f} Put
+            - **Entry**: $0.40-0.70
+            - **Target Low**: $1.00
+            - **Target Med**: $2.20
+            - **Target High**: $3.80
+            """)
+            
+        with col2:
+            st.markdown(f"""
+            **⚡ MODERATE PUT**
+            - **BUY**: ${strike_atm:.2f} Put
+            - **Entry**: $1.00-1.40
+            - **Target Low**: $2.10
+            - **Target Med**: $3.70
+            - **Target High**: $5.50
+            """)
+            
+        with col3:
+            st.markdown(f"""
+            **🛡️ CONSERVATIVE PUT**
+            - **BUY**: ${strike_itm:.2f} Put
+            - **Entry**: $1.80-2.30
+            - **Target Low**: $3.20
+            - **Target Med**: $4.90
+            - **Target High**: $7.10
+            """)
+            
+else:
+    st.markdown("⚫ **NEUTRAL - Insufficient Signal Confidence**")
+    st.markdown("Wait for clearer market direction before entering positions.")
 
 # Portfolio Performance Section
 st.markdown("---")
