@@ -1003,9 +1003,9 @@ if call_data is None:
 
 selected_exp_date = f"0DTE - {datetime.now().strftime('%m/%d')}"
 
-# === DETAILED OPTION EXPIRY ANALYSIS ===
+# === ACTIONABLE OPTIONS TRADING INTELLIGENCE ===
 st.markdown("---")
-st.markdown("**📅 Detailed Option Expiry Analysis**")
+st.markdown("## 📊 Actionable Options Trading Intelligence")
 
 try:
     ticker = yf.Ticker(selected_symbol)
@@ -1013,99 +1013,173 @@ try:
     current_price = market_data['price']
     
     if exp_dates:
-        # Create detailed expiry table
-        expiry_data = []
+        st.markdown("### 🔥 TOP VOLUME OPPORTUNITIES BY EXPIRY")
         
-        for exp_date in exp_dates[:6]:  # Show top 6 expiries
+        # Analyze top 4 most liquid expiries
+        top_opportunities = []
+        
+        for exp_date in exp_dates[:4]:
             try:
                 exp_datetime = datetime.strptime(exp_date, '%Y-%m-%d')
                 days_left = (exp_datetime - datetime.now()).days
-                day_of_week = exp_datetime.strftime('%A')
                 
-                # Get options chain for this expiry
+                # Get options chain
                 options_chain = ticker.option_chain(exp_date)
                 calls_df = options_chain.calls
                 puts_df = options_chain.puts
                 
                 if not calls_df.empty and not puts_df.empty:
-                    # Calculate key metrics
-                    total_call_volume = int(calls_df['volume'].sum()) if not calls_df['volume'].isna().all() else 0
-                    total_put_volume = int(puts_df['volume'].sum()) if not puts_df['volume'].isna().all() else 0
-                    total_call_oi = int(calls_df['openInterest'].sum()) if not calls_df['openInterest'].isna().all() else 0
-                    total_put_oi = int(puts_df['openInterest'].sum()) if not puts_df['openInterest'].isna().all() else 0
+                    # Find TOP 3 volume strikes for calls and puts
+                    top_calls = calls_df.nlargest(3, 'volume')
+                    top_puts = puts_df.nlargest(3, 'volume')
                     
-                    # Find liquid strikes (volume > 10)
-                    liquid_calls = len(calls_df[calls_df['volume'] > 10])
-                    liquid_puts = len(puts_df[puts_df['volume'] > 10])
+                    # Calculate total activity
+                    total_volume = int(calls_df['volume'].sum() + puts_df['volume'].sum())
+                    total_oi = int(calls_df['openInterest'].sum() + puts_df['openInterest'].sum())
                     
-                    # Find ATM strikes
-                    atm_calls = calls_df[abs(calls_df['strike'] - current_price) <= current_price * 0.05]
-                    atm_puts = puts_df[abs(puts_df['strike'] - current_price) <= current_price * 0.05]
-                    
-                    # Average IV for ATM options
-                    avg_call_iv = atm_calls['impliedVolatility'].mean() * 100 if not atm_calls.empty else 0
-                    avg_put_iv = atm_puts['impliedVolatility'].mean() * 100 if not atm_puts.empty else 0
-                    
-                    # Strike range
-                    min_strike = min(calls_df['strike'].min(), puts_df['strike'].min())
-                    max_strike = max(calls_df['strike'].max(), puts_df['strike'].max())
-                    
-                    # Most active call strike
-                    most_active_call = calls_df.loc[calls_df['volume'].idxmax()] if not calls_df['volume'].isna().all() and calls_df['volume'].max() > 0 else None
-                    most_active_put = puts_df.loc[puts_df['volume'].idxmax()] if not puts_df['volume'].isna().all() and puts_df['volume'].max() > 0 else None
-                    
-                    expiry_data.append({
-                        'Expiry Date': exp_date,
-                        'DTE': f"{days_left}DTE",
-                        'Day': day_of_week,
-                        'Call Vol': f"{total_call_volume:,}",
-                        'Put Vol': f"{total_put_volume:,}",
-                        'Call OI': f"{total_call_oi:,}",
-                        'Put OI': f"{total_put_oi:,}",
-                        'Liquid Strikes': f"C:{liquid_calls} P:{liquid_puts}",
-                        'Strike Range': f"${min_strike:.0f}-${max_strike:.0f}",
-                        'ATM IV': f"{(avg_call_iv + avg_put_iv)/2:.1f}%",
-                        'Hot Call': f"${most_active_call['strike']:.0f}" if most_active_call is not None else "N/A",
-                        'Hot Put': f"${most_active_put['strike']:.0f}" if most_active_put is not None else "N/A"
-                    })
-                    
+                    if total_volume > 0:
+                        top_opportunities.append({
+                            'exp_date': exp_date,
+                            'dte': days_left,
+                            'volume': total_volume,
+                            'oi': total_oi,
+                            'top_calls': top_calls,
+                            'top_puts': top_puts
+                        })
+                        
             except Exception as e:
                 continue
         
-        if expiry_data:
-            # Display detailed table
-            df_expiry = pd.DataFrame(expiry_data)
-            st.dataframe(df_expiry, use_container_width=True, hide_index=True)
+        # Sort by volume and display top opportunities
+        top_opportunities.sort(key=lambda x: x['volume'], reverse=True)
+        
+        for i, opp in enumerate(top_opportunities[:3]):  # Show top 3 expiries
+            exp_short = datetime.strptime(opp['exp_date'], '%Y-%m-%d').strftime('%m/%d')
             
-            # Key insights below table
-            insights_col1, insights_col2, insights_col3, insights_col4 = st.columns(4)
+            st.markdown(f"""
+            <div style="background: linear-gradient(135deg, #1e293b 0%, #334155 100%); padding: 1.5rem; border-radius: 12px; margin: 1rem 0; color: white; border-left: 4px solid {'#10b981' if i == 0 else '#f59e0b' if i == 1 else '#ef4444'};">
+                <h4 style="margin-top: 0; color: {'#10b981' if i == 0 else '#f59e0b' if i == 1 else '#ef4444'};">
+                    {'🥇' if i == 0 else '🥈' if i == 1 else '🥉'} EXPIRY {exp_short} ({opp['dte']}DTE) - {opp['volume']:,} Volume
+                </h4>
+            """, unsafe_allow_html=True)
             
-            with insights_col1:
-                # Find highest volume expiry
-                max_vol_exp = max(expiry_data, key=lambda x: int(x['Call Vol'].replace(',', '')) + int(x['Put Vol'].replace(',', '')))
-                st.metric("🔥 Highest Volume", max_vol_exp['Expiry Date'], f"{max_vol_exp['DTE']}")
+            # Show top volume strikes in columns
+            vol_col1, vol_col2 = st.columns(2)
             
-            with insights_col2:
-                # Find highest OI expiry  
-                max_oi_exp = max(expiry_data, key=lambda x: int(x['Call OI'].replace(',', '')) + int(x['Put OI'].replace(',', '')))
-                st.metric("📊 Highest OI", max_oi_exp['Expiry Date'], f"{max_oi_exp['DTE']}")
+            with vol_col1:
+                st.markdown("**🟢 TOP CALL VOLUME STRIKES:**")
+                for _, call in opp['top_calls'].iterrows():
+                    if call['volume'] > 0:
+                        volume = int(call['volume'])
+                        oi = int(call['openInterest']) if pd.notna(call['openInterest']) else 0
+                        iv = f"{call['impliedVolatility']*100:.1f}%" if pd.notna(call['impliedVolatility']) else "N/A"
+                        distance = ((call['strike'] - current_price) / current_price) * 100
+                        
+                        st.markdown(f"""
+                        <div style="background: rgba(16, 185, 129, 0.1); padding: 0.8rem; margin: 0.3rem 0; border-radius: 6px; border-left: 3px solid #10b981;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <div>
+                                    <strong style="font-size: 1.1rem;">${call['strike']:.0f}C</strong> 
+                                    <span style="color: #10b981;">({distance:+.1f}%)</span>
+                                </div>
+                                <div style="text-align: right;">
+                                    <div><strong>{volume:,}</strong> Vol</div>
+                                    <div>{oi:,} OI • {iv} IV</div>
+                                </div>
+                            </div>
+                            <div style="margin-top: 0.5rem; font-size: 0.9rem;">
+                                Last: <strong>${call['lastPrice']:.2f}</strong> • 
+                                Bid: ${call['bid']:.2f} • 
+                                Ask: ${call['ask']:.2f}
+                            </div>
+                        </div>
+                        """, unsafe_allow_html=True)
             
-            with insights_col3:
-                # Count 0DTE/weekly options
-                weekly_exps = [exp for exp in expiry_data if int(exp['DTE'].replace('DTE', '')) <= 7]
-                st.metric("⚡ Weekly Count", f"{len(weekly_exps)}", "Available")
+            with vol_col2:
+                st.markdown("**🔴 TOP PUT VOLUME STRIKES:**")
+                for _, put in opp['top_puts'].iterrows():
+                    if put['volume'] > 0:
+                        volume = int(put['volume'])
+                        oi = int(put['openInterest']) if pd.notna(put['openInterest']) else 0
+                        iv = f"{put['impliedVolatility']*100:.1f}%" if pd.notna(put['impliedVolatility']) else "N/A"
+                        distance = ((put['strike'] - current_price) / current_price) * 100
+                        
+                        st.markdown(f"""
+                        <div style="background: rgba(239, 68, 68, 0.1); padding: 0.8rem; margin: 0.3rem 0; border-radius: 6px; border-left: 3px solid #ef4444;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <div>
+                                    <strong style="font-size: 1.1rem;">${put['strike']:.0f}P</strong> 
+                                    <span style="color: #ef4444;">({distance:+.1f}%)</span>
+                                </div>
+                                <div style="text-align: right;">
+                                    <div><strong>{volume:,}</strong> Vol</div>
+                                    <div>{oi:,} OI • {iv} IV</div>
+                                </div>
+                            </div>
+                            <div style="margin-top: 0.5rem; font-size: 0.9rem;">
+                                Last: <strong>${put['lastPrice']:.2f}</strong> • 
+                                Bid: ${put['bid']:.2f} • 
+                                Ask: ${put['ask']:.2f}
+                            </div>
+                        </div>
+                        """, unsafe_allow_html=True)
             
-            with insights_col4:
-                # Average IV across all expiries
-                avg_iv = sum([float(exp['ATM IV'].replace('%', '')) for exp in expiry_data if exp['ATM IV'] != 'N/A']) / len(expiry_data)
-                st.metric("📈 Avg ATM IV", f"{avg_iv:.1f}%", "All Expiries")
+            st.markdown("</div>", unsafe_allow_html=True)
+        
+        # Quick action summary
+        st.markdown("---")
+        st.markdown("### ⚡ QUICK ACTION SUMMARY")
+        
+        if top_opportunities:
+            best_exp = top_opportunities[0]
+            best_call = best_exp['top_calls'].iloc[0]
+            best_put = best_exp['top_puts'].iloc[0]
+            exp_short = datetime.strptime(best_exp['exp_date'], '%Y-%m-%d').strftime('%m/%d')
+            
+            action_col1, action_col2, action_col3 = st.columns(3)
+            
+            with action_col1:
+                st.markdown(f"""
+                <div style="background: #10b981; padding: 1rem; border-radius: 8px; color: white; text-align: center;">
+                    <h5 style="margin: 0;">🎯 HOTTEST CALL</h5>
+                    <div style="font-size: 1.2rem; font-weight: bold;">
+                        {selected_symbol} {exp_short} ${best_call['strike']:.0f}C
+                    </div>
+                    <div>Volume: {int(best_call['volume']):,}</div>
+                    <div>Price: ${best_call['lastPrice']:.2f}</div>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            with action_col2:
+                st.markdown(f"""
+                <div style="background: #ef4444; padding: 1rem; border-radius: 8px; color: white; text-align: center;">
+                    <h5 style="margin: 0;">🎯 HOTTEST PUT</h5>
+                    <div style="font-size: 1.2rem; font-weight: bold;">
+                        {selected_symbol} {exp_short} ${best_put['strike']:.0f}P
+                    </div>
+                    <div>Volume: {int(best_put['volume']):,}</div>
+                    <div>Price: ${best_put['lastPrice']:.2f}</div>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            with action_col3:
+                st.markdown(f"""
+                <div style="background: #f59e0b; padding: 1rem; border-radius: 8px; color: white; text-align: center;">
+                    <h5 style="margin: 0;">📊 BEST EXPIRY</h5>
+                    <div style="font-size: 1.2rem; font-weight: bold;">
+                        {exp_short} ({best_exp['dte']}DTE)
+                    </div>
+                    <div>Total Vol: {best_exp['volume']:,}</div>
+                    <div>Total OI: {best_exp['oi']:,}</div>
+                </div>
+                """, unsafe_allow_html=True)
                 
         else:
-            st.warning("No detailed options data available")
+            st.warning("No actionable options data available")
     else:
         st.warning("No option expiry dates available for this symbol")
 except Exception as e:
-    st.warning(f"Unable to fetch detailed expiry data: {str(e)}")
+    st.warning(f"Unable to fetch options intelligence: {str(e)}")
 
 # === KEY OPTION BUYING CHART ===
 st.markdown("---")
