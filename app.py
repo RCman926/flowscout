@@ -386,58 +386,82 @@ for i, (symbol, data) in enumerate(symbols_data.items()):
         except (ValueError, TypeError):
             price_change_pct = 0.0
         
-        # More sensitive signal logic for better color coding (0.3% threshold)
-        if price_change_pct > 0.3:  # More than 0.3% gain
+        # ULTRA SENSITIVE signal logic for immediate color response (0.1% threshold)
+        if price_change_pct > 0.1:  # More than 0.1% gain
             signal = "BUY_CALL"
-            color = "#10b981"  # Bright green for call signals
-        elif price_change_pct < -0.3:  # More than 0.3% loss
+            color = "#16a34a"  # Strong green for call signals
+        elif price_change_pct < -0.1:  # More than 0.1% loss
             signal = "BUY_PUT" 
-            color = "#ef4444"  # Bright red for put signals
-        elif price_change_pct > 0:  # Any positive change
+            color = "#dc2626"  # Strong red for put signals  
+        elif price_change_pct > 0:  # ANY positive change
             signal = "WEAK_CALL"
             color = "#22c55e"  # Light green for weak calls
-        elif price_change_pct < 0:  # Any negative change
+        elif price_change_pct < 0:  # ANY negative change
             signal = "WEAK_PUT"
-            color = "#f87171"  # Light red for weak puts
+            color = "#ef4444"  # Light red for weak puts
         else:
             signal = "HOLD"
-            color = "#64748b"  # Gray for no change
+            color = "#94a3b8"  # Light gray for no change
+        
+        # Debug info (you can remove this later)
+        debug_info = f"Symbol: {symbol}, Change: {price_change_pct:.2f}%, Signal: {signal}, Color: {color}"
         
         border = "2px solid #f59e0b" if symbol == st.session_state.get('selected_symbol', 'SPY') else "1px solid rgba(255,255,255,0.1)"
         
         # CLICKABLE price box - no separate button needed
         clickable_key = f"clickable_{symbol}_{i}"
         signal_text = "CALL" if "CALL" in signal else "PUT" if "PUT" in signal else "HOLD"
-        if st.button(f'''{symbol} ${data['price']:.2f} {data['change']} {signal_text}''', key=clickable_key, use_container_width=True):
+        
+        # Show button with clear signal indication
+        button_text = f"{symbol}\n${data['price']:.2f}\n{data['change']}\n{signal_text}"
+        if st.button(button_text, key=clickable_key, use_container_width=True):
             st.session_state.selected_symbol = symbol
             st.rerun()
         
-        # Enhanced styling with MUCH stronger colors for clear call/put indication
+        # FORCE STRONG COLOR CODING - Multiple CSS selectors for maximum compatibility
         st.markdown(f'''
         <style>
+        /* Primary button selector */
         div[data-testid="stButton"] > button[key="{clickable_key}"] {{
-            border: {border}; 
-            border-radius: 8px; 
-            padding: 12px; 
-            text-align: center; 
+            background-color: {color} !important;
             background: {color} !important;
+            border: 3px solid {color} !important;
+            border-radius: 10px !important;
+            padding: 15px 8px !important;
+            text-align: center !important;
             color: white !important;
-            font-weight: bold;
-            width: 100%;
-            height: auto;
-            box-shadow: 0 4px 12px {color}60;
-            transition: all 0.2s ease;
-            opacity: 0.9;
+            font-weight: 900 !important;
+            font-size: 12px !important;
+            width: 100% !important;
+            height: auto !important;
+            min-height: 60px !important;
+            box-shadow: 0 4px 15px {color}80 !important;
+            transition: all 0.3s ease !important;
         }}
+        
+        /* Hover state */
         div[data-testid="stButton"] > button[key="{clickable_key}"]:hover {{
+            background-color: {color} !important;
             background: {color} !important;
-            transform: translateY(-2px);
-            box-shadow: 0 6px 16px {color}80;
-            opacity: 1.0;
+            transform: translateY(-3px) !important;
+            box-shadow: 0 8px 25px {color}90 !important;
+            border: 3px solid white !important;
         }}
+        
+        /* Focus state */
         div[data-testid="stButton"] > button[key="{clickable_key}"]:focus {{
+            background-color: {color} !important;
             background: {color} !important;
-            outline: 2px solid {color};
+            outline: 3px solid white !important;
+            outline-offset: 2px !important;
+        }}
+        
+        /* Alternative selector for compatibility */
+        button[key="{clickable_key}"] {{
+            background-color: {color} !important;
+            color: white !important;
+            border: 3px solid {color} !important;
+            font-weight: 900 !important;
         }}
         </style>
         ''', unsafe_allow_html=True)
