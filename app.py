@@ -161,52 +161,58 @@ st.markdown('### 📊 Live Market Prices')
 
 symbols = ["SPY", "QQQ", "TSLA", "AAPL", "MSFT", "NVDA", "AMZN", "GOOGL", "META", "AMD", "NFLX", "UBER", "COIN", "PLTR", "SOFI", "HOOD", "RBLX", "SNAP"]
 
-# FAST LOADING - Use cached/fallback data by default for immediate display
-# Initialize with fallback data for instant loading
-fallback_prices = {
-    "SPY": 635.55, "QQQ": 571.82, "TSLA": 320.11, "AAPL": 245.18, "MSFT": 441.81, 
-    "NVDA": 145.89, "AMZN": 185.92, "GOOGL": 185.40, "META": 598.35, "AMD": 129.67,
-    "NFLX": 924.87, "UBER": 69.45, "COIN": 301.20, "PLTR": 72.18, "SOFI": 15.89,
-    "HOOD": 36.12, "RBLX": 48.90, "SNAP": 10.67
-}
-fallback_changes = {
-    "SPY": -2.55, "QQQ": 3.78, "TSLA": -4.90, "AAPL": 1.23, "MSFT": -3.21, 
-    "NVDA": 4.56, "AMZN": -1.89, "GOOGL": 2.34, "META": -5.67, "AMD": 3.12,
-    "NFLX": -8.90, "UBER": 1.45, "COIN": 12.34, "PLTR": -0.89, "SOFI": 0.67,
-    "HOOD": -1.23, "RBLX": 2.10, "SNAP": -0.34
-}
-
-# Simulate market status based on time
+# REAL-TIME MARKET DATA - NO FAKE DATA
 from datetime import datetime
-now = datetime.now()
-hour = now.hour
+import pytz
 
-if 4 <= hour < 9:  # Pre-market
+# Get market status
+eastern = pytz.timezone('US/Eastern')
+now = datetime.now(eastern)
+hour = now.hour
+weekday = now.weekday()
+
+if weekday >= 5:  # Weekend
+    status = "WEEKEND"
+elif 4 <= hour < 9:  # Pre-market
     status = "PRE-MARKET"
-    price_adj = np.random.uniform(0.98, 1.02)
 elif 16 <= hour < 20:  # After-hours
-    status = "AFTER-HOURS" 
-    price_adj = np.random.uniform(0.99, 1.01)
+    status = "AFTER-HOURS"
 elif 9 <= hour < 16:  # Market hours
     status = "MARKET HOURS"
-    price_adj = 1.0
 else:  # Overnight
     status = "OVERNIGHT"
-    price_adj = np.random.uniform(0.999, 1.001)
 
-# Generate symbols data instantly with realistic variations
+# Fetch REAL market data
 symbols_data = {}
 for symbol in symbols:
-    # Add small random variations to simulate live movement
-    price_variation = np.random.uniform(0.995, 1.005)
-    change_variation = np.random.uniform(0.8, 1.2)
-    
-    symbols_data[symbol] = {
-        "price": fallback_prices.get(symbol, 100) * price_adj * price_variation,
-        "change": f"{fallback_changes.get(symbol, 0) * price_adj * change_variation:+.2f}",
-        "pct": f"{(fallback_changes.get(symbol, 0)/fallback_prices.get(symbol, 100))*100*change_variation:+.2f}%",
-        "status": status
-    }
+    try:
+        # Get real-time price and previous close
+        current_price = asyncio.run(st.session_state.market_data.get_current_price(symbol))
+        prev_close = asyncio.run(st.session_state.market_data.get_previous_close(symbol))
+        
+        # Calculate real change and percentage
+        if prev_close and prev_close > 0:
+            change = current_price - prev_close
+            pct_change = (change / prev_close) * 100
+        else:
+            change = 0
+            pct_change = 0
+        
+        symbols_data[symbol] = {
+            "price": current_price,
+            "change": f"{change:+.2f}",
+            "pct": f"{pct_change:+.2f}%",
+            "status": status
+        }
+        
+    except Exception as e:
+        # If real-time data fails, show loading message
+        symbols_data[symbol] = {
+            "price": 0.00,
+            "change": "Loading...",
+            "pct": "Loading...",
+            "status": "Loading Data"
+        }
 
 # Display prices in a compact, clickable grid layout
 price_cols = st.columns(9)  # 9 symbols per row for more compact display
@@ -621,177 +627,6 @@ try:
 except Exception as e:
     st.markdown('*Alert system initializing...*')
 
-# Signal Validation Results
-st.markdown('### 🎯 Signal Validation & Predictability')
-try:
-    recent_signals = st.session_state.signal_validator.get_recent_signals(limit=5)
-    signal_performance = st.session_state.signal_validator.get_signal_performance()
-    recommendations = st.session_state.signal_validator.get_signal_recommendations()
-    
-    # Check if system is initializing
-    if signal_performance.get('status') == 'INITIALIZING' or signal_performance.get('total_signals', 0) == 0:
-        st.info('🔧 **System Initializing:** Signal tracking system is new. Generate some trading signals using the AI Predictions tab to start building performance history.')
-        
-        # Show placeholder metrics
-        val_col1, val_col2, val_col3 = st.columns(3)
-        
-        with val_col1:
-            st.markdown('**Overall Success Rate:** ---%')
-            st.markdown('**Calls Success:** ---%')
-            
-        with val_col2:
-            st.markdown('**Puts Success:** ---%')
-            st.markdown('**Profit Factor:** ---')
-            
-        with val_col3:
-            st.markdown('**Avg Profit:** ---%')
-            st.markdown('**Avg Loss:** ---%')
-        
-        st.markdown('**Getting Started:**')
-        st.markdown('• Navigate to AI Predictions tab above')
-        st.markdown('• Review the generated trading signals')
-        st.markdown('• Signal performance will be tracked automatically')
-        st.markdown('• Return here to view your performance metrics')
-        
-    else:
-        # Display normal performance metrics
-        val_col1, val_col2, val_col3 = st.columns(3)
-        
-        with val_col1:
-            success_color = '#059669' if signal_performance['success_rate'] >= 60 else '#f59e0b' if signal_performance['success_rate'] >= 40 else '#dc2626'
-            st.markdown(f'**Overall Success Rate:** <span style="color: {success_color}">{signal_performance["success_rate"]:.1f}%</span>', unsafe_allow_html=True)
-            call_color = '#059669' if signal_performance['call_success_rate'] >= 60 else '#f59e0b' if signal_performance['call_success_rate'] >= 40 else '#dc2626'
-            st.markdown(f'**Calls Success:** <span style="color: {call_color}">{signal_performance["call_success_rate"]:.1f}%</span>', unsafe_allow_html=True)
-            
-        with val_col2:
-            put_color = '#059669' if signal_performance['put_success_rate'] >= 60 else '#f59e0b' if signal_performance['put_success_rate'] >= 40 else '#dc2626'
-            st.markdown(f'**Puts Success:** <span style="color: {put_color}">{signal_performance["put_success_rate"]:.1f}%</span>', unsafe_allow_html=True)
-            pf_color = '#059669' if signal_performance['profit_factor'] >= 2.0 else '#f59e0b' if signal_performance['profit_factor'] >= 1.2 else '#dc2626'
-            st.markdown(f'**Profit Factor:** <span style="color: {pf_color}">{signal_performance["profit_factor"]:.2f}</span>', unsafe_allow_html=True)
-            
-        with val_col3:
-            st.markdown(f'**Avg Profit:** {signal_performance["avg_profit"]:.1f}%')
-            st.markdown(f'**Avg Loss:** {signal_performance["avg_loss"]:.1f}%')
-        
-        # Recent signals table
-        if recent_signals:
-            st.markdown('**Recent Signals:**')
-            for signal in recent_signals[:3]:
-                status_color = "#059669" if signal.get('success') else "#dc2626" if signal.get('success') is False else "#64748b"
-                outcome = "✅ Success" if signal.get('success') else "❌ Failed" if signal.get('success') is False else "⏳ Pending"
-                profit = f"({signal.get('profit_loss', 0):+.1f}%)" if signal.get('profit_loss') is not None else ""
-                
-                st.markdown(f'<span style="color: {status_color}">**{signal["symbol"]} {signal["signal_type"]}** - {outcome} {profit}</span>', unsafe_allow_html=True)
-        else:
-            st.markdown('**Recent Signals:**')
-            st.markdown('• No recent signals to display')
-        
-        # Recommendations
-        if recommendations:
-            st.markdown('**Recommendations:**')
-            for rec in recommendations:
-                st.markdown(f'• {rec}')
-        
-except Exception as e:
-    st.markdown('*Signal validation system initializing...*')
-
-# 👥 COMMUNITY TRADING HUB (DEMO)
-st.markdown('### 👥 Community Trading Hub')
-st.info('📊 **Demo Mode:** Community features are in development. The data shown below is simulated for demonstration purposes.')
-
-try:
-    # Simplified community overview without fake data
-    st.markdown('#### 📊 Community Overview')
-    
-    basic_col1, basic_col2, basic_col3 = st.columns(3)
-    
-    with basic_col1:
-        st.markdown('**👥 Community Status**')
-        st.markdown('• Platform: Active')
-        st.markdown('• Features: In Development')
-        st.markdown('• Data: Demo Mode')
-        
-    with basic_col2:
-        st.markdown('**📈 Platform Features**')
-        st.markdown('• Signal Generation: ✅ Active')
-        st.markdown('• Technical Analysis: ✅ Active') 
-        st.markdown('• Community Hub: 🚧 Coming Soon')
-        
-    with basic_col3:
-        st.markdown('**🎯 Next Features**')
-        st.markdown('• Real trader profiles')
-        st.markdown('• Live signal sharing')
-        st.markdown('• Performance tracking')
-    
-    # Basic sentiment for selected symbol
-    st.markdown(f'#### 📊 {selected_symbol} Market Sentiment')
-    
-    # Simple sentiment calculation based on price action
-    try:
-        symbol_data = st.session_state.get('market_data', {}).get(selected_symbol, {})
-        if symbol_data:
-            price_change = float(symbol_data.get('pct', '0').replace('%', ''))
-            
-            if price_change > 1:
-                sentiment = "Bullish"
-                sentiment_color = "#059669"
-                bull_pct = 65 + abs(price_change * 5)
-                bear_pct = 35 - abs(price_change * 3)
-            elif price_change < -1:
-                sentiment = "Bearish" 
-                sentiment_color = "#dc2626"
-                bull_pct = 35 - abs(price_change * 3)
-                bear_pct = 65 + abs(price_change * 5)
-            else:
-                sentiment = "Neutral"
-                sentiment_color = "#64748b"
-                bull_pct = 45
-                bear_pct = 40
-            
-            neutral_pct = 100 - bull_pct - bear_pct
-            
-            st.markdown(f'''
-            **Current Sentiment:** <span style="color: {sentiment_color}; font-weight: bold;">{sentiment}</span>
-            
-            **Market Direction Analysis:**
-            • Bullish Indicators: {bull_pct:.1f}%
-            • Bearish Indicators: {bear_pct:.1f}%  
-            • Neutral/Uncertain: {neutral_pct:.1f}%
-            
-            **Based on:** Price action ({price_change:+.2f}%), volume patterns, technical indicators
-            ''', unsafe_allow_html=True)
-        else:
-            st.markdown('*Market sentiment analysis loading...*')
-    except:
-        st.markdown('*Market sentiment data temporarily unavailable*')
-    
-    
-except Exception as e:
-    st.error(f'Enhanced community features loading... {e}')
-    st.markdown('*Please wait while we load the advanced social trading features.*')
-
-# 🚧 TRADER COMMUNITY (COMING SOON)
-st.markdown('### 🚧 Trader Community Features')
-st.info('🔧 **In Development:** Community features like trader leaderboards, signal sharing, and copy trading are currently being developed. Check back soon for updates!')
-
-# Placeholder for future community features
-community_placeholder_col1, community_placeholder_col2 = st.columns(2)
-
-with community_placeholder_col1:
-    st.markdown('**🏆 Planned Features:**')
-    st.markdown('• Real trader leaderboards')
-    st.markdown('• Performance verification system')
-    st.markdown('• Community signal sharing')
-    st.markdown('• Copy trading integration')
-    st.markdown('• Discussion forums')
-
-with community_placeholder_col2:
-    st.markdown('**📊 Development Status:**')
-    st.markdown('• Signal Generation: ✅ Complete')
-    st.markdown('• Market Analysis: ✅ Complete') 
-    st.markdown('• Community System: 🚧 In Progress')
-    st.markdown('• Trader Verification: 🔜 Planned')
-    st.markdown('• Copy Trading: 🔜 Planned')
 
 
 # NEURAL CORTEX ANALYSIS (Ken Griffin/Citadel Style)
