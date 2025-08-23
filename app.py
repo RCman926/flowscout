@@ -1107,42 +1107,93 @@ if call_data and put_data:
             df_puts = pd.DataFrame(put_strikes)
             st.dataframe(df_puts, use_container_width=True, hide_index=True)
     
-    # ACTIONABLE PRICE TARGETS - Show exact buy/sell prices
+    # ACTIONABLE OPTION CONTRACTS - Show exact option details
     st.markdown("---")
-    st.markdown("**💰 Exact Buy/Sell Price Targets**")
+    st.markdown("**💰 Exact Option Contract Targets**")
     
     if call_strikes and put_strikes:
         target_col1, target_col2 = st.columns(2)
         
         with target_col1:
-            st.markdown("**🟢 BEST CALL TRADE**")
+            st.markdown("**🟢 BEST CALL OPTION**")
             best_call = call_strikes[0]  # First/best call option
             buy_price = float(best_call['Buy Price'].replace('$', ''))
+            strike_price = best_call['Strike'].replace('$', '')
             
-            col1, col2, col3, col4 = st.columns(4)
+            # Create proper option contract format
+            try:
+                ticker = yf.Ticker(selected_symbol)
+                exp_dates = ticker.options
+                nearest_exp = exp_dates[0] if exp_dates else "08/29"
+                exp_short = datetime.strptime(nearest_exp, '%Y-%m-%d').strftime('%m/%d')
+            except:
+                exp_short = "08/29"
+            
+            option_symbol = f"{selected_symbol} {exp_short} ${strike_price}C"
+            
+            col1, col2 = st.columns(2)
             with col1:
-                st.metric("BUY AT", best_call['Buy Price'], best_call['Strike'])
+                st.metric("🎯 OPTION CONTRACT", option_symbol, f"Strike: ${strike_price}")
+                st.metric("💰 BUY PRICE", best_call['Buy Price'], "Entry Point")
+            
             with col2:
-                st.metric("SELL: +25%", best_call['Low Target'], f"+${(buy_price * 0.25):.2f}")
-            with col3:
-                st.metric("SELL: +50%", best_call['Med Target'], f"+${(buy_price * 0.50):.2f}")
-            with col4:
-                st.metric("SELL: +100%", best_call['High Target'], f"+${buy_price:.2f}")
+                st.markdown("**SELL TARGETS:**")
+                st.metric("🟢 25% Profit", best_call['Low Target'], f"Profit: +${(buy_price * 0.25):.2f}")
+                st.metric("🟡 50% Profit", best_call['Med Target'], f"Profit: +${(buy_price * 0.50):.2f}")
+                st.metric("🔴 100% Profit", best_call['High Target'], f"Profit: +${buy_price:.2f}")
         
         with target_col2:
-            st.markdown("**🔴 BEST PUT TRADE**")
+            st.markdown("**🔴 BEST PUT OPTION**")
             best_put = put_strikes[0]  # First/best put option
             buy_price = float(best_put['Buy Price'].replace('$', ''))
+            strike_price = best_put['Strike'].replace('$', '')
             
-            col1, col2, col3, col4 = st.columns(4)
+            # Create proper option contract format
+            try:
+                ticker = yf.Ticker(selected_symbol)
+                exp_dates = ticker.options
+                nearest_exp = exp_dates[0] if exp_dates else "08/29"
+                exp_short = datetime.strptime(nearest_exp, '%Y-%m-%d').strftime('%m/%d')
+            except:
+                exp_short = "08/29"
+            
+            option_symbol = f"{selected_symbol} {exp_short} ${strike_price}P"
+            
+            col1, col2 = st.columns(2)
             with col1:
-                st.metric("BUY AT", best_put['Buy Price'], best_put['Strike'])
+                st.metric("🎯 OPTION CONTRACT", option_symbol, f"Strike: ${strike_price}")
+                st.metric("💰 BUY PRICE", best_put['Buy Price'], "Entry Point")
+            
             with col2:
-                st.metric("SELL: +25%", best_put['Low Target'], f"+${(buy_price * 0.25):.2f}")
-            with col3:
-                st.metric("SELL: +50%", best_put['Med Target'], f"+${(buy_price * 0.50):.2f}")
-            with col4:
-                st.metric("SELL: +100%", best_put['High Target'], f"+${buy_price:.2f}")
+                st.markdown("**SELL TARGETS:**")
+                st.metric("🟢 25% Profit", best_put['Low Target'], f"Profit: +${(buy_price * 0.25):.2f}")
+                st.metric("🟡 50% Profit", best_put['Med Target'], f"Profit: +${(buy_price * 0.50):.2f}")
+                st.metric("🔴 100% Profit", best_put['High Target'], f"Profit: +${buy_price:.2f}")
+        
+        # Example order format
+        st.markdown("---")
+        st.markdown("**📋 How To Place Order:**")
+        order_col1, order_col2 = st.columns(2)
+        
+        with order_col1:
+            st.markdown(f"""
+            **Call Order Example:**
+            - Symbol: `{selected_symbol} {exp_short} ${call_strikes[0]['Strike'].replace('$', '')}C`
+            - Action: BUY TO OPEN
+            - Quantity: 1 contract (100 shares)
+            - Price: {call_strikes[0]['Buy Price']} or better
+            - Order Type: Limit Order
+            """)
+        
+        with order_col2:
+            st.markdown(f"""
+            **Put Order Example:**
+            - Symbol: `{selected_symbol} {exp_short} ${put_strikes[0]['Strike'].replace('$', '')}P`
+            - Action: BUY TO OPEN
+            - Quantity: 1 contract (100 shares)
+            - Price: {put_strikes[0]['Buy Price']} or better
+            - Order Type: Limit Order
+            """)
     
     # Quick reference guide
     st.markdown("---")
