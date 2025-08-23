@@ -455,9 +455,6 @@ else:
     aggressive_exit = 0.48
     ultra_exit = 0.72
 
-# CITADEL-STYLE PREMIUM PRICING - Clean, Professional, Ken Griffin Style
-st.markdown('### 💼 Options Pricing Matrix')
-
 premium_col1, premium_col2, premium_col3, premium_col4 = st.columns(4)
 
 with premium_col1:
@@ -950,7 +947,7 @@ with tab5:
                 
                 # 💰 EXACT PREMIUM PRICING (Your requested format)
                 st.markdown("---")
-                st.markdown("# 💼 Options Pricing Matrix")
+                # Pricing already shown above
                 
                 # Calculate realistic premium pricing based on signal
                 if basic_signal == "BUY_CALL":
