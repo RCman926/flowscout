@@ -806,6 +806,54 @@ st.markdown("**🎯 Trading Recommendations**")
 signal, signal_color, confidence = calculate_institutional_signal(selected_symbol)
 current_price = market_data['price']
 
+# Compact recommendations
+rec_col1, rec_col2, rec_col3 = st.columns(3)
+
+with rec_col1:
+    if signal == "CALL":
+        st.markdown(f"""
+        **🟢 CALL PLAY**
+        - Strike: ${round(current_price * 1.01):.0f}
+        - Entry: Market price
+        - Target: +50-100%
+        - Stop: -30%
+        """)
+    elif signal == "PUT":
+        st.markdown(f"""
+        **🔴 PUT PLAY**
+        - Strike: ${round(current_price * 0.99):.0f}
+        - Entry: Market price
+        - Target: +50-100%
+        - Stop: -30%
+        """)
+    else:
+        st.markdown(f"""
+        **⚫ NEUTRAL**
+        - No clear direction
+        - Wait for setup
+        - Monitor levels
+        - Risk management
+        """)
+
+with rec_col2:
+    st.markdown(f"""
+    **📊 KEY LEVELS**
+    - Support: ${current_price * 0.98:.0f}
+    - Resistance: ${current_price * 1.02:.0f}
+    - ATM Strike: ${round(current_price / 5) * 5:.0f}
+    - Confidence: {confidence:.0f}%
+    """)
+
+with rec_col3:
+    risk_level = "High" if confidence < 50 else "Medium" if confidence < 70 else "Low"
+    st.markdown(f"""
+    **⚠️ RISK MGMT**
+    - Position Size: 1-3%
+    - Time Frame: 1-5 days
+    - Risk Level: {risk_level}
+    - Exit Plan: Set stops
+    """)
+
 # === CLEAN LIVE OPTIONS CHAIN ===
 st.markdown("---")
 st.markdown("**📊 Live Options Chain & Flow**")
