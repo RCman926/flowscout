@@ -949,9 +949,9 @@ with rec_col3:
                  f"{((target - current_price) / current_price * 100):+.1f}%")
 
 
-# === LIVE OPTIONS CHAIN & FLOW WITH MULTIPLE EXPIRATIONS ===
-st.markdown("---")
-st.markdown("**📊 Live Options Chain & Flow - Multi-Expiration**")
+# Simple data setup for clean flow chart
+call_data, put_data, call_volume, put_volume, days_to_exp = create_fallback_data(market_data.get('price', 100))
+selected_exp_date = "Today"
 
 @st.cache_data(ttl=10)  # Faster refresh for 0DTE accuracy
 def get_multi_expiration_data(symbol):
@@ -1094,135 +1094,7 @@ def analyze_0dte_flow_direction(calls_data, puts_data, dte):
     
     return direction, color, momentum
 
-# Multi-expiration selector
-try:
-    exp_result = get_multi_expiration_data(selected_symbol)
-except:
-    exp_result = None
-
-if exp_result and len(exp_result) == 2:
-    expirations_data, available_exps = exp_result
-    
-    if expirations_data and len(expirations_data) > 0:
-        # Expiration selector
-        exp_col1, exp_col2, exp_col3 = st.columns([1, 2, 1])
-        
-        with exp_col2:
-            # Create expiration options with DTE labels
-            exp_options = []
-            for exp_date in available_exps:
-                if exp_date in expirations_data:
-                    dte = expirations_data[exp_date]['dte']
-                    dte_label = "0DTE" if dte == 0 else f"{dte}DTE"
-                    is_0dte = " 🔥" if dte == 0 else ""
-                    exp_options.append(f"{exp_date} ({dte_label}){is_0dte}")
-            
-            if exp_options:
-                selected_exp_display = st.selectbox(
-                    "📅 Select Expiration",
-                    exp_options,
-                    index=0,  # Default to first (likely 0DTE)
-                    help="0DTE = Zero Days to Expiration (same day)"
-                )
-                
-                # Extract actual date from display
-                selected_exp_date = selected_exp_display.split(' (')[0]
-            else:
-                selected_exp_date = available_exps[0] if available_exps else None
-        
-        if selected_exp_date and selected_exp_date in expirations_data:
-            exp_info = expirations_data[selected_exp_date]
-            call_data, put_data, call_volume, put_volume, days_to_exp = exp_info['data']
-            
-            # 0DTE Flow Analysis
-            if exp_info['is_0dte']:
-                st.markdown("**🔥 0DTE LIVE FLOW ANALYSIS**")
-                
-                # Real-time flow direction
-                flow_direction, flow_color, momentum = analyze_0dte_flow_direction(call_data, put_data, days_to_exp)
-                
-                flow_metrics_col1, flow_metrics_col2, flow_metrics_col3, flow_metrics_col4 = st.columns(4)
-                
-                with flow_metrics_col1:
-                    st.metric("Flow Direction", flow_direction, f"Momentum: {momentum:.0f}%")
-                
-                with flow_metrics_col2:
-                    cp_ratio = call_volume / max(1, put_volume)
-                    st.metric("C/P Ratio", f"{cp_ratio:.2f}", 
-                             "Call Heavy" if cp_ratio > 1.5 else "Put Heavy" if cp_ratio < 0.67 else "Balanced")
-                
-                with flow_metrics_col3:
-                    total_premium = sum([float(call.get('Last', '0').replace('$', '')) * int(call.get('Vol', '0').replace(',', '')) for call in call_data]) + \
-                                   sum([float(put.get('Last', '0').replace('$', '')) * int(put.get('Vol', '0').replace(',', '')) for put in put_data])
-                    st.metric("Total Premium", f"${total_premium:,.0f}", "0DTE Volume")
-                
-                with flow_metrics_col4:
-                    # Time decay urgency
-                    import datetime
-                    now = datetime.datetime.now()
-                    market_close = now.replace(hour=16, minute=0, second=0, microsecond=0)
-                    time_left = market_close - now
-                    hours_left = max(0, time_left.total_seconds() / 3600) if time_left.total_seconds() > 0 else 0
-                    st.metric("Time to Close", f"{hours_left:.1f}h", "⚠️ Decay Alert" if hours_left < 2 else "Active")
-            
-            # Enhanced Options Chain Display
-            st.markdown("---")
-            
-            # Chain header with expiration info
-            chain_col1, chain_col2, chain_col3 = st.columns([2, 2, 1])
-            
-            with chain_col1:
-                st.markdown("**🟢 CALLS - Live Chain**")
-            with chain_col2:
-                st.markdown("**🔴 PUTS - Live Chain**")
-            with chain_col3:
-                dte_display = "0DTE 🔥" if days_to_exp == 0 else f"{days_to_exp}DTE"
-                st.metric("DTE", dte_display, f"Exp: {selected_exp_date}")
-            
-            # Display the actual options chain data
-            chain_display_col1, chain_display_col2 = st.columns(2)
-            
-            with chain_display_col1:
-                # Calls table
-                if call_data:
-                    import pandas as pd
-                    calls_df = pd.DataFrame(call_data)
-                    if not calls_df.empty:
-                        # Enhanced display with more data
-                        display_calls = calls_df[['Strike', 'Last', 'Bid', 'Ask', 'Vol', 'OI', 'IV', 'Delta', 'Gamma']].head(12)
-                        st.dataframe(display_calls, use_container_width=True, hide_index=True)
-                    else:
-                        st.write("No call data available")
-                else:
-                    st.write("No call data available")
-            
-            with chain_display_col2:
-                # Puts table  
-                if put_data:
-                    import pandas as pd
-                    puts_df = pd.DataFrame(put_data)
-                    if not puts_df.empty:
-                        # Enhanced display with more data
-                        display_puts = puts_df[['Strike', 'Last', 'Bid', 'Ask', 'Vol', 'OI', 'IV', 'Delta', 'Gamma']].head(12)
-                        st.dataframe(display_puts, use_container_width=True, hide_index=True)
-                    else:
-                        st.write("No put data available")
-                else:
-                    st.write("No put data available")
-                    
-            
-        else:
-            # If no data for selected expiration, use simple fallback
-            call_data, put_data, call_volume, put_volume, days_to_exp = create_fallback_data(market_data.get('price', 100))
-            selected_exp_date = "Today"
-    else:
-        # If no expirations data, use simple fallback  
-        call_data, put_data, call_volume, put_volume, days_to_exp = create_fallback_data(market_data.get('price', 100))
-        selected_exp_date = "Today"
-else:
-    # Always fallback to ensure we have data
-    call_data, put_data, call_volume, put_volume, days_to_exp = create_fallback_data(market_data.get('price', 100))
-    selected_exp_date = "Today"
+# Data is already set up above for clean flow chart
 
 
 # === YOUR FAVORITE CLEAN FLOW CHART IS BACK ===
