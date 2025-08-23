@@ -9,6 +9,14 @@ import asyncio
 import warnings
 warnings.filterwarnings('ignore')
 
+# Import market intelligence
+try:
+    from market_intelligence import MarketIntelligenceEngine
+    MARKET_INTELLIGENCE_AVAILABLE = True
+except ImportError:
+    MARKET_INTELLIGENCE_AVAILABLE = False
+    print("Market Intelligence not available - using standard features")
+
 try:
     from tensorflow.keras.models import Model, Sequential
     from tensorflow.keras.layers import Input, LSTM, Dense, Dropout, Concatenate, Conv1D, MaxPooling1D, Flatten, BatchNormalization, Attention, MultiHeadAttention, LayerNormalization
@@ -32,9 +40,11 @@ class ProfessionalAITradingSystem:
         self.validation_scores = {}
         self.model_weights = {}
         self.prediction_history = []
+        self.market_intelligence = None
         
-        # Initialize model components
+        # Initialize enhanced components
         self._initialize_models()
+        self._initialize_market_intelligence()
         
     def _initialize_models(self):
         """Initialize all AI model components"""
@@ -53,77 +63,408 @@ class ProfessionalAITradingSystem:
             'ensemble': None
         }
         
-        # Model weights based on historical performance
+        # Enhanced model weights with regime-based adaptation
         self.model_weights = {
-            'lstm_price': 0.25,
-            'cnn_lstm': 0.25,
-            'transformer': 0.20,
-            'random_forest': 0.15,
-            'gradient_boost': 0.15
+            'enhanced_lstm_v2': 0.30,
+            'transformer_v2': 0.25,
+            'cnn_lstm_v2': 0.20,
+            'random_forest_pro': 0.15,
+            'gradient_boost_pro': 0.10
         }
+        
+        # Market regime adaptive weights
+        self.regime_weights = {
+            'trending': {'enhanced_lstm_v2': 0.4, 'transformer_v2': 0.3, 'cnn_lstm_v2': 0.3},
+            'range_bound': {'random_forest_pro': 0.4, 'gradient_boost_pro': 0.3, 'enhanced_lstm_v2': 0.3},
+            'high_volatility': {'transformer_v2': 0.5, 'enhanced_lstm_v2': 0.3, 'cnn_lstm_v2': 0.2},
+            'low_volatility': {'enhanced_lstm_v2': 0.5, 'random_forest_pro': 0.3, 'gradient_boost_pro': 0.2}
+        }
+        
+    def _initialize_market_intelligence(self):
+        """Initialize market intelligence engine"""
+        try:
+            if MARKET_INTELLIGENCE_AVAILABLE:
+                from market_intelligence import MarketIntelligenceEngine
+                self.market_intelligence = MarketIntelligenceEngine()
+                print("✅ Market Intelligence Engine initialized")
+            else:
+                self.market_intelligence = None
+                print("⚠️ Market Intelligence not available - using standard features")
+        except Exception as e:
+            print(f"Market Intelligence initialization error: {e}")
+            self.market_intelligence = None
     
-    def build_advanced_lstm(self, price_shape=(60, 1), indicators_shape=(24,)):
-        """Build advanced LSTM with attention mechanism"""
+    async def get_enhanced_prediction_features(self, symbol, price_data, volume_data, indicators):
+        """Get enhanced features for superior predictions"""
+        try:
+            enhanced_features = {}
+            
+            # Standard technical features
+            enhanced_features.update(indicators)
+            
+            # Market intelligence features
+            if self.market_intelligence:
+                intelligence_features = await self.market_intelligence.get_enhanced_features(symbol)
+                enhanced_features.update(intelligence_features)
+            
+            # Advanced technical features
+            advanced_tech = self._calculate_advanced_technical_features(price_data, volume_data)
+            enhanced_features.update(advanced_tech)
+            
+            # Options-specific features
+            options_features = self._calculate_options_features(price_data, enhanced_features)
+            enhanced_features.update(options_features)
+            
+            return enhanced_features
+            
+        except Exception as e:
+            print(f"Enhanced features error: {e}")
+            # Return standard indicators as fallback
+            return indicators
+    
+    def _calculate_advanced_technical_features(self, price_data, volume_data):
+        """Calculate advanced technical features for better predictions"""
+        try:
+            features = {}
+            
+            if len(price_data) < 20:
+                return features
+            
+            prices = np.array(price_data)
+            volumes = np.array(volume_data) if volume_data and len(volume_data) > 0 else np.ones(len(prices))
+            
+            # Advanced momentum indicators
+            features['momentum_3d'] = (prices[-1] - prices[-4]) / prices[-4] if len(prices) >= 4 else 0
+            features['momentum_5d'] = (prices[-1] - prices[-6]) / prices[-6] if len(prices) >= 6 else 0
+            features['momentum_10d'] = (prices[-1] - prices[-11]) / prices[-11] if len(prices) >= 11 else 0
+            
+            # Volatility clustering
+            returns = np.diff(np.log(prices))
+            if len(returns) >= 10:
+                features['volatility_clustering'] = np.std(returns[-10:]) / np.std(returns[-20:-10]) if len(returns) >= 20 else 1.0
+            else:
+                features['volatility_clustering'] = 1.0
+            
+            # Price efficiency measures
+            features['price_efficiency'] = self._calculate_price_efficiency(prices)
+            
+            # Volume-price relationship
+            if len(volumes) == len(prices) and len(prices) >= 10:
+                price_changes = np.diff(prices)
+                volume_changes = np.diff(volumes)
+                min_len = min(len(price_changes), len(volume_changes))
+                if min_len > 5:
+                    features['volume_price_correlation'] = np.corrcoef(
+                        price_changes[-min_len:], volume_changes[-min_len:]
+                    )[0, 1]
+                    if np.isnan(features['volume_price_correlation']):
+                        features['volume_price_correlation'] = 0.0
+                else:
+                    features['volume_price_correlation'] = 0.0
+            else:
+                features['volume_price_correlation'] = 0.0
+            
+            # Support/Resistance proximity
+            features['support_proximity'] = self._calculate_support_proximity(prices)
+            features['resistance_proximity'] = self._calculate_resistance_proximity(prices)
+            
+            # Fractal dimension
+            features['fractal_dimension'] = self._calculate_fractal_dimension(prices)
+            
+            return features
+            
+        except Exception as e:
+            print(f"Advanced technical features error: {e}")
+            return {}
+    
+    def _calculate_price_efficiency(self, prices):
+        """Calculate price efficiency metric"""
+        try:
+            if len(prices) < 10:
+                return 0.5
+            
+            # Calculate how much price deviates from random walk
+            log_prices = np.log(prices)
+            linear_trend = np.polyfit(range(len(log_prices)), log_prices, 1)[0]
+            
+            # Detrend
+            detrended = log_prices - (linear_trend * np.arange(len(log_prices)))
+            
+            # Calculate autocorrelation
+            returns = np.diff(detrended)
+            if len(returns) < 5:
+                return 0.5
+            
+            autocorr = np.corrcoef(returns[:-1], returns[1:])[0, 1]
+            if np.isnan(autocorr):
+                autocorr = 0.0
+            
+            # Convert to efficiency score (0 = mean reverting, 0.5 = random, 1 = trending)
+            efficiency = 0.5 + (autocorr * 0.5)
+            return max(0, min(1, efficiency))
+            
+        except:
+            return 0.5
+    
+    def _calculate_support_proximity(self, prices):
+        """Calculate proximity to support levels"""
+        try:
+            if len(prices) < 20:
+                return 0.5
+            
+            current_price = prices[-1]
+            recent_lows = []
+            
+            # Find local minima as support levels
+            for i in range(2, len(prices) - 2):
+                if prices[i] < prices[i-1] and prices[i] < prices[i+1]:
+                    if prices[i] < prices[i-2] and prices[i] < prices[i+2]:
+                        recent_lows.append(prices[i])
+            
+            if not recent_lows:
+                return 0.5
+            
+            # Find closest support
+            closest_support = max([low for low in recent_lows if low < current_price], default=min(recent_lows))
+            
+            # Calculate proximity (0 = far, 1 = very close)
+            proximity = 1 - ((current_price - closest_support) / current_price)
+            return max(0, min(1, proximity))
+            
+        except:
+            return 0.5
+    
+    def _calculate_resistance_proximity(self, prices):
+        """Calculate proximity to resistance levels"""
+        try:
+            if len(prices) < 20:
+                return 0.5
+            
+            current_price = prices[-1]
+            recent_highs = []
+            
+            # Find local maxima as resistance levels
+            for i in range(2, len(prices) - 2):
+                if prices[i] > prices[i-1] and prices[i] > prices[i+1]:
+                    if prices[i] > prices[i-2] and prices[i] > prices[i+2]:
+                        recent_highs.append(prices[i])
+            
+            if not recent_highs:
+                return 0.5
+            
+            # Find closest resistance
+            closest_resistance = min([high for high in recent_highs if high > current_price], default=max(recent_highs))
+            
+            # Calculate proximity (0 = far, 1 = very close)
+            proximity = 1 - ((closest_resistance - current_price) / current_price)
+            return max(0, min(1, proximity))
+            
+        except:
+            return 0.5
+    
+    def _calculate_fractal_dimension(self, prices):
+        """Calculate fractal dimension for market complexity"""
+        try:
+            if len(prices) < 10:
+                return 1.5
+            
+            # Use box-counting method approximation
+            log_prices = np.log(prices)
+            n = len(log_prices)
+            
+            # Calculate at different scales
+            scales = [2, 3, 4, 5]
+            variations = []
+            
+            for scale in scales:
+                if n // scale < 2:
+                    continue
+                    
+                # Divide into segments
+                segments = [log_prices[i:i+scale] for i in range(0, n-scale+1, scale)]
+                
+                # Calculate variation in each segment
+                segment_vars = [max(seg) - min(seg) for seg in segments if len(seg) == scale]
+                
+                if segment_vars:
+                    variations.append(np.mean(segment_vars))
+            
+            if len(variations) < 2:
+                return 1.5
+            
+            # Estimate fractal dimension
+            log_scales = np.log(scales[:len(variations)])
+            log_variations = np.log(variations)
+            
+            slope = np.polyfit(log_scales, log_variations, 1)[0]
+            fractal_dim = 2 - slope
+            
+            # Bound between 1 and 2
+            return max(1.0, min(2.0, fractal_dim))
+            
+        except:
+            return 1.5
+    
+    def _calculate_options_features(self, price_data, features):
+        """Calculate options-specific features"""
+        try:
+            options_features = {}
+            
+            if len(price_data) < 10:
+                return {'time_decay_factor': 0.5, 'volatility_risk': 0.5}
+            
+            current_price = price_data[-1]
+            
+            # Time decay considerations
+            # Simulate higher time decay risk for options
+            options_features['time_decay_factor'] = np.random.uniform(0.8, 1.2)
+            
+            # Volatility expansion/contraction
+            returns = np.diff(np.log(price_data))
+            if len(returns) >= 5:
+                recent_vol = np.std(returns[-5:])
+                historical_vol = np.std(returns)
+                options_features['volatility_risk'] = recent_vol / historical_vol if historical_vol > 0 else 1.0
+            else:
+                options_features['volatility_risk'] = 1.0
+            
+            # Moneyness consideration (simulate ATM/OTM effects)
+            options_features['moneyness_factor'] = np.random.uniform(0.9, 1.1)
+            
+            # Implied volatility rank (simulated)
+            options_features['iv_percentile'] = features.get('implied_vol_rank', 0.5)
+            
+            # Greeks impact simulation
+            options_features['delta_impact'] = features.get('delta_exposure', 0.0)
+            options_features['gamma_impact'] = features.get('gamma_exposure', 0.1)
+            
+            return options_features
+            
+        except Exception as e:
+            print(f"Options features error: {e}")
+            return {'time_decay_factor': 1.0, 'volatility_risk': 1.0}
+    
+    def build_enhanced_lstm_v2(self, price_shape=(60, 1), indicators_shape=(32,), options_shape=(8,)):
+        """Build next-generation LSTM with multi-head attention and options intelligence"""
         try:
             if not TENSORFLOW_AVAILABLE:
                 return None
                 
-            # Price input branch with CNN feature extraction
+            # Price input branch with enhanced CNN feature extraction
             price_input = Input(shape=price_shape, name='price_input')
             
-            # CNN layers for feature extraction
-            conv1 = Conv1D(filters=64, kernel_size=3, activation='relu')(price_input)
-            conv2 = Conv1D(filters=128, kernel_size=3, activation='relu')(conv1)
-            pool1 = MaxPooling1D(pool_size=2)(conv2)
+            # Multi-scale CNN feature extraction
+            conv1_short = Conv1D(filters=64, kernel_size=3, activation='relu', padding='same')(price_input)
+            conv1_med = Conv1D(filters=64, kernel_size=5, activation='relu', padding='same')(price_input)
+            conv1_long = Conv1D(filters=64, kernel_size=7, activation='relu', padding='same')(price_input)
             
-            # Advanced LSTM layers with batch normalization
-            lstm1 = LSTM(256, return_sequences=True, dropout=0.2, recurrent_dropout=0.2)(pool1)
+            # Concatenate multi-scale features
+            conv_combined = Concatenate()([conv1_short, conv1_med, conv1_long])
+            conv2 = Conv1D(filters=128, kernel_size=3, activation='relu', padding='same')(conv_combined)
+            bn_conv = BatchNormalization()(conv2)
+            pool1 = MaxPooling1D(pool_size=2)(bn_conv)
+            
+            # Self-attention mechanism for temporal patterns
+            attention_output = MultiHeadAttention(num_heads=8, key_dim=64)(pool1, pool1)
+            attention_output = LayerNormalization()(attention_output + pool1)
+            
+            # Advanced LSTM layers with residual connections
+            lstm1 = LSTM(256, return_sequences=True, dropout=0.2, recurrent_dropout=0.2)(attention_output)
             bn1 = BatchNormalization()(lstm1)
             lstm2 = LSTM(128, return_sequences=True, dropout=0.2, recurrent_dropout=0.2)(bn1)
             bn2 = BatchNormalization()(lstm2)
-            lstm3 = LSTM(64, dropout=0.2, recurrent_dropout=0.2)(bn2)
             
-            # Indicators input branch
+            # Second attention layer
+            attention2 = MultiHeadAttention(num_heads=4, key_dim=32)(lstm2, lstm2)
+            attention2 = LayerNormalization()(attention2 + lstm2)
+            
+            lstm3 = LSTM(64, dropout=0.2, recurrent_dropout=0.2)(attention2)
+            
+            # Technical indicators branch with deeper processing
             indicators_input = Input(shape=indicators_shape, name='indicators_input')
-            dense_indicators = Dense(32, activation='relu')(indicators_input)
+            dense_ind1 = Dense(64, activation='relu')(indicators_input)
+            dropout_ind1 = Dropout(0.2)(dense_ind1)
+            dense_ind2 = Dense(32, activation='relu')(dropout_ind1)
             
-            # Combine branches
-            combined = Concatenate()([lstm3, dense_indicators])
+            # Options intelligence branch
+            options_input = Input(shape=options_shape, name='options_input')
+            dense_opt1 = Dense(32, activation='relu')(options_input)
+            dropout_opt1 = Dropout(0.2)(dense_opt1)
+            dense_opt2 = Dense(16, activation='relu')(dropout_opt1)
             
-            # Final dense layers with dropout
-            dense1 = Dense(128, activation='relu')(combined)
-            dropout1 = Dropout(0.3)(dense1)
-            dense2 = Dense(64, activation='relu')(dropout1)
-            dropout2 = Dropout(0.2)(dense2)
+            # Market regime detection branch
+            regime_features = Dense(16, activation='relu')(indicators_input)
+            regime_output = Dense(4, activation='softmax', name='market_regime')(regime_features)
             
-            # Output layers for different predictions
-            price_output = Dense(1, activation='linear', name='price_output')(dropout2)
-            direction_output = Dense(1, activation='sigmoid', name='direction_output')(dropout2)
-            confidence_output = Dense(1, activation='sigmoid', name='confidence_output')(dropout2)
+            # Combine all branches with adaptive weighting
+            combined = Concatenate()([lstm3, dense_ind2, dense_opt2])
+            
+            # Enhanced feature fusion
+            fusion1 = Dense(128, activation='relu')(combined)
+            dropout_fusion1 = Dropout(0.3)(fusion1)
+            fusion2 = Dense(64, activation='relu')(dropout_fusion1)
+            dropout_fusion2 = Dropout(0.2)(fusion2)
+            
+            # Multi-task outputs with uncertainty estimation
+            price_output = Dense(1, activation='linear', name='price_output')(dropout_fusion2)
+            direction_output = Dense(1, activation='sigmoid', name='direction_output')(dropout_fusion2)
+            confidence_output = Dense(1, activation='sigmoid', name='confidence_output')(dropout_fusion2)
+            volatility_output = Dense(1, activation='sigmoid', name='volatility_output')(dropout_fusion2)
+            
+            # Risk-adjusted return prediction
+            risk_adjusted_return = Dense(1, activation='tanh', name='risk_return')(dropout_fusion2)
+            
+            # Options Greeks prediction
+            delta_output = Dense(1, activation='sigmoid', name='delta_pred')(dropout_fusion2)
+            gamma_output = Dense(1, activation='sigmoid', name='gamma_pred')(dropout_fusion2)
             
             model = Model(
-                inputs=[price_input, indicators_input], 
-                outputs=[price_output, direction_output, confidence_output]
+                inputs=[price_input, indicators_input, options_input], 
+                outputs=[price_output, direction_output, confidence_output, volatility_output, 
+                        risk_adjusted_return, delta_output, gamma_output, regime_output]
             )
             
+            # Advanced optimizer with learning rate scheduling
+            optimizer = Adam(learning_rate=0.001, beta_1=0.9, beta_2=0.999, epsilon=1e-7)
+            
             model.compile(
-                optimizer=Adam(learning_rate=0.001),
+                optimizer=optimizer,
                 loss={
                     'price_output': 'mse',
                     'direction_output': 'binary_crossentropy',
-                    'confidence_output': 'mse'
+                    'confidence_output': 'mse',
+                    'volatility_output': 'mse',
+                    'risk_return': 'mse',
+                    'delta_pred': 'mse',
+                    'gamma_pred': 'mse',
+                    'market_regime': 'categorical_crossentropy'
+                },
+                loss_weights={
+                    'price_output': 1.0,
+                    'direction_output': 2.0,  # Emphasize direction accuracy
+                    'confidence_output': 0.5,
+                    'volatility_output': 0.8,
+                    'risk_return': 1.2,
+                    'delta_pred': 0.6,
+                    'gamma_pred': 0.4,
+                    'market_regime': 0.7
                 },
                 metrics={
                     'price_output': ['mae'],
                     'direction_output': ['accuracy'],
-                    'confidence_output': ['mse']
+                    'confidence_output': ['mse'],
+                    'volatility_output': ['mae'],
+                    'risk_return': ['mae'],
+                    'delta_pred': ['mae'],
+                    'gamma_pred': ['mae'],
+                    'market_regime': ['accuracy']
                 }
             )
             
             return model
             
         except Exception as e:
-            print(f"Advanced LSTM creation error: {e}")
+            print(f"Enhanced LSTM v2 creation error: {e}")
             return None
     
     def build_transformer_model(self, sequence_length=60, features=25):

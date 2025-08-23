@@ -220,7 +220,15 @@ for i, (symbol, data) in enumerate(symbols_data.items()):
     with price_cols[i % 9]:
         # Generate trading signal for this symbol to determine color
         current_price = data['price']
-        price_change_pct = float(data['pct'].replace('%', '')) / 100
+        
+        # Handle loading state and convert percentage safely
+        try:
+            if 'Loading' in str(data['pct']) or data['pct'] == 'N/A':
+                price_change_pct = 0.0
+            else:
+                price_change_pct = float(str(data['pct']).replace('%', '')) / 100
+        except (ValueError, TypeError):
+            price_change_pct = 0.0
         
         # Simple signal logic based on price momentum and direction
         if price_change_pct > 0.01:  # More than 1% gain
