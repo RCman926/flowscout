@@ -1485,63 +1485,6 @@ if 'call_data' in locals() and 'put_data' in locals():
             st.metric("ATM Theta", atm_call.get('Theta', '-0.05'),
                      f"Vega: {atm_call.get('Vega', '0.10')}")
 
-# === ENHANCED FLOW VISUALIZATION ===
-st.markdown('<hr class="divider">', unsafe_allow_html=True)
-st.markdown("**📊 Live Options Flow & Analysis**")
-
-# Enhanced but clean flow chart - bring back the simple design you liked
-if 'call_data' in locals() and 'put_data' in locals():
-    # Clean flow visualization with 0DTE focus  
-    flow_col1, flow_col2, flow_col3 = st.columns([1, 2, 1])
-
-    with flow_col1:
-        st.metric("🟢 Call Volume", f"{call_volume:,}", 
-                 "Strong" if call_volume > put_volume * 1.5 else "")
-
-    with flow_col2:
-        # Your preferred clean flow chart with enhancements
-        fig = go.Figure()
-        
-        # Add flow bars with clean styling like before
-        fig.add_trace(go.Bar(
-            x=['Calls', 'Puts'],
-            y=[call_volume, put_volume],
-            marker_color=['#00ff00', '#ff0000'],
-            text=[f'{call_volume:,}', f'{put_volume:,}'],
-            textposition='auto',
-            name='Options Flow',
-            marker_line=dict(width=1, color='white')
-        ))
-        
-        # Add directional indicator (your enhancement request)
-        if call_volume > put_volume:
-            direction_text = "📈 CALL FLOW"
-            title_color = "#00ff00"
-        elif put_volume > call_volume:
-            direction_text = "📉 PUT FLOW" 
-            title_color = "#ff0000"
-        else:
-            direction_text = "⚖️ BALANCED"
-            title_color = "#ffff00"
-        
-        # Keep it clean and compact like you prefer
-        fig.update_layout(
-            title=f"{direction_text}",
-            showlegend=False,
-            height=200,  # Keep it compact
-            margin=dict(l=0, r=0, t=30, b=0),
-            paper_bgcolor='rgba(0,0,0,0)',
-            plot_bgcolor='rgba(0,0,0,0)',
-            title_font_color=title_color,
-            title_font_size=14
-        )
-        
-        st.plotly_chart(fig, use_container_width=True)
-
-    with flow_col3:
-        cp_ratio = call_volume / max(1, put_volume)
-        st.metric("🔴 Put Volume", f"{put_volume:,}",
-                 f"Ratio: {cp_ratio:.2f}")
 
     # 0DTE-specific enhancements you requested
     if 'days_to_exp' in locals() and days_to_exp == 0:
