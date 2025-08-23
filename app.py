@@ -84,6 +84,10 @@ selected_symbol = 'AAPL'  # Default
 for i, symbol in enumerate(symbols):
     signal_type, button_color = get_quick_signal(symbol)
     with symbol_cols[i]:
+        # Check if this is the selected symbol
+        is_selected = (symbol == st.session_state.get('selected_symbol', 'AAPL'))
+        border_style = "3px solid #fbbf24" if is_selected else "2px solid transparent"
+        
         # Color coded clickable box using HTML
         box_style = f"""
         <div style="
@@ -96,17 +100,18 @@ for i, symbol in enumerate(symbols):
             font-size: 14px;
             margin: 2px;
             cursor: pointer;
-            border: 2px solid transparent;
+            border: {border_style};
         ">
             {symbol}
         </div>
         """
         st.markdown(box_style, unsafe_allow_html=True)
         
-        # Invisible button for functionality
-        if st.button(f"Select {symbol}", key=f"symbol_{symbol}", label_visibility="collapsed"):
+        # Clickable button for functionality
+        if st.button(f"▶ {symbol}", key=f"symbol_{symbol}"):
             selected_symbol = symbol
             st.session_state.selected_symbol = symbol
+            st.rerun()
 
 # Use session state to remember selection
 if 'selected_symbol' in st.session_state:
@@ -203,6 +208,9 @@ def calculate_technical_indicators(symbol):
 # Get real market data
 market_data = get_real_market_data(selected_symbol)
 tech_indicators = calculate_technical_indicators(selected_symbol)
+
+# Show currently selected symbol
+st.markdown(f"### 📊 **Currently Analyzing: {selected_symbol}**")
 
 # Display main metrics with real data
 col1, col2, col3, col4 = st.columns(4)
