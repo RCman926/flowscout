@@ -185,84 +185,148 @@ elif 9 <= hour < 16:  # Market hours
 else:  # Overnight
     status = "OVERNIGHT"
 
-# Fetch REAL market data using Yahoo Finance
+# ENHANCED REAL-TIME MARKET DATA SYSTEM
 import yfinance as yf
+import requests
 from datetime import datetime, timedelta
+import pytz
 
-# Cache real data for 30 seconds to avoid repeated API calls
-if 'real_data_cache' not in st.session_state:
-    st.session_state.real_data_cache = {}
+# Enhanced caching system - 10 second refresh for live data
+if 'live_data_cache' not in st.session_state:
+    st.session_state.live_data_cache = {}
     st.session_state.cache_timestamp = datetime.now()
 
-# Check if cache is still valid (30 seconds)
-cache_valid = (datetime.now() - st.session_state.cache_timestamp).seconds < 30
+# Check if cache needs refresh (10 seconds for live trading)
+cache_valid = (datetime.now() - st.session_state.cache_timestamp).seconds < 10
+
+def get_real_time_price(symbol):
+    """Enhanced real-time price fetching with multiple methods"""
+    try:
+        ticker = yf.Ticker(symbol)
+        
+        # Method 1: Get fast_info for real-time quotes
+        try:
+            fast_info = ticker.fast_info
+            current_price = fast_info.get('lastPrice') or fast_info.get('regularMarketPrice')
+            prev_close = fast_info.get('previousClose')
+            
+            if current_price and prev_close:
+                change = current_price - prev_close
+                pct_change = (change / prev_close) * 100
+                
+                # Determine market status based on time
+                ny_tz = pytz.timezone('America/New_York')
+                current_ny = datetime.now(ny_tz)
+                hour = current_ny.hour
+                weekday = current_ny.weekday()
+                
+                if weekday < 5:  # Monday-Friday
+                    if 4 <= hour < 9:
+                        status = "PRE-MARKET"
+                    elif 9 <= hour < 16:
+                        status = "MARKET HOURS"
+                    else:
+                        status = "AFTER-HOURS"
+                else:
+                    status = "WEEKEND"
+                
+                return {
+                    "price": float(current_price),
+                    "change": f"{change:+.2f}",
+                    "pct": f"{pct_change:+.2f}%",
+                    "status": status,
+                    "success": True
+                }
+        except:
+            pass
+        
+        # Method 2: Fallback to info method
+        try:
+            info = ticker.info
+            current_price = info.get('currentPrice') or info.get('regularMarketPrice')
+            prev_close = info.get('previousClose')
+            
+            if current_price and prev_close:
+                change = current_price - prev_close
+                pct_change = (change / prev_close) * 100
+                
+                return {
+                    "price": float(current_price),
+                    "change": f"{change:+.2f}",
+                    "pct": f"{pct_change:+.2f}%",
+                    "status": "LIVE",
+                    "success": True
+                }
+        except:
+            pass
+            
+        # Method 3: Historical data as last resort
+        hist = ticker.history(period='1d', interval='1m')
+        if not hist.empty:
+            current_price = hist['Close'].iloc[-1]
+            prev_close = ticker.history(period='2d')['Close'].iloc[-2]
+            change = current_price - prev_close
+            pct_change = (change / prev_close) * 100
+            
+            return {
+                "price": float(current_price),
+                "change": f"{change:+.2f}",
+                "pct": f"{pct_change:+.2f}%",
+                "status": "DELAYED",
+                "success": True
+            }
+            
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+    
+    return {"success": False, "error": "No data available"}
 
 symbols_data = {}
-if not cache_valid or not st.session_state.real_data_cache:
-    st.write("🔄 Fetching real market data...")
+if not cache_valid or not st.session_state.live_data_cache:
+    # Status indicator
+    data_status = st.empty()
+    data_status.write("🔴 Fetching live market data...")
     
-    # Fetch real data for all symbols at once for efficiency
-    try:
-        tickers = yf.Tickers(' '.join(symbols))
-        for symbol in symbols:
-            try:
-                ticker = yf.Ticker(symbol)
-                hist = ticker.history(period='2d')  # Get last 2 days
-                info = ticker.info
-                
-                if not hist.empty and len(hist) >= 2:
-                    current_price = hist['Close'].iloc[-1]
-                    prev_close = hist['Close'].iloc[-2]
-                    change = current_price - prev_close
-                    pct_change = (change / prev_close) * 100 if prev_close > 0 else 0
-                    
-                    # Determine market status
-                    market_open = info.get('regularMarketOpen', current_price)
-                    if abs(current_price - market_open) < 0.01:
-                        status = "PRE-MARKET"
-                    else:
-                        status = "MARKET HOURS"
-                    
-                    symbols_data[symbol] = {
-                        "price": float(current_price),
-                        "change": f"{change:+.2f}",
-                        "pct": f"{pct_change:+.2f}%",
-                        "status": status
-                    }
-                else:
-                    # Fallback if no data
-                    symbols_data[symbol] = {
-                        "price": 100.0,
-                        "change": "+0.00",
-                        "pct": "+0.00%",
-                        "status": "DATA ERROR"
-                    }
-            except Exception as e:
-                # Fallback for individual symbol errors
-                symbols_data[symbol] = {
-                    "price": 100.0,
-                    "change": "+0.00",
-                    "pct": "+0.00%",
-                    "status": "LOADING"
-                }
+    # Fetch data for all symbols
+    success_count = 0
+    for symbol in symbols:
+        result = get_real_time_price(symbol)
         
-        # Cache the data
-        st.session_state.real_data_cache = symbols_data.copy()
-        st.session_state.cache_timestamp = datetime.now()
-        
-    except Exception as e:
-        st.error(f"Error fetching real data: {str(e)}")
-        # Use fallback data if API fails
-        for symbol in symbols:
+        if result.get("success"):
+            symbols_data[symbol] = {
+                "price": result["price"],
+                "change": result["change"],
+                "pct": result["pct"],
+                "status": result["status"]
+            }
+            success_count += 1
+        else:
+            # Enhanced fallback with error tracking
             symbols_data[symbol] = {
                 "price": 100.0,
                 "change": "+0.00",
                 "pct": "+0.00%",
-                "status": "API ERROR"
+                "status": f"ERROR: {result.get('error', 'Unknown')}"
             }
+    
+    # Update cache
+    st.session_state.live_data_cache = symbols_data.copy()
+    st.session_state.cache_timestamp = datetime.now()
+    
+    # Update status
+    if success_count > 0:
+        data_status.write(f"🟢 Live data active - {success_count}/{len(symbols)} symbols loaded")
+    else:
+        data_status.write("🟡 Using fallback data - API issues detected")
+        
 else:
     # Use cached data
-    symbols_data = st.session_state.real_data_cache.copy()
+    symbols_data = st.session_state.live_data_cache.copy()
+    st.write("🟢 Using cached live data (refreshes every 10 seconds)")
+
+# Add data freshness indicator
+last_update = st.session_state.cache_timestamp.strftime("%H:%M:%S")
+st.write(f"📅 Last update: {last_update} | Auto-refresh in {10 - (datetime.now() - st.session_state.cache_timestamp).seconds}s")
 
 # Display prices in a compact, clickable grid layout
 price_cols = st.columns(9)  # 9 symbols per row for more compact display
