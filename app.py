@@ -1658,13 +1658,12 @@ with alert_config_col1:
     alert_settings['dte_alerts'] = st.checkbox("🔥 0DTE Special Alerts", value=True)
 
 with alert_config_col2:
-    # Alert thresholds
-    st.markdown("**Sensitivity Settings:**")
-    alert_settings['volume_threshold'] = st.slider("Volume Alert Threshold", 500, 5000, 1000)
-    alert_settings['ratio_threshold'] = st.slider("C/P Ratio Alert Level", 2.0, 5.0, 3.0)
-    alert_settings['proximity_threshold'] = st.slider("Price Target Distance %", 0.5, 3.0, 1.0) / 100
-    alert_settings['iv_spike_threshold'] = st.slider("IV Spike Multiple", 1.2, 2.5, 1.5)
-    alert_settings['min_signal_confidence'] = st.slider("Min Signal Confidence %", 50, 90, 60)
+    # Set default alert thresholds (removing sliders)
+    alert_settings['volume_threshold'] = 1000
+    alert_settings['ratio_threshold'] = 3.0
+    alert_settings['proximity_threshold'] = 0.01
+    alert_settings['iv_spike_threshold'] = 1.5
+    alert_settings['min_signal_confidence'] = 60
 
 # Alert statistics
 alert_stats = telegram_alerts.get_alert_stats()
