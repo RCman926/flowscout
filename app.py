@@ -399,27 +399,37 @@ for i, (symbol, data) in enumerate(symbols_data.items()):
         
         border = "2px solid #f59e0b" if symbol == st.session_state.get('selected_symbol', 'SPY') else "1px solid rgba(255,255,255,0.1)"
         
-        # CLICKABLE price box - no separate button needed
+        # USE HTML DIRECTLY - Skip Streamlit button styling issues
         clickable_key = f"clickable_{symbol}_{i}"
-        # Simple button text
         button_text = f"{symbol} ${data['price']:.2f} {data['change']} {signal}"
-        if st.button(button_text, key=clickable_key, use_container_width=True):
+        
+        # Create colored HTML box instead of styled button
+        st.markdown(f'''
+        <div style="
+            background-color: {color}; 
+            color: white; 
+            padding: 10px; 
+            border-radius: 5px; 
+            text-align: center; 
+            font-weight: bold; 
+            margin: 2px 0;
+            border: 2px solid {color};
+            cursor: pointer;
+        ">
+            {button_text}
+        </div>
+        ''', unsafe_allow_html=True)
+        
+        # Keep the invisible button for functionality
+        if st.button(f"Select {symbol}", key=clickable_key, use_container_width=True):
             st.session_state.selected_symbol = symbol
             st.rerun()
         
-        # DIRECT COLOR OVERRIDE - Force the color to show
+        # Hide the actual button
         st.markdown(f'''
         <style>
         button[key="{clickable_key}"] {{
-            background-color: {color} !important;
-            color: white !important;
-            border: 2px solid {color} !important;
-            font-weight: bold !important;
-        }}
-        div[data-testid="stButton"] button[key="{clickable_key}"] {{
-            background-color: {color} !important;
-            background: {color} !important;
-            color: white !important;
+            display: none !important;
         }}
         </style>
         ''', unsafe_allow_html=True)
