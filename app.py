@@ -9,46 +9,61 @@ from plotly.subplots import make_subplots
 import pytz
 from scipy.stats import norm
 
-# === SIMPLE DATA FALLBACK FUNCTION ===
-def create_fallback_data(current_price):
-    """Create simple fallback data quickly"""
-    import random
-    import time
-    from datetime import datetime
-    
-    # Use date-based seed so data is stable throughout the day
-    today = datetime.now().strftime('%Y-%m-%d')
-    random.seed(hash(today) % 1000000)
-    
-    # Stable daily call/put data (doesn't change every refresh)
-    call_volume = random.randint(1200, 2800)
-    put_volume = random.randint(800, 2200)
-    
-    strikes = [current_price * 0.98, current_price, current_price * 1.02]
-    
-    call_data = []
-    put_data = []
-    
-    for strike in strikes:
-        call_data.append({
-            'Strike': f"${strike:.0f}",
-            'Last': f"${random.uniform(1, 10):.2f}",
-            'Vol': f"{random.randint(50, 500):,}",
-            'IV': f"{random.uniform(20, 40):.1f}%",
-            'Delta': f"{random.uniform(0.3, 0.7):.2f}",
-            'Gamma': f"{random.uniform(0.01, 0.05):.3f}"
-        })
+# === REAL DATA ONLY ===
+def get_real_options_data(symbol):
+    """Get real options data from Yahoo Finance only"""
+    try:
+        ticker = yf.Ticker(symbol)
+        exp_dates = ticker.options
+        if not exp_dates:
+            return None, None, 0, 0, None
+            
+        # Get today or nearest expiration
+        exp_date = exp_dates[0]
+        options_chain = ticker.option_chain(exp_date)
         
-        put_data.append({
-            'Strike': f"${strike:.0f}",
-            'Last': f"${random.uniform(1, 8):.2f}",
-            'Vol': f"{random.randint(30, 400):,}",
-            'IV': f"{random.uniform(25, 45):.1f}%",
-            'Delta': f"{random.uniform(-0.7, -0.3):.2f}",
-            'Gamma': f"{random.uniform(0.01, 0.05):.3f}"
-        })
-    
-    return call_data, put_data, call_volume, put_volume, 0
+        if options_chain.calls.empty or options_chain.puts.empty:
+            return None, None, 0, 0, None
+            
+        # Process real calls data
+        calls = options_chain.calls.head(10)
+        call_data = []
+        for _, row in calls.iterrows():
+            call_data.append({
+                'Strike': f"${row['strike']:.0f}",
+                'Last': f"${row['lastPrice']:.2f}",
+                'Vol': f"{int(row['volume']) if pd.notna(row['volume']) else 0:,}",
+                'IV': f"{row['impliedVolatility']*100:.1f}%" if pd.notna(row['impliedVolatility']) else "N/A",
+                'Delta': "N/A",  # Yahoo doesn't provide Greeks
+                'Gamma': "N/A"
+            })
+        
+        # Process real puts data  
+        puts = options_chain.puts.head(10)
+        put_data = []
+        for _, row in puts.iterrows():
+            put_data.append({
+                'Strike': f"${row['strike']:.0f}",
+                'Last': f"${row['lastPrice']:.2f}",
+                'Vol': f"{int(row['volume']) if pd.notna(row['volume']) else 0:,}",
+                'IV': f"{row['impliedVolatility']*100:.1f}%" if pd.notna(row['impliedVolatility']) else "N/A",
+                'Delta': "N/A",
+                'Gamma': "N/A"
+            })
+        
+        # Real volume totals
+        call_volume = int(calls['volume'].sum()) if not calls['volume'].isna().all() else 0
+        put_volume = int(puts['volume'].sum()) if not puts['volume'].isna().all() else 0
+        
+        # Calculate days to expiration
+        from datetime import datetime
+        exp_datetime = datetime.strptime(exp_date, '%Y-%m-%d')
+        days_to_exp = (exp_datetime - datetime.now()).days
+        
+        return call_data, put_data, call_volume, put_volume, days_to_exp
+        
+    except Exception as e:
+        return None, None, 0, 0, None
 import time
 import warnings
 warnings.filterwarnings('ignore')
@@ -797,7 +812,7 @@ with col3:
     # Real options volume for selected symbol
     current_price = market_data['price']
     atm_strike = round(current_price / 5) * 5  # Nearest $5 strike
-    st.metric("ATM Strike", f"${atm_strike:.0f}", f"Volume: {np.random.randint(800, 2500):,}")
+    st.metric("ATM Strike", f"${atm_strike:.0f}", "Real Data")
 
 with col4:
     # Implied volatility estimate
@@ -911,110 +926,16 @@ with rec_col3:
                  f"{((target - current_price) / current_price * 100):+.1f}%")
 
 
-# Simple data setup for clean flow chart
-call_data, put_data, call_volume, put_volume, days_to_exp = create_fallback_data(market_data.get('price', 100))
-selected_exp_date = "Today"
+# Get REAL options data only
+call_data, put_data, call_volume, put_volume, days_to_exp = get_real_options_data(selected_symbol)
+if call_data is None:
+    # If no real data available, show message instead of fake data
+    st.warning("⚠️ No real options data available for this symbol. Please select a different symbol with active options.")
+    st.stop()
 
-@st.cache_data(ttl=10)  # Faster refresh for 0DTE accuracy
-def get_multi_expiration_data(symbol):
-    """Get options data for multiple expirations with 0DTE focus"""
-    import time
-    from datetime import datetime, timedelta
-    
-    try:
-        ticker = yf.Ticker(symbol)
-        current_price = market_data['price']
-        
-        # Get real options chain if available
-        try:
-            exp_dates = ticker.options
-            if exp_dates:
-                # Process multiple expirations (up to 6 nearest)
-                expirations_data = {}
-                
-                for i, exp_date in enumerate(exp_dates[:6]):
-                    try:
-                        options_chain = ticker.option_chain(exp_date)
-                        
-                        # Calculate days to expiration
-                        exp_datetime = datetime.strptime(exp_date, '%Y-%m-%d')
-                        dte = (exp_datetime - datetime.now()).days
-                        
-                        # Filter for liquid strikes near ATM
-                        atm_range = (current_price * 0.90, current_price * 1.10)
-                        calls_df = options_chain.calls[
-                            (options_chain.calls['strike'] >= atm_range[0]) & 
-                            (options_chain.calls['strike'] <= atm_range[1])
-                        ].sort_values('strike')
-                        
-                        puts_df = options_chain.puts[
-                            (options_chain.puts['strike'] >= atm_range[0]) & 
-                            (options_chain.puts['strike'] <= atm_range[1])
-                        ].sort_values('strike')
-                        
-                        if not calls_df.empty and not puts_df.empty:
-                            processed_data = process_real_options_data(calls_df, puts_df, current_price, exp_date)
-                            expirations_data[exp_date] = {
-                                'data': processed_data,
-                                'dte': dte,
-                                'is_0dte': dte == 0
-                            }
-                    except:
-                        continue
-                
-                return expirations_data, exp_dates[:6]
-        except:
-            pass
-            
-    except:
-        pass
-    
-    # Fallback to enhanced simulated data
-    current_price = market_data.get('price', 100)
-    return generate_multi_exp_simulated_data(symbol, current_price)
+selected_exp_date = "Live Data"
 
-def generate_multi_exp_simulated_data(symbol, current_price):
-    """Generate realistic multi-expiration simulated data"""
-    import time
-    import random
-    from datetime import datetime, timedelta
-    
-    current_time = int(time.time())
-    random.seed(current_time // 10)
-    
-    # Create realistic expiration dates
-    today = datetime.now()
-    exp_dates = []
-    
-    # Add 0DTE if it's a trading day (Mon-Fri)
-    if today.weekday() < 5:  # Monday = 0, Friday = 4
-        exp_dates.append(today.strftime('%Y-%m-%d'))
-    
-    # Add next few Fridays
-    days_until_friday = (4 - today.weekday()) % 7
-    if days_until_friday == 0 and today.weekday() == 4:  # If today is Friday
-        days_until_friday = 7
-    
-    for i in range(5):
-        exp_date = today + timedelta(days=days_until_friday + (i * 7))
-        exp_dates.append(exp_date.strftime('%Y-%m-%d'))
-    
-    expirations_data = {}
-    
-    for i, exp_date in enumerate(exp_dates):
-        exp_datetime = datetime.strptime(exp_date, '%Y-%m-%d')
-        dte = (exp_datetime - today).days
-        
-        # Generate data for this expiration
-        enhanced_calls, enhanced_puts, call_vol, put_vol, _ = generate_enhanced_simulated_data(symbol, current_price, dte)
-        
-        expirations_data[exp_date] = {
-            'data': (enhanced_calls, enhanced_puts, call_vol, put_vol, dte),
-            'dte': dte,
-            'is_0dte': dte == 0
-        }
-    
-    return expirations_data, exp_dates
+# REMOVED ALL FAKE DATA FUNCTIONS
 
 def analyze_0dte_flow_direction(calls_data, puts_data, dte):
     """Analyze 0DTE flow direction and momentum"""
