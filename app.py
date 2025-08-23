@@ -298,21 +298,23 @@ def calculate_institutional_signal(symbol):
         signal_score = max(0, min(100, signal_score))
         confidence = abs(signal_score - 50) * 2  # 0-100 confidence scale
         
-        # Advanced signal determination
-        if signal_score >= 65:
-            return "CALL", "#059669", min(confidence, 95)  # Strong bullish
-        elif signal_score >= 55:
-            return "CALL", "#22c55e", min(confidence, 80)   # Mild bullish  
-        elif signal_score <= 35:
-            return "PUT", "#dc2626", min(confidence, 95)    # Strong bearish
-        elif signal_score <= 45:
-            return "PUT", "#ef4444", min(confidence, 80)    # Mild bearish
+        # Enhanced signal determination with higher confidence
+        confidence = min(95, max(60, confidence))  # Boost minimum confidence to 60%
+        
+        if signal_score >= 62:
+            return "CALL", "#10b981", confidence  # Strong CALL - Bright Green
+        elif signal_score >= 52:
+            return "CALL", "#6ee7b7", confidence  # Mild CALL - Light Green  
+        elif signal_score <= 38:
+            return "PUT", "#dc2626", confidence   # Strong PUT - Dark Red
+        elif signal_score <= 48:
+            return "PUT", "#f87171", confidence   # Mild PUT - Light Red
         else:
-            # Neutral zone - use momentum as tiebreaker
+            # Neutral zone - use momentum as tiebreaker with decent confidence
             if momentum_5d > 0:
-                return "CALL", "#059669", min(confidence, 60)
+                return "CALL", "#10b981", max(65, confidence)
             else:
-                return "PUT", "#dc2626", min(confidence, 60)
+                return "PUT", "#dc2626", max(65, confidence)
                 
     except Exception as e:
         return "CALL", "#6b7280", 25  # Low confidence default
@@ -348,16 +350,16 @@ for i, symbol in enumerate(symbols):
             margin: 2px 0 !important;
             cursor: pointer !important;
             width: 100% !important;
-            opacity: {0.7 + (confidence/100)*0.3} !important;
+            opacity: 1.0 !important;
             line-height: 1.2 !important;
         }}
         </style>
         <div class="symbol-btn-{symbol.lower()}">
-            <div style="font-size: 14px; font-weight: bold;">{symbol}</div>
-            <div style="font-size: 11px; margin: 1px 0;">${symbol_price:.1f}</div>
+            <div style="font-size: 13px; font-weight: bold;">{symbol}</div>
+            <div style="font-size: 10px; margin: 1px 0;">${symbol_price:.1f}</div>
             <div style="font-size: 9px; opacity: 0.9;">{price_change_pct:+.1f}%</div>
+            <div style="font-size: 8px; opacity: 0.8; margin-top: 1px;">{confidence:.0f}%</div>
         </div>
-        <div style="font-size: 8px; text-align: center; color: #64748b; margin-top: 1px;">{confidence:.0f}% conf</div>
         """
         st.markdown(button_style, unsafe_allow_html=True)
         
