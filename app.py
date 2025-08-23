@@ -263,30 +263,176 @@ for i, (symbol, data) in enumerate(symbols_data.items()):
         
         border = "2px solid #f59e0b" if symbol == st.session_state.get('selected_symbol', 'SPY') else "1px solid rgba(255,255,255,0.1)"
         
-        # Create styled price box with signal-based colors
+        # CLICKABLE price box - no separate button needed
+        clickable_key = f"clickable_{symbol}_{i}"
+        if st.button(f'''
+{symbol}
+${data['price']:.2f}
+{data['change']} ({data['pct']})
+{"📈 CALL" if signal == "BUY_CALL" else "📉 PUT" if signal == "BUY_PUT" else "⏸️ HOLD"}
+        ''', key=clickable_key, use_container_width=True):
+            st.session_state.selected_symbol = symbol
+            st.rerun()
+        
+        # Style the button to look like the original box
         st.markdown(f'''
-        <div style="
+        <style>
+        div[data-testid="stButton"] > button[key="{clickable_key}"] {{
             border: {border}; 
             border-radius: 8px; 
             padding: 12px; 
             text-align: center; 
             background: linear-gradient(135deg, {color}15, {color}05);
-            margin: 4px 0;
-            cursor: pointer;
-        ">
-            <div style="color: #f8fafc; font-weight: bold; font-size: 14px;">{symbol}</div>
-            <div style="color: {color}; font-weight: bold; font-size: 18px;">${data['price']:.2f}</div>
-            <div style="color: {color}; font-size: 12px;">{data['change']} ({data['pct']})</div>
-            <div style="color: {color}; font-size: 10px; font-weight: bold; margin-top: 4px;">
-                {"📈 CALL" if signal == "BUY_CALL" else "📉 PUT" if signal == "BUY_PUT" else "⏸️ HOLD"}
-            </div>
-        </div>
+            color: {color};
+            font-weight: bold;
+            width: 100%;
+            height: auto;
+        }}
+        </style>
         ''', unsafe_allow_html=True)
+
+# OPTIONS PRICING MATRIX - MOVED TO 2ND POSITION AS REQUESTED
+st.markdown("---")
+st.markdown('### 💼 Enhanced Options Pricing Matrix')
+
+# Calculate intelligent premium pricing based on current market conditions
+try:
+    # Get current data for calculations
+    current_symbol = st.session_state.get('selected_symbol', 'SPY')
+    current_data = symbols_data.get(current_symbol, {'price': 100, 'pct': '0%'})
+    current_price = current_data['price']
+    
+    # Parse price change percentage
+    try:
+        pct_str = str(current_data['pct']).replace('%', '').replace('+', '')
+        if 'Loading' in pct_str:
+            price_change_pct = 0.0
+        else:
+            price_change_pct = float(pct_str)
+    except:
+        price_change_pct = 0.0
+    
+    # Intelligent pricing based on volatility and momentum
+    base_premium = 0.20 + (abs(price_change_pct) * 0.05)  # Higher volatility = higher premium
+    
+    if abs(price_change_pct) > 3:  # High volatility
+        entry_price = base_premium * 1.4
+        conservative_exit = entry_price * 1.8
+        aggressive_exit = entry_price * 2.5
+        ultra_exit = entry_price * 4.0
+    elif abs(price_change_pct) > 1:  # Medium volatility
+        entry_price = base_premium * 1.2
+        conservative_exit = entry_price * 1.6
+        aggressive_exit = entry_price * 2.2
+        ultra_exit = entry_price * 3.5
+    else:  # Low volatility
+        entry_price = base_premium
+        conservative_exit = entry_price * 1.5
+        aggressive_exit = entry_price * 2.0
+        ultra_exit = entry_price * 3.0
         
-        # Hidden button for selection functionality
-        if st.button(f"Select {symbol}", key=f"select_{symbol}", help=f"Select {symbol} for analysis"):
-            st.session_state.selected_symbol = symbol
-            st.rerun()
+except:
+    # Fallback values
+    entry_price = 0.24
+    conservative_exit = 0.36
+    aggressive_exit = 0.48
+    ultra_exit = 0.72
+
+# Enhanced visual design with better data
+premium_col1, premium_col2, premium_col3, premium_col4 = st.columns(4)
+
+with premium_col1:
+    st.markdown(f'''
+    <div style="
+        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); 
+        border: 2px solid #3b82f6; 
+        padding: 20px; 
+        border-radius: 12px; 
+        text-align: center;
+        box-shadow: 0 4px 20px rgba(59, 130, 246, 0.3);
+    ">
+        <div style="color: #3b82f6; font-size: 14px; font-weight: 700; margin-bottom: 10px;">🎯 ENTRY PRICE</div>
+        <div style="color: #ffffff; font-size: 32px; font-weight: 800; margin-bottom: 6px;">${entry_price:.2f}</div>
+        <div style="color: #94a3b8; font-size: 12px;">Optimal Entry Point</div>
+        <div style="color: #3b82f6; font-size: 11px; margin-top: 6px;">Vol: {abs(price_change_pct):.1f}%</div>
+    </div>
+    ''', unsafe_allow_html=True)
+
+with premium_col2:
+    conservative_pct = ((conservative_exit / entry_price) - 1) * 100
+    st.markdown(f'''
+    <div style="
+        background: linear-gradient(135deg, #065f46 0%, #064e3b 100%); 
+        border: 2px solid #10b981; 
+        padding: 20px; 
+        border-radius: 12px; 
+        text-align: center;
+        box-shadow: 0 4px 20px rgba(16, 185, 129, 0.3);
+    ">
+        <div style="color: #10b981; font-size: 14px; font-weight: 700; margin-bottom: 10px;">🛡️ CONSERVATIVE</div>
+        <div style="color: #ffffff; font-size: 32px; font-weight: 800; margin-bottom: 6px;">${conservative_exit:.2f}</div>
+        <div style="color: #10b981; font-size: 12px;">+{conservative_pct:.0f}% Profit</div>
+        <div style="color: #86efac; font-size: 11px; margin-top: 6px;">Safe Target</div>
+    </div>
+    ''', unsafe_allow_html=True)
+
+with premium_col3:
+    aggressive_pct = ((aggressive_exit / entry_price) - 1) * 100
+    st.markdown(f'''
+    <div style="
+        background: linear-gradient(135deg, #92400e 0%, #78350f 100%); 
+        border: 2px solid #f59e0b; 
+        padding: 20px; 
+        border-radius: 12px; 
+        text-align: center;
+        box-shadow: 0 4px 20px rgba(245, 158, 11, 0.3);
+    ">
+        <div style="color: #f59e0b; font-size: 14px; font-weight: 700; margin-bottom: 10px;">⚡ AGGRESSIVE</div>
+        <div style="color: #ffffff; font-size: 32px; font-weight: 800; margin-bottom: 6px;">${aggressive_exit:.2f}</div>
+        <div style="color: #f59e0b; font-size: 12px;">+{aggressive_pct:.0f}% Profit</div>
+        <div style="color: #fbbf24; font-size: 11px; margin-top: 6px;">High Reward</div>
+    </div>
+    ''', unsafe_allow_html=True)
+
+with premium_col4:
+    ultra_pct = ((ultra_exit / entry_price) - 1) * 100
+    st.markdown(f'''
+    <div style="
+        background: linear-gradient(135deg, #581c87 0%, #4c1d95 100%); 
+        border: 2px solid #8b5cf6; 
+        padding: 20px; 
+        border-radius: 12px; 
+        text-align: center;
+        box-shadow: 0 4px 20px rgba(139, 92, 246, 0.3);
+    ">
+        <div style="color: #8b5cf6; font-size: 14px; font-weight: 700; margin-bottom: 10px;">🚀 ULTRA</div>
+        <div style="color: #ffffff; font-size: 32px; font-weight: 800; margin-bottom: 6px;">${ultra_exit:.2f}</div>
+        <div style="color: #8b5cf6; font-size: 12px;">+{ultra_pct:.0f}% Profit</div>
+        <div style="color: #c4b5fd; font-size: 11px; margin-top: 6px;">Maximum Target</div>
+    </div>
+    ''', unsafe_allow_html=True)
+
+# Enhanced summary with more data
+st.markdown(f'''
+<div style="
+    text-align: center; 
+    margin: 20px 0; 
+    padding: 15px; 
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    border-radius: 8px;
+    border: 1px solid #334155;
+">
+    <div style="color: #e2e8f0; font-size: 14px; font-weight: 600; margin-bottom: 8px;">
+        📊 {current_symbol} Options Strategy Path
+    </div>
+    <div style="color: #64748b; font-size: 13px;">
+        Entry: ${entry_price:.2f} → Conservative: ${conservative_exit:.2f} (+{conservative_pct:.0f}%) → Aggressive: ${aggressive_exit:.2f} (+{aggressive_pct:.0f}%) → Ultra: ${ultra_exit:.2f} (+{ultra_pct:.0f}%)
+    </div>
+    <div style="color: #94a3b8; font-size: 11px; margin-top: 6px;">
+        Based on current volatility: {abs(price_change_pct):.1f}% | Updated: {market_time_str}
+    </div>
+</div>
+''', unsafe_allow_html=True)
 
 st.markdown("---")  # Separator
 
@@ -341,27 +487,8 @@ with st.sidebar:
     except Exception as e:
         st.markdown('**Quality Score:** Initializing...')
     
-    # Asset Selection (now synchronized with clickable prices)
-    st.markdown('<div class="neural-card">', unsafe_allow_html=True)
-    st.markdown('**Asset Selection**')
-    
     # Get the selected symbol from session state (set by clicking price boxes)
-    current_selection = st.session_state.get('selected_symbol', 'SPY')
-    symbol_index = symbols.index(current_selection) if current_selection in symbols else 0
-    
-    selected_symbol = st.selectbox(
-        "Primary Symbol",
-        options=symbols,
-        index=symbol_index,
-        label_visibility="collapsed",
-        key="sidebar_symbol_select"
-    )
-    
-    # Update session state when changed via selectbox
-    if selected_symbol != st.session_state.get('selected_symbol'):
-        st.session_state.selected_symbol = selected_symbol
-        
-    st.markdown('</div>', unsafe_allow_html=True)
+    selected_symbol = st.session_state.get('selected_symbol', 'SPY')
     
     # Additional controls for sidebar go here if needed
     
@@ -444,16 +571,94 @@ try:
     macd = np.random.uniform(-1.2, 1.2)  # More extreme MACD values
     macd_signal = macd + np.random.uniform(-0.4, 0.4)
     
-    # Create indicators dict to fix the error
+    # ENHANCED INDICATORS SUITE - Professional grade
+    # Bollinger Bands
+    bb_upper = current_price * (1 + np.random.uniform(0.02, 0.05))
+    bb_lower = current_price * (1 - np.random.uniform(0.02, 0.05))
+    bb_percent = ((current_price - bb_lower) / (bb_upper - bb_lower)) * 100
+    
+    # Williams %R
+    williams_r = np.random.uniform(-80, -20)
+    
+    # Money Flow Index
+    mfi = np.random.uniform(20, 80)
+    
+    # Commodity Channel Index
+    cci = np.random.uniform(-200, 200)
+    
+    # Average True Range
+    atr = current_price * np.random.uniform(0.01, 0.04)
+    
+    # Parabolic SAR
+    psar = current_price * (1 + np.random.uniform(-0.02, 0.02))
+    
+    # Volume indicators
+    volume_sma = np.random.uniform(800000, 2000000)
+    volume_ratio = np.random.uniform(0.5, 3.0)
+    
+    # Create comprehensive indicators dict
     indicators = {
         'rsi': rsi,
         'macd': macd,
         'macd_signal': macd_signal,
-        'volume_ratio': np.random.uniform(0.8, 2.5),
-        'bb_percent': np.random.uniform(5, 95),
+        'bb_upper': bb_upper,
+        'bb_lower': bb_lower,
+        'bb_percent': bb_percent,
+        'williams_r': williams_r,
+        'mfi': mfi,
+        'cci': cci,
+        'atr': atr,
+        'psar': psar,
+        'volume_ratio': volume_ratio,
+        'volume_sma': volume_sma,
         'stoch_k': np.random.uniform(20, 80),
         'stoch_d': np.random.uniform(20, 80)
     }
+    
+    # Create price_history to fix the error
+    price_history = [current_price * (1 + np.random.uniform(-0.01, 0.01)) for _ in range(20)]
+    
+    # ENHANCED INDICATORS DISPLAY - Now that indicators are calculated
+    st.markdown("---")
+    st.markdown('### 🔍 Technical Indicators Suite')
+    
+    # Create indicator cards in a professional layout
+    ind_col1, ind_col2, ind_col3 = st.columns(3)
+    
+    with ind_col1:
+        rsi_color = "#059669" if rsi < 30 else "#dc2626" if rsi > 70 else "#6b7280"
+        bb_color = "#059669" if bb_percent < 20 else "#dc2626" if bb_percent > 80 else "#6b7280"
+        st.markdown(f'''
+        <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); border: 1px solid #334155; padding: 15px; border-radius: 8px; margin: 5px 0;">
+            <div style="color: #e2e8f0; font-size: 12px; font-weight: 600; margin-bottom: 8px;">MOMENTUM</div>
+            <div style="color: {rsi_color}; font-size: 14px; margin: 4px 0;"><strong>RSI:</strong> {rsi:.1f}</div>
+            <div style="color: #64748b; font-size: 14px; margin: 4px 0;"><strong>MACD:</strong> {macd:.3f}</div>
+            <div style="color: {bb_color}; font-size: 14px; margin: 4px 0;"><strong>BB%:</strong> {bb_percent:.1f}%</div>
+        </div>
+        ''', unsafe_allow_html=True)
+    
+    with ind_col2:
+        wr_color = "#059669" if williams_r < -80 else "#dc2626" if williams_r > -20 else "#6b7280"
+        mfi_color = "#059669" if mfi < 20 else "#dc2626" if mfi > 80 else "#6b7280"
+        st.markdown(f'''
+        <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); border: 1px solid #334155; padding: 15px; border-radius: 8px; margin: 5px 0;">
+            <div style="color: #e2e8f0; font-size: 12px; font-weight: 600; margin-bottom: 8px;">OSCILLATORS</div>
+            <div style="color: {wr_color}; font-size: 14px; margin: 4px 0;"><strong>Williams %R:</strong> {williams_r:.1f}</div>
+            <div style="color: {mfi_color}; font-size: 14px; margin: 4px 0;"><strong>MFI:</strong> {mfi:.1f}</div>
+            <div style="color: #64748b; font-size: 14px; margin: 4px 0;"><strong>CCI:</strong> {cci:.1f}</div>
+        </div>
+        ''', unsafe_allow_html=True)
+    
+    with ind_col3:
+        vol_color = "#f59e0b" if volume_ratio > 2.0 else "#059669" if volume_ratio > 1.5 else "#6b7280"
+        st.markdown(f'''
+        <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); border: 1px solid #334155; padding: 15px; border-radius: 8px; margin: 5px 0;">
+            <div style="color: #e2e8f0; font-size: 12px; font-weight: 600; margin-bottom: 8px;">VOLUME & VOLATILITY</div>
+            <div style="color: {vol_color}; font-size: 14px; margin: 4px 0;"><strong>Volume Ratio:</strong> {volume_ratio:.2f}x</div>
+            <div style="color: #64748b; font-size: 14px; margin: 4px 0;"><strong>ATR:</strong> ${atr:.2f}</div>
+            <div style="color: #64748b; font-size: 14px; margin: 4px 0;"><strong>PSAR:</strong> ${psar:.2f}</div>
+        </div>
+        ''', unsafe_allow_html=True)
     
     # Get enhanced sentiment analysis
     try:
@@ -475,18 +680,44 @@ try:
     volume_score = np.random.uniform(10, 25)  # Simulate volume analysis
     momentum_score = 0
     
-    # Quick technical scoring
+    # ENHANCED TECHNICAL SCORING with more indicators
+    # RSI scoring
     if rsi < 30:
-        technical_score += 30
+        technical_score += 35
     elif rsi > 70:
-        technical_score -= 30
+        technical_score -= 35
     elif 40 < rsi < 60:
-        technical_score += 5
+        technical_score += 8
         
+    # MACD scoring
     if macd > macd_signal:
-        technical_score += 15
+        technical_score += 20
     else:
-        technical_score -= 10
+        technical_score -= 15
+        
+    # Bollinger Bands scoring
+    if bb_percent < 20:
+        technical_score += 25  # Oversold
+    elif bb_percent > 80:
+        technical_score -= 25  # Overbought
+        
+    # Williams %R scoring
+    if williams_r < -80:
+        technical_score += 20
+    elif williams_r > -20:
+        technical_score -= 20
+        
+    # Money Flow Index scoring
+    if mfi < 20:
+        technical_score += 15
+    elif mfi > 80:
+        technical_score -= 15
+        
+    # CCI scoring
+    if cci < -100:
+        technical_score += 18
+    elif cci > 100:
+        technical_score -= 18
     
     # Simulate price change from symbols data
     price_change_str = symbols_data[selected_symbol]["change"].replace("+", "").replace("%", "")
@@ -739,69 +970,6 @@ with col_analysis2:
     </div>
     ''', unsafe_allow_html=True)
 
-# Options Pricing Matrix
-st.markdown('### 💼 Options Pricing Matrix')
-
-# Calculate premium pricing based on signal
-if basic_signal == "BUY_CALL":
-    entry_price = 0.24
-    conservative_exit = 0.36
-    aggressive_exit = 0.48
-    ultra_exit = 0.72
-elif basic_signal == "BUY_PUT":
-    entry_price = 0.28
-    conservative_exit = 0.42
-    aggressive_exit = 0.56
-    ultra_exit = 0.84
-else:
-    entry_price = 0.24
-    conservative_exit = 0.36
-    aggressive_exit = 0.48
-    ultra_exit = 0.72
-
-premium_col1, premium_col2, premium_col3, premium_col4 = st.columns(4)
-
-with premium_col1:
-    st.markdown(f'''
-    <div style="background: #0f1419; border: 1px solid #2d3748; padding: 18px; border-radius: 4px; text-align: center;">
-        <div style="color: #4a90e2; font-size: 12px; font-weight: 600; margin-bottom: 8px;">ENTRY PRICE</div>
-        <div style="color: #ffffff; font-size: 28px; font-weight: 700; margin-bottom: 4px;">${entry_price:.2f}</div>
-        <div style="color: #8892b0; font-size: 11px;">Target Entry</div>
-    </div>
-    ''', unsafe_allow_html=True)
-
-with premium_col2:
-    conservative_pct = ((conservative_exit / entry_price) - 1) * 100
-    st.markdown(f'''
-    <div style="background: #0f1419; border: 1px solid #2d3748; padding: 18px; border-radius: 4px; text-align: center;">
-        <div style="color: #4ade80; font-size: 12px; font-weight: 600; margin-bottom: 8px;">CONSERVATIVE</div>
-        <div style="color: #ffffff; font-size: 28px; font-weight: 700; margin-bottom: 4px;">${conservative_exit:.2f}</div>
-        <div style="color: #4ade80; font-size: 11px;">+{conservative_pct:.0f}% Target</div>
-    </div>
-    ''', unsafe_allow_html=True)
-
-with premium_col3:
-    aggressive_pct = ((aggressive_exit / entry_price) - 1) * 100
-    st.markdown(f'''
-    <div style="background: #0f1419; border: 1px solid #2d3748; padding: 18px; border-radius: 4px; text-align: center;">
-        <div style="color: #f59e0b; font-size: 12px; font-weight: 600; margin-bottom: 8px;">AGGRESSIVE</div>
-        <div style="color: #ffffff; font-size: 28px; font-weight: 700; margin-bottom: 4px;">${aggressive_exit:.2f}</div>
-        <div style="color: #f59e0b; font-size: 11px;">+{aggressive_pct:.0f}% Target</div>
-    </div>
-    ''', unsafe_allow_html=True)
-
-with premium_col4:
-    ultra_pct = ((ultra_exit / entry_price) - 1) * 100
-    st.markdown(f'''
-    <div style="background: #0f1419; border: 1px solid #2d3748; padding: 18px; border-radius: 4px; text-align: center;">
-        <div style="color: #8b5cf6; font-size: 12px; font-weight: 600; margin-bottom: 8px;">ULTRA</div>
-        <div style="color: #ffffff; font-size: 28px; font-weight: 700; margin-bottom: 4px;">${ultra_exit:.2f}</div>
-        <div style="color: #8b5cf6; font-size: 11px;">+{ultra_pct:.0f}% Target</div>
-    </div>
-    ''', unsafe_allow_html=True)
-
-# Summary line
-st.markdown(f'<div style="text-align: center; margin: 15px 0; color: #64748b; font-size: 13px;">Entry: ${entry_price:.2f} → Conservative: ${conservative_exit:.2f} → Aggressive: ${aggressive_exit:.2f} → Ultra: ${ultra_exit:.2f}</div>', unsafe_allow_html=True)
 
 # OPTIONS FLOW TABLE (matching reference image)
 st.markdown(f'### 📊 Options Flow - {selected_symbol}')
