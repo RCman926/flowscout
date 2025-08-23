@@ -14,12 +14,15 @@ def create_fallback_data(current_price):
     """Create simple fallback data quickly"""
     import random
     import time
+    from datetime import datetime
     
-    random.seed(int(time.time()) // 10)
+    # Use date-based seed so data is stable throughout the day
+    today = datetime.now().strftime('%Y-%m-%d')
+    random.seed(hash(today) % 1000000)
     
-    # Simple call/put data
-    call_volume = random.randint(500, 2000)
-    put_volume = random.randint(300, 1500)
+    # Stable daily call/put data (doesn't change every refresh)
+    call_volume = random.randint(1200, 2800)
+    put_volume = random.randint(800, 2200)
     
     strikes = [current_price * 0.98, current_price, current_price * 1.02]
     
