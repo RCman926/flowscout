@@ -30,5 +30,21 @@
     "profit_loss": null,
     "validation_time": null,
     "success": null
+  },
+  {
+    "id": "SPY_20250823_022225",
+    "symbol": "SPY",
+    "signal_type": "BUY_CALL",
+    "confidence": 0.6849689653486289,
+    "current_price": 633.7671705724981,
+    "predicted_price": 648.1530020369854,
+    "entry_premium": 0.24,
+    "target_premium": 0.36,
+    "timestamp": "2025-08-23T02:22:25.117527",
+    "status": "active",
+    "actual_outcome": null,
+    "profit_loss": null,
+    "validation_time": null,
+    "success": null
   }
 ]
