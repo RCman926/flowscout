@@ -53,7 +53,7 @@ Preferred communication style: Simple, everyday language.
 - **NumPy/Pandas**: Core data manipulation and numerical computing
 
 ## Visualization and UI
-- **Streamlit**: Web application framework
+- **Streamlit**: Web application framework with auto-refresh capabilities
 - **Plotly**: Interactive charting and visualization library
 
 ## Communication Services
@@ -64,6 +64,12 @@ Preferred communication style: Simple, everyday language.
   - `SMTP_SERVER`, `SMTP_PORT`: Email server configuration
   - `SENDER_EMAIL`, `SENDER_PASSWORD`: Email credentials
 
+## Social Trading Platform
+- **Community Data Management**: JSON-based storage for community insights and social trading data
+- **Signal Validation System**: Real-time tracking and validation of trading signals
+- **Leaderboard System**: Performance ranking and trader verification
+- **Copy Trading Integration**: Automated trader following and performance tracking
+
 ## Machine Learning (Planned)
 - **TensorFlow/Keras**: Neural network models for price prediction
 - **Scikit-learn**: Random Forest and preprocessing utilities
@@ -73,3 +79,15 @@ Preferred communication style: Simple, everyday language.
 - **Python 3.8+**: Core runtime environment
 - **asyncio**: Asynchronous programming support
 - **Environment Variables**: Configuration management for API keys and credentials
+
+# Recent Updates (August 2025)
+
+## Social Trading Features Implementation
+- **Community Trading Hub**: Real-time member statistics, active trader counts, and community sentiment tracking
+- **Top Traders Leaderboard**: Rankings with accuracy stats, specialties, verification badges, and recent performance
+- **Popular Trades & Ideas**: Trending community trades with popularity scoring and trade setup details
+- **Copy Trading Opportunities**: Performance-based trader following with subscription models and risk metrics
+- **Symbol-Specific Sentiment**: Bullish/bearish community percentages with trend analysis and key drivers
+- **Community Interaction**: Signal sharing interface for user engagement and collaboration
+- **Signal Validation Enhancement**: Comprehensive tracking system for prediction accuracy and performance metrics
+- **Auto-Refresh Functionality**: Configurable refresh intervals (10-120 seconds) for real-time data updates

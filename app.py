@@ -21,6 +21,7 @@ from performance_tracker import PerformanceTracker
 from volume_analyzer import VolumeAnalyzer
 from alert_system import AlertSystem
 from signal_validator import SignalValidator
+from social_trading import SocialTradingManager
 
 # Configure page
 st.set_page_config(
@@ -53,6 +54,8 @@ if 'alert_system' not in st.session_state:
     st.session_state.alert_system = AlertSystem()
 if 'signal_validator' not in st.session_state:
     st.session_state.signal_validator = SignalValidator()
+if 'social_trading' not in st.session_state:
+    st.session_state.social_trading = SocialTradingManager()
 if 'last_update' not in st.session_state:
     st.session_state.last_update = datetime.now()
 if 'selected_positions' not in st.session_state:
@@ -647,6 +650,224 @@ try:
         
 except Exception as e:
     st.markdown('*Signal validation system initializing...*')
+
+# Social Trading & Community Insights
+st.markdown('### 👥 Community Trading Hub')
+try:
+    community_overview = asyncio.run(st.session_state.social_trading.get_community_overview())
+    social_sentiment = asyncio.run(st.session_state.social_trading.get_social_sentiment(selected_symbol))
+    
+    # Community overview metrics
+    social_col1, social_col2, social_col3, social_col4 = st.columns(4)
+    
+    with social_col1:
+        st.markdown(f'**Members:** {community_overview["total_members"]:,}')
+        st.markdown(f'**Online:** {community_overview["online_now"]:,}')
+        
+    with social_col2:
+        st.markdown(f'**Active Traders:** {community_overview["active_traders"]:,}')
+        st.markdown(f'**Signals Today:** {community_overview["signals_today"]}')
+        
+    with social_col3:
+        st.markdown(f'**Signals/Hour:** {community_overview["signals_last_hour"]}')
+        st.markdown(f'**Top Accuracy:** {community_overview["top_accuracy_today"]:.1f}%')
+        
+    with social_col4:
+        sentiment_color = '#059669' if community_overview["community_sentiment"] == 'Bullish' else '#dc2626' if community_overview["community_sentiment"] == 'Bearish' else '#64748b'
+        st.markdown(f'**Community:** <span style="color: {sentiment_color}">{community_overview["community_sentiment"]}</span>', unsafe_allow_html=True)
+        st.markdown(f'**Market Status:** Active')
+    
+    # Symbol-specific sentiment
+    st.markdown(f'### 📊 {selected_symbol} Community Sentiment')
+    sent_col1, sent_col2 = st.columns([2, 1])
+    
+    with sent_col1:
+        # Sentiment percentages
+        bull_color = '#059669' if social_sentiment['bullish_pct'] > 40 else '#64748b'
+        bear_color = '#dc2626' if social_sentiment['bearish_pct'] > 40 else '#64748b'
+        
+        st.markdown(f'**Bullish:** <span style="color: {bull_color}">{social_sentiment["bullish_pct"]:.1f}%</span> | **Bearish:** <span style="color: {bear_color}">{social_sentiment["bearish_pct"]:.1f}%</span> | **Neutral:** {social_sentiment["neutral_pct"]:.1f}%', unsafe_allow_html=True)
+        
+        change_color = '#059669' if social_sentiment['sentiment_change_24h'] > 0 else '#dc2626'
+        change_symbol = '+' if social_sentiment['sentiment_change_24h'] > 0 else ''
+        st.markdown(f'**24h Change:** <span style="color: {change_color}">{change_symbol}{social_sentiment["sentiment_change_24h"]:.1f}%</span> | **Votes:** {social_sentiment["total_votes"]} | **Confidence:** {social_sentiment["confidence_level"]:.1f}%', unsafe_allow_html=True)
+        
+        # Top sentiment drivers
+        st.markdown(f'**Key Drivers:** {", ".join(social_sentiment["top_drivers"])}')
+        
+    with sent_col2:
+        if social_sentiment['trending']:
+            st.markdown('🔥 **TRENDING**')
+        st.markdown(f'**Updated:** {social_sentiment["last_updated"]}')
+    
+except Exception as e:
+    st.markdown('*Community features loading...*')
+
+# Top Traders Leaderboard
+st.markdown('### 🏆 Top Traders Leaderboard')
+try:
+    top_traders = asyncio.run(st.session_state.social_trading.get_top_traders(limit=5))
+    
+    if top_traders:
+        for trader in top_traders:
+            leader_col1, leader_col2, leader_col3, leader_col4 = st.columns([1, 2, 2, 2])
+            
+            with leader_col1:
+                rank_color = '#ffd700' if trader['rank'] == 1 else '#c0c0c0' if trader['rank'] == 2 else '#cd7f32' if trader['rank'] == 3 else '#64748b'
+                verified_badge = ' ✓' if trader['verified'] else ''
+                st.markdown(f'**#{trader["rank"]}**')
+                
+            with leader_col2:
+                st.markdown(f'**{trader["username"]}**{verified_badge}')
+                st.markdown(f'{trader["specialty"]} • {trader["last_active"]}')
+                
+            with leader_col3:
+                st.markdown(f'**Accuracy:** {trader["accuracy"]:.1f}%')
+                st.markdown(f'**Recent:** {trader["recent_wins"]}/{trader["recent_trades"]}')
+                
+            with leader_col4:
+                st.markdown(f'**Followers:** {trader["followers"]:,}')
+                st.markdown(f'**Profit Factor:** {trader["profit_factor"]:.1f}x')
+                
+        # View full leaderboard button
+        if st.button('🏆 View Full Leaderboard'):
+            st.markdown('*Full leaderboard view coming soon...*')
+            
+except Exception as e:
+    st.markdown('*Leaderboard loading...*')
+
+# Popular Trades & Ideas  
+st.markdown('### 🔥 Trending Trades & Ideas')
+try:
+    popular_trades = asyncio.run(st.session_state.social_trading.get_popular_trades(symbol=selected_symbol, limit=6))
+    trade_ideas = asyncio.run(st.session_state.social_trading.get_trade_ideas(limit=4))
+    
+    trades_col, ideas_col = st.columns(2)
+    
+    with trades_col:
+        st.markdown('**Popular Trades**')
+        for trade in popular_trades[:4]:
+            trade_type_color = '#059669' if trade['signal_type'] == 'BUY_CALL' else '#dc2626'
+            
+            st.markdown(f'''
+            <div style="border: 1px solid #334155; border-radius: 8px; padding: 10px; margin: 5px 0; background: rgba(15, 23, 42, 0.5);">
+                <div style="display: flex; justify-content: space-between;">
+                    <span><strong>{trade["symbol"]} {trade["strike"]}</strong> <span style="color: {trade_type_color}">{trade["signal_type"].replace("BUY_", "")}</span></span>
+                    <span style="color: #64748b">{trade["time_posted"]}</span>
+                </div>
+                <div style="margin-top: 5px;">
+                    <span style="color: #059669">{trade["sentiment"]}</span> • <strong>{trade["traders_count"]} traders</strong> • Score: {trade["popularity_score"]:.0f}
+                </div>
+                <div style="margin-top: 5px; color: #64748b; font-size: 12px;">
+                    {trade["premium_range"]} • {trade["expected_move"]:.1f}% move • ⭐ {trade["community_rating"]:.1f}
+                </div>
+            </div>
+            ''', unsafe_allow_html=True)
+            
+    with ideas_col:
+        st.markdown('**Trade Ideas**')
+        for idea in trade_ideas[:4]:
+            signal_color = '#059669' if idea['signal_type'] == 'CALL' else '#dc2626'
+            
+            st.markdown(f'''
+            <div style="border: 1px solid #334155; border-radius: 8px; padding: 10px; margin: 5px 0; background: rgba(15, 23, 42, 0.5);">
+                <div style="display: flex; justify-content: space-between;">
+                    <span><strong>{idea["symbol"]}</strong> <span style="color: {signal_color}">{idea["signal_type"]}</span></span>
+                    <span style="color: #64748b">{idea["posted_time"]}</span>
+                </div>
+                <div style="margin-top: 5px;">
+                    <span>{idea["setup_type"]}</span> • <strong>{idea["confidence"]:.0f}% confidence</strong>
+                </div>
+                <div style="margin-top: 5px; color: #64748b; font-size: 12px;">
+                    By {idea["author"]} • 👍 {idea["likes"]} • 💬 {idea["comments"]} • R/R: {idea["risk_reward"]:.1f}x
+                </div>
+            </div>
+            ''', unsafe_allow_html=True)
+            
+except Exception as e:
+    st.markdown('*Popular trades loading...*')
+
+# Copy Trading Opportunities
+st.markdown('### 📋 Copy Trading Opportunities')
+try:
+    copy_opportunities = asyncio.run(st.session_state.social_trading.get_copytrading_opportunities(limit=3))
+    
+    for opportunity in copy_opportunities:
+        copy_col1, copy_col2, copy_col3, copy_col4 = st.columns(4)
+        
+        with copy_col1:
+            verified_badge = ' ✅' if opportunity['verified'] else ''
+            st.markdown(f'**{opportunity["trader_name"]}**{verified_badge}')
+            st.markdown(f'{opportunity["strategy"]}')
+            
+        with copy_col2:
+            return_color = '#059669' if opportunity['monthly_return'] > 0 else '#dc2626'
+            st.markdown(f'**Monthly Return:** <span style="color: {return_color}">{opportunity["monthly_return"]:+.1f}%</span>', unsafe_allow_html=True)
+            st.markdown(f'**Win Rate:** {opportunity["win_rate"]:.1f}%')
+            
+        with copy_col3:
+            st.markdown(f'**Max DD:** {opportunity["max_drawdown"]:.1f}%')
+            st.markdown(f'**Risk:** {opportunity["risk_level"]}')
+            
+        with copy_col4:
+            fee_text = 'Free' if opportunity['subscription_fee'] == 0 else f'${opportunity["subscription_fee"]}/mo'
+            st.markdown(f'**Followers:** {opportunity["followers"]:,}')
+            st.markdown(f'**Fee:** {fee_text}')
+            
+        st.markdown('---')
+        
+except Exception as e:
+    st.markdown('*Copy trading opportunities loading...*')
+
+# Community Interaction Section
+st.markdown('### 💬 Share Your Signal')
+try:
+    share_col1, share_col2, share_col3 = st.columns([2, 2, 1])
+    
+    with share_col1:
+        share_symbol = st.selectbox('Symbol', options=["SPY", "QQQ", "TSLA", "AAPL", "MSFT", "NVDA"], key="share_symbol")
+        share_signal = st.selectbox('Signal', options=["BUY_CALL", "BUY_PUT"], key="share_signal")
+        
+    with share_col2:
+        share_confidence = st.slider('Confidence %', min_value=50, max_value=100, value=75, key="share_confidence")
+        share_timeframe = st.selectbox('Timeframe', options=["Intraday", "1-3 days", "1 week", "2 weeks"], key="share_timeframe")
+        
+    with share_col3:
+        if st.button('📤 Share Signal', help="Share your signal with the community"):
+            try:
+                success = st.session_state.social_trading.add_community_signal(
+                    share_symbol, share_signal, share_confidence/100, "current_user"
+                )
+                if success:
+                    st.success('Signal shared with community! 🎉')
+                else:
+                    st.error('Failed to share signal')
+            except:
+                st.info('Signal sharing feature coming soon!')
+                
+    # Quick community stats
+    try:
+        community_stats = asyncio.run(st.session_state.social_trading.get_community_stats())
+        
+        stats_col1, stats_col2, stats_col3, stats_col4 = st.columns(4)
+        
+        with stats_col1:
+            st.markdown(f'**Community Profit:** ${community_stats["total_community_profit"]:,.0f}')
+            
+        with stats_col2:
+            st.markdown(f'**Trending:** {", ".join(community_stats["trending_symbols"][:3])}')
+            
+        with stats_col3:
+            st.markdown(f'**Market Mood:** {community_stats["community_mood"]}')
+            
+        with stats_col4:
+            st.markdown(f'**Consensus:** {community_stats["market_consensus"]}')
+            
+    except:
+        pass
+        
+except Exception as e:
+    st.markdown('*Community interaction loading...*')
 
 # NEURAL CORTEX ANALYSIS (Ken Griffin/Citadel Style)
 st.markdown('### 🏛️ Quantitative Analysis Engine')
