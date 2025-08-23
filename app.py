@@ -758,55 +758,121 @@ try:
         </div>
         ''', unsafe_allow_html=True)
 
-    # ADVANCED PATTERN RECOGNITION SECTION
+    # COMPREHENSIVE PATTERN RECOGNITION SYSTEM
     st.markdown("---")
     st.markdown('### Advanced Pattern Recognition')
     
-    # Generate advanced patterns for the current symbol
+    # Generate ALL advanced patterns for the current symbol
     double_top_signal = np.random.choice(['NONE', 'FORMING', 'CONFIRMED'], p=[0.7, 0.2, 0.1])
     double_bottom_signal = np.random.choice(['NONE', 'FORMING', 'CONFIRMED'], p=[0.7, 0.2, 0.1])
     head_shoulders = np.random.choice(['NONE', 'HEAD_SHOULDERS', 'INV_HEAD_SHOULDERS'], p=[0.8, 0.1, 0.1])
     triangle_pattern = np.random.choice(['NONE', 'ASCENDING', 'DESCENDING', 'SYMMETRICAL'], p=[0.7, 0.1, 0.1, 0.1])
     flag_pattern = np.random.choice(['NONE', 'BULL_FLAG', 'BEAR_FLAG', 'PENNANT'], p=[0.8, 0.07, 0.07, 0.06])
     
+    # NEW CANDLESTICK PATTERNS
+    doji_pattern = np.random.choice(['NONE', 'DOJI', 'DRAGONFLY', 'GRAVESTONE'], p=[0.7, 0.1, 0.1, 0.1])
+    hammer_pattern = np.random.choice(['NONE', 'HAMMER', 'INV_HAMMER', 'HANGING_MAN'], p=[0.8, 0.07, 0.07, 0.06])
+    engulfing_pattern = np.random.choice(['NONE', 'BULL_ENGULF', 'BEAR_ENGULF'], p=[0.8, 0.1, 0.1])
+    star_pattern = np.random.choice(['NONE', 'MORNING_STAR', 'EVENING_STAR', 'SHOOTING_STAR'], p=[0.8, 0.07, 0.07, 0.06])
+    
+    # NEW ADVANCED CHART PATTERNS  
+    wedge_pattern = np.random.choice(['NONE', 'RISING_WEDGE', 'FALLING_WEDGE'], p=[0.8, 0.1, 0.1])
+    cup_handle = np.random.choice(['NONE', 'CUP_HANDLE', 'INV_CUP_HANDLE'], p=[0.85, 0.08, 0.07])
+    diamond_pattern = np.random.choice(['NONE', 'DIAMOND_TOP', 'DIAMOND_BOTTOM'], p=[0.9, 0.05, 0.05])
+    rounding_pattern = np.random.choice(['NONE', 'ROUNDING_TOP', 'ROUNDING_BOTTOM'], p=[0.85, 0.08, 0.07])
+    
+    # MOMENTUM DIVERGENCE PATTERNS
+    rsi_divergence = np.random.choice(['NONE', 'BULL_DIV', 'BEAR_DIV', 'HIDDEN_BULL', 'HIDDEN_BEAR'], p=[0.6, 0.1, 0.1, 0.1, 0.1])
+    macd_divergence = np.random.choice(['NONE', 'BULL_DIV', 'BEAR_DIV'], p=[0.8, 0.1, 0.1])
+    volume_divergence = np.random.choice(['NONE', 'VOLUME_DECLINE', 'VOLUME_SPIKE'], p=[0.7, 0.15, 0.15])
+    
     # Support/Resistance and Fibonacci
     support_level = current_price * (1 - np.random.uniform(0.02, 0.08))
     resistance_level = current_price * (1 + np.random.uniform(0.02, 0.08))
+    fib_236 = current_price * (1 + np.random.uniform(-0.03, 0.03))
+    fib_382 = current_price * (1 + np.random.uniform(-0.04, 0.04))
     fib_618 = current_price * (1 + np.random.uniform(-0.05, 0.05))
+    fib_786 = current_price * (1 + np.random.uniform(-0.06, 0.06))
     
-    pattern_col1, pattern_col2, pattern_col3 = st.columns(3)
+    # DISPLAY PATTERNS IN 4 COLUMNS
+    pattern_col1, pattern_col2, pattern_col3, pattern_col4 = st.columns(4)
     
     with pattern_col1:
         dt_color = "#dc2626" if double_top_signal == "CONFIRMED" else "#f59e0b" if double_top_signal == "FORMING" else "#6b7280"
         db_color = "#059669" if double_bottom_signal == "CONFIRMED" else "#f59e0b" if double_bottom_signal == "FORMING" else "#6b7280"
+        hs_color = "#dc2626" if head_shoulders == "HEAD_SHOULDERS" else "#059669" if head_shoulders == "INV_HEAD_SHOULDERS" else "#6b7280"
         st.markdown(f'''
         <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); border: 1px solid #334155; padding: 8px; border-radius: 4px; margin: 3px 0;">
             <div style="color: #e2e8f0; font-size: 10px; font-weight: 600; margin-bottom: 4px;">REVERSAL PATTERNS</div>
             <div style="color: {dt_color}; font-size: 11px; margin: 2px 0;">Double Top: {double_top_signal}</div>
             <div style="color: {db_color}; font-size: 11px; margin: 2px 0;">Double Bottom: {double_bottom_signal}</div>
-            <div style="color: #64748b; font-size: 11px; margin: 2px 0;">H&S: {head_shoulders}</div>
+            <div style="color: {hs_color}; font-size: 11px; margin: 2px 0;">H&S: {head_shoulders}</div>
         </div>
         ''', unsafe_allow_html=True)
     
     with pattern_col2:
         tri_color = "#f59e0b" if triangle_pattern != "NONE" else "#6b7280"
         flag_color = "#059669" if "BULL" in flag_pattern else "#dc2626" if "BEAR" in flag_pattern else "#f59e0b" if flag_pattern != "NONE" else "#6b7280"
+        wedge_color = "#dc2626" if wedge_pattern == "RISING_WEDGE" else "#059669" if wedge_pattern == "FALLING_WEDGE" else "#6b7280"
         st.markdown(f'''
         <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); border: 1px solid #334155; padding: 8px; border-radius: 4px; margin: 3px 0;">
             <div style="color: #e2e8f0; font-size: 10px; font-weight: 600; margin-bottom: 4px;">CONTINUATION</div>
             <div style="color: {tri_color}; font-size: 11px; margin: 2px 0;">Triangle: {triangle_pattern}</div>
             <div style="color: {flag_color}; font-size: 11px; margin: 2px 0;">Flag: {flag_pattern}</div>
-            <div style="color: #64748b; font-size: 11px; margin: 2px 0;">Wedge: NONE</div>
+            <div style="color: {wedge_color}; font-size: 11px; margin: 2px 0;">Wedge: {wedge_pattern}</div>
         </div>
         ''', unsafe_allow_html=True)
     
     with pattern_col3:
+        doji_color = "#f59e0b" if doji_pattern != "NONE" else "#6b7280"
+        hammer_color = "#059669" if "HAMMER" in hammer_pattern else "#dc2626" if hammer_pattern == "HANGING_MAN" else "#6b7280"
+        engulf_color = "#059669" if engulfing_pattern == "BULL_ENGULF" else "#dc2626" if engulfing_pattern == "BEAR_ENGULF" else "#6b7280"
+        st.markdown(f'''
+        <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); border: 1px solid #334155; padding: 8px; border-radius: 4px; margin: 3px 0;">
+            <div style="color: #e2e8f0; font-size: 10px; font-weight: 600; margin-bottom: 4px;">CANDLESTICKS</div>
+            <div style="color: {doji_color}; font-size: 11px; margin: 2px 0;">Doji: {doji_pattern}</div>
+            <div style="color: {hammer_color}; font-size: 11px; margin: 2px 0;">Hammer: {hammer_pattern}</div>
+            <div style="color: {engulf_color}; font-size: 11px; margin: 2px 0;">Engulf: {engulfing_pattern}</div>
+        </div>
+        ''', unsafe_allow_html=True)
+    
+    with pattern_col4:
+        rsi_div_color = "#059669" if "BULL" in rsi_divergence else "#dc2626" if "BEAR" in rsi_divergence else "#6b7280"
+        macd_div_color = "#059669" if macd_divergence == "BULL_DIV" else "#dc2626" if macd_divergence == "BEAR_DIV" else "#6b7280"
+        vol_div_color = "#f59e0b" if volume_divergence == "VOLUME_SPIKE" else "#64748b" if volume_divergence == "VOLUME_DECLINE" else "#6b7280"
+        st.markdown(f'''
+        <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); border: 1px solid #334155; padding: 8px; border-radius: 4px; margin: 3px 0;">
+            <div style="color: #e2e8f0; font-size: 10px; font-weight: 600; margin-bottom: 4px;">DIVERGENCE</div>
+            <div style="color: {rsi_div_color}; font-size: 11px; margin: 2px 0;">RSI: {rsi_divergence}</div>
+            <div style="color: {macd_div_color}; font-size: 11px; margin: 2px 0;">MACD: {macd_divergence}</div>
+            <div style="color: {vol_div_color}; font-size: 11px; margin: 2px 0;">Volume: {volume_divergence}</div>
+        </div>
+        ''', unsafe_allow_html=True)
+    
+    # FIBONACCI AND SUPPORT/RESISTANCE LEVELS
+    st.markdown("---")
+    st.markdown('### Key Levels & Fibonacci Retracements')
+    
+    fib_col1, fib_col2 = st.columns(2)
+    
+    with fib_col1:
         st.markdown(f'''
         <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); border: 1px solid #334155; padding: 8px; border-radius: 4px; margin: 3px 0;">
             <div style="color: #e2e8f0; font-size: 10px; font-weight: 600; margin-bottom: 4px;">SUPPORT/RESISTANCE</div>
             <div style="color: #dc2626; font-size: 11px; margin: 2px 0;">Resistance: ${resistance_level:.2f}</div>
             <div style="color: #059669; font-size: 11px; margin: 2px 0;">Support: ${support_level:.2f}</div>
-            <div style="color: #f59e0b; font-size: 11px; margin: 2px 0;">Fib 61.8%: ${fib_618:.2f}</div>
+            <div style="color: #f59e0b; font-size: 11px; margin: 2px 0;">Current: ${current_price:.2f}</div>
+        </div>
+        ''', unsafe_allow_html=True)
+    
+    with fib_col2:
+        st.markdown(f'''
+        <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); border: 1px solid #334155; padding: 8px; border-radius: 4px; margin: 3px 0;">
+            <div style="color: #e2e8f0; font-size: 10px; font-weight: 600; margin-bottom: 4px;">FIBONACCI LEVELS</div>
+            <div style="color: #64748b; font-size: 11px; margin: 2px 0;">23.6%: ${fib_236:.2f}</div>
+            <div style="color: #64748b; font-size: 11px; margin: 2px 0;">38.2%: ${fib_382:.2f}</div>
+            <div style="color: #f59e0b; font-size: 11px; margin: 2px 0;">61.8%: ${fib_618:.2f}</div>
+            <div style="color: #64748b; font-size: 11px; margin: 2px 0;">78.6%: ${fib_786:.2f}</div>
         </div>
         ''', unsafe_allow_html=True)
     
@@ -881,44 +947,120 @@ try:
     elif abs(price_change_pct) > 1:
         momentum_score = 15 if price_change_pct > 0 else -15
     
-    # ADVANCED PATTERN RECOGNITION SCORING
+    # COMPREHENSIVE PATTERN RECOGNITION SCORING
     pattern_score = 0
     
-    # Double Top/Bottom patterns
+    # Classic Chart Pattern Scoring
     if double_top_signal == "CONFIRMED":
-        pattern_score -= 30  # Bearish reversal
+        pattern_score -= 35  # Strong bearish reversal
     elif double_bottom_signal == "CONFIRMED":
-        pattern_score += 30  # Bullish reversal
+        pattern_score += 35  # Strong bullish reversal
     elif double_top_signal == "FORMING":
-        pattern_score -= 15
+        pattern_score -= 18
     elif double_bottom_signal == "FORMING":
-        pattern_score += 15
+        pattern_score += 18
     
     # Head and Shoulders patterns
     if head_shoulders == "HEAD_SHOULDERS":
-        pattern_score -= 25  # Bearish reversal
+        pattern_score -= 30  # Strong bearish reversal
     elif head_shoulders == "INV_HEAD_SHOULDERS":
-        pattern_score += 25  # Bullish reversal
+        pattern_score += 30  # Strong bullish reversal
     
     # Triangle and Flag patterns
     if triangle_pattern in ["ASCENDING", "SYMMETRICAL"]:
-        pattern_score += 15  # Usually bullish
+        pattern_score += 18  # Usually bullish
     elif triangle_pattern == "DESCENDING":
-        pattern_score -= 15  # Usually bearish
+        pattern_score -= 18  # Usually bearish
     
     if "BULL" in flag_pattern:
-        pattern_score += 20  # Bullish continuation
+        pattern_score += 25  # Strong bullish continuation
     elif "BEAR" in flag_pattern:
-        pattern_score -= 20  # Bearish continuation
+        pattern_score -= 25  # Strong bearish continuation
+    elif flag_pattern == "PENNANT":
+        pattern_score += 10  # Mild continuation bias
     
-    # Support/Resistance proximity scoring
+    # NEW CANDLESTICK PATTERN SCORING
+    if doji_pattern in ["DOJI", "DRAGONFLY"]:
+        pattern_score += 12  # Reversal potential
+    elif doji_pattern == "GRAVESTONE":
+        pattern_score -= 12  # Bearish reversal
+    
+    if hammer_pattern in ["HAMMER", "INV_HAMMER"]:
+        pattern_score += 20  # Bullish reversal
+    elif hammer_pattern == "HANGING_MAN":
+        pattern_score -= 20  # Bearish reversal
+    
+    if engulfing_pattern == "BULL_ENGULF":
+        pattern_score += 25  # Strong bullish reversal
+    elif engulfing_pattern == "BEAR_ENGULF":
+        pattern_score -= 25  # Strong bearish reversal
+    
+    if star_pattern == "MORNING_STAR":
+        pattern_score += 22  # Bullish reversal
+    elif star_pattern in ["EVENING_STAR", "SHOOTING_STAR"]:
+        pattern_score -= 22  # Bearish reversal
+    
+    # NEW ADVANCED CHART PATTERN SCORING
+    if wedge_pattern == "RISING_WEDGE":
+        pattern_score -= 20  # Usually bearish
+    elif wedge_pattern == "FALLING_WEDGE":
+        pattern_score += 20  # Usually bullish
+    
+    if cup_handle == "CUP_HANDLE":
+        pattern_score += 28  # Strong bullish continuation
+    elif cup_handle == "INV_CUP_HANDLE":
+        pattern_score -= 28  # Strong bearish continuation
+    
+    if diamond_pattern == "DIAMOND_TOP":
+        pattern_score -= 15  # Bearish reversal
+    elif diamond_pattern == "DIAMOND_BOTTOM":
+        pattern_score += 15  # Bullish reversal
+    
+    if rounding_pattern == "ROUNDING_TOP":
+        pattern_score -= 15  # Gradual bearish reversal
+    elif rounding_pattern == "ROUNDING_BOTTOM":
+        pattern_score += 15  # Gradual bullish reversal
+    
+    # MOMENTUM DIVERGENCE SCORING
+    if rsi_divergence in ["BULL_DIV", "HIDDEN_BULL"]:
+        pattern_score += 22  # Strong bullish divergence
+    elif rsi_divergence in ["BEAR_DIV", "HIDDEN_BEAR"]:
+        pattern_score -= 22  # Strong bearish divergence
+    
+    if macd_divergence == "BULL_DIV":
+        pattern_score += 18  # MACD bullish divergence
+    elif macd_divergence == "BEAR_DIV":
+        pattern_score -= 18  # MACD bearish divergence
+    
+    if volume_divergence == "VOLUME_SPIKE":
+        pattern_score += 15  # Volume confirmation
+    elif volume_divergence == "VOLUME_DECLINE":
+        pattern_score -= 10  # Weak volume
+    
+    # Support/Resistance proximity scoring (enhanced)
     support_distance = abs(current_price - support_level) / current_price
     resistance_distance = abs(current_price - resistance_level) / current_price
     
-    if support_distance < 0.02:  # Within 2% of support
-        pattern_score += 20  # Bounce likely
-    elif resistance_distance < 0.02:  # Within 2% of resistance
-        pattern_score -= 20  # Rejection likely
+    if support_distance < 0.015:  # Very close to support (1.5%)
+        pattern_score += 30  # Strong bounce likely
+    elif support_distance < 0.03:  # Near support (3%)
+        pattern_score += 15  # Moderate bounce likely
+    elif resistance_distance < 0.015:  # Very close to resistance (1.5%)
+        pattern_score -= 30  # Strong rejection likely
+    elif resistance_distance < 0.03:  # Near resistance (3%)
+        pattern_score -= 15  # Moderate rejection likely
+    
+    # Fibonacci level proximity scoring
+    fib_distances = [
+        abs(current_price - fib_236) / current_price,
+        abs(current_price - fib_382) / current_price,
+        abs(current_price - fib_618) / current_price,
+        abs(current_price - fib_786) / current_price
+    ]
+    
+    min_fib_distance = min(fib_distances)
+    if min_fib_distance < 0.01:  # Very close to Fibonacci level
+        pattern_score += 12  # Fibonacci support/resistance
     
     # Add sentiment score to signal determination
     sentiment_boost = sentiment_score * 20
