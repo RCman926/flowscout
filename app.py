@@ -110,9 +110,8 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Professional Neural Cortex Header
-st.markdown('<h1 style="color: #3b82f6; text-align: center; margin-bottom: 30px;">🧠 NEURAL CORTEX OPTIONS AI ENGINE</h1>', unsafe_allow_html=True)
-st.markdown('<p style="color: #94a3b8; text-align: center; margin-bottom: 30px;">Advanced AI • Deep Learning • Neural Networks • Maximum Predictability</p>', unsafe_allow_html=True)
+# Spyshiftsignal Header
+st.markdown('<h1 style="color: #3b82f6; text-align: center; margin-bottom: 30px;">Spyshiftsignal</h1>', unsafe_allow_html=True)
 
 # Left sidebar with Neural Controls and Symbol Prices (as requested)
 with st.sidebar:
@@ -297,8 +296,8 @@ header_col1, header_col2 = st.columns([4, 1])
 with header_col1:
     st.markdown(f'''
     <div class="neural-header">
-        <h2 style="color: white; margin: 0;">🧠 NEURAL CORTEX: {selected_symbol}</h2>
-        <p style="color: #94a3b8; margin: 5px 0 0 0;">Advanced AI Neural Networks • Deep Learning • Maximum Predictability</p>
+        <h2 style="color: white; margin: 0;">Spyshiftsignal: {selected_symbol}</h2>
+        <p style="color: #94a3b8; margin: 5px 0 0 0;">Real-time Options Analysis</p>
     </div>
     ''', unsafe_allow_html=True)
 
