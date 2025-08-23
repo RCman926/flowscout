@@ -200,35 +200,84 @@ if 'live_data_cache' not in st.session_state:
 cache_valid = (datetime.now() - st.session_state.cache_timestamp).seconds < 10
 
 def get_real_time_price(symbol):
-    """Enhanced real-time price fetching with multiple methods"""
+    """Enhanced real-time price fetching with EXTENDED HOURS support"""
     try:
         ticker = yf.Ticker(symbol)
         
-        # Method 1: Get fast_info for real-time quotes
+        # Method 1: Get extended hours data with 1-minute intervals
+        try:
+            # Fetch today's data with 1-minute intervals to get latest extended hours
+            hist = ticker.history(period='1d', interval='1m', prepost=True)
+            if not hist.empty:
+                current_price = hist['Close'].iloc[-1]
+                
+                # Get previous day's close for comparison
+                prev_hist = ticker.history(period='2d', interval='1d')
+                if len(prev_hist) >= 2:
+                    prev_close = prev_hist['Close'].iloc[-2]
+                else:
+                    prev_close = hist['Close'].iloc[0]
+                
+                change = current_price - prev_close
+                pct_change = (change / prev_close) * 100 if prev_close > 0 else 0
+                
+                # Enhanced market status detection
+                ny_tz = pytz.timezone('America/New_York')
+                current_ny = datetime.now(ny_tz)
+                hour = current_ny.hour
+                minute = current_ny.minute
+                weekday = current_ny.weekday()
+                
+                if weekday < 5:  # Monday-Friday
+                    if 4 <= hour < 9:
+                        status = "PRE-MARKET"
+                    elif hour == 9 and minute < 30:
+                        status = "PRE-MARKET" 
+                    elif (hour == 9 and minute >= 30) or (10 <= hour < 16):
+                        status = "MARKET HOURS"
+                    elif 16 <= hour < 20:
+                        status = "AFTER-HOURS"
+                    else:
+                        status = "EXTENDED"
+                else:
+                    status = "WEEKEND"
+                
+                return {
+                    "price": float(current_price),
+                    "change": f"{change:+.2f}",
+                    "pct": f"{pct_change:+.2f}%",
+                    "status": status,
+                    "success": True
+                }
+        except Exception as e:
+            pass
+        
+        # Method 2: Try fast_info with extended hours consideration
         try:
             fast_info = ticker.fast_info
-            current_price = fast_info.get('lastPrice') or fast_info.get('regularMarketPrice')
+            
+            # Check for extended hours price first
+            current_price = (fast_info.get('postMarketPrice') or 
+                           fast_info.get('preMarketPrice') or 
+                           fast_info.get('lastPrice') or 
+                           fast_info.get('regularMarketPrice'))
+            
             prev_close = fast_info.get('previousClose')
             
             if current_price and prev_close:
                 change = current_price - prev_close
                 pct_change = (change / prev_close) * 100
                 
-                # Determine market status based on time
-                ny_tz = pytz.timezone('America/New_York')
-                current_ny = datetime.now(ny_tz)
-                hour = current_ny.hour
-                weekday = current_ny.weekday()
+                # Determine if we're using extended hours data
+                post_price = fast_info.get('postMarketPrice')
+                pre_price = fast_info.get('preMarketPrice')
                 
-                if weekday < 5:  # Monday-Friday
-                    if 4 <= hour < 9:
-                        status = "PRE-MARKET"
-                    elif 9 <= hour < 16:
-                        status = "MARKET HOURS"
-                    else:
-                        status = "AFTER-HOURS"
+                if post_price:
+                    status = "AFTER-HOURS"
+                elif pre_price:
+                    status = "PRE-MARKET"
                 else:
-                    status = "WEEKEND"
+                    status = "MARKET HOURS"
                 
                 return {
                     "price": float(current_price),
@@ -240,10 +289,16 @@ def get_real_time_price(symbol):
         except:
             pass
         
-        # Method 2: Fallback to info method
+        # Method 3: Enhanced info method with extended hours
         try:
             info = ticker.info
-            current_price = info.get('currentPrice') or info.get('regularMarketPrice')
+            
+            # Try multiple price fields including extended hours
+            current_price = (info.get('postMarketPrice') or 
+                           info.get('preMarketPrice') or
+                           info.get('currentPrice') or 
+                           info.get('regularMarketPrice'))
+            
             prev_close = info.get('previousClose')
             
             if current_price and prev_close:
@@ -254,32 +309,16 @@ def get_real_time_price(symbol):
                     "price": float(current_price),
                     "change": f"{change:+.2f}",
                     "pct": f"{pct_change:+.2f}%",
-                    "status": "LIVE",
+                    "status": "EXTENDED",
                     "success": True
                 }
         except:
             pass
             
-        # Method 3: Historical data as last resort
-        hist = ticker.history(period='1d', interval='1m')
-        if not hist.empty:
-            current_price = hist['Close'].iloc[-1]
-            prev_close = ticker.history(period='2d')['Close'].iloc[-2]
-            change = current_price - prev_close
-            pct_change = (change / prev_close) * 100
-            
-            return {
-                "price": float(current_price),
-                "change": f"{change:+.2f}",
-                "pct": f"{pct_change:+.2f}%",
-                "status": "DELAYED",
-                "success": True
-            }
-            
     except Exception as e:
         return {"success": False, "error": str(e)}
     
-    return {"success": False, "error": "No data available"}
+    return {"success": False, "error": "No extended hours data available"}
 
 symbols_data = {}
 if not cache_valid or not st.session_state.live_data_cache:
