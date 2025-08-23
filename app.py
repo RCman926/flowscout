@@ -1246,44 +1246,52 @@ if call_data and put_data:
                  "Strong" if call_volume > put_volume * 1.5 else "")
 
     with flow_col2:
-        # Your preferred clean flow chart 
+        # Your preferred clean flow chart - smaller and dynamic
         fig = go.Figure()
         
-        # Add flow bars with clean styling like before
+        # Calculate dynamic positioning based on dominance
+        total_volume = call_volume + put_volume
+        call_pct = call_volume / max(1, total_volume) * 100
+        put_pct = put_volume / max(1, total_volume) * 100
+        
+        # Create side-by-side bars that shift based on volume
         fig.add_trace(go.Bar(
-            x=['Calls', 'Puts'],
-            y=[call_volume, put_volume],
+            x=[0, 1],
+            y=[call_pct, put_pct], 
             marker_color=['#00ff00', '#ff0000'],
             text=[f'{call_volume:,}', f'{put_volume:,}'],
             textposition='auto',
-            name='Options Flow',
+            name='Flow %',
+            width=[0.4, 0.4],  # Thinner bars
             marker_line=dict(width=1, color='white')
         ))
         
-        # Add directional indicator 
-        if call_volume > put_volume:
-            direction_text = "📈 CALL FLOW"
+        # Dynamic title based on dominance
+        if call_volume > put_volume * 1.5:
+            direction_text = "📈 CALL DOMINANT"
             title_color = "#00ff00"
-        elif put_volume > call_volume:
-            direction_text = "📉 PUT FLOW" 
+        elif put_volume > call_volume * 1.5:
+            direction_text = "📉 PUT DOMINANT" 
             title_color = "#ff0000"
         else:
-            direction_text = "⚖️ BALANCED"
+            direction_text = "⚖️ MIXED FLOW"
             title_color = "#ffff00"
         
-        # Keep it clean and compact like you prefer
+        # Smaller, cleaner layout
         fig.update_layout(
             title=f"{direction_text}",
             showlegend=False,
-            height=200,  # Keep it compact
-            margin=dict(l=0, r=0, t=30, b=0),
+            height=120,  # Much smaller
+            margin=dict(l=0, r=0, t=25, b=0),
             paper_bgcolor='rgba(0,0,0,0)',
             plot_bgcolor='rgba(0,0,0,0)',
             title_font_color=title_color,
-            title_font_size=14
+            title_font_size=11,
+            xaxis=dict(tickvals=[0, 1], ticktext=['CALLS', 'PUTS'], showgrid=False),
+            yaxis=dict(showgrid=False, range=[0, max(call_pct, put_pct) * 1.1])
         )
         
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, use_container_width=True, key="main_flow_chart")
 
     with flow_col3:
         cp_ratio = call_volume / max(1, put_volume)
