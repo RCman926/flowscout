@@ -1297,17 +1297,55 @@ if exp_result and len(exp_result) == 2:
                 st.metric("Put Volume", f"{put_volume:,}", "📉")
             
         else:
-            # If no data for selected expiration, generate fallback
-            call_data, put_data, call_volume, put_volume, days_to_exp = generate_enhanced_simulated_data(selected_symbol, market_data.get('price', 100))
+            # If no data for selected expiration, use simple fallback
+            call_data, put_data, call_volume, put_volume, days_to_exp = create_fallback_data(market_data.get('price', 100))
             selected_exp_date = "Today"
     else:
-        # If no expirations data, generate fallback  
-        call_data, put_data, call_volume, put_volume, days_to_exp = generate_enhanced_simulated_data(selected_symbol, market_data.get('price', 100))
+        # If no expirations data, use simple fallback  
+        call_data, put_data, call_volume, put_volume, days_to_exp = create_fallback_data(market_data.get('price', 100))
         selected_exp_date = "Today"
 else:
     # Always fallback to ensure we have data
-    call_data, put_data, call_volume, put_volume, days_to_exp = generate_enhanced_simulated_data(selected_symbol, market_data.get('price', 100))
+    call_data, put_data, call_volume, put_volume, days_to_exp = create_fallback_data(market_data.get('price', 100))
     selected_exp_date = "Today"
+
+# === SIMPLE FALLBACK DATA FUNCTION ===
+def create_fallback_data(current_price):
+    """Create simple fallback data quickly"""
+    import random
+    import time
+    
+    random.seed(int(time.time()) // 10)
+    
+    # Simple call/put data
+    call_volume = random.randint(500, 2000)
+    put_volume = random.randint(300, 1500)
+    
+    strikes = [current_price * 0.98, current_price, current_price * 1.02]
+    
+    call_data = []
+    put_data = []
+    
+    for strike in strikes:
+        call_data.append({
+            'Strike': f"${strike:.0f}",
+            'Last': f"${random.uniform(1, 10):.2f}",
+            'Vol': f"{random.randint(50, 500):,}",
+            'IV': f"{random.uniform(20, 40):.1f}%",
+            'Delta': f"{random.uniform(0.3, 0.7):.2f}",
+            'Gamma': f"{random.uniform(0.01, 0.05):.3f}"
+        })
+        
+        put_data.append({
+            'Strike': f"${strike:.0f}",
+            'Last': f"${random.uniform(1, 8):.2f}",
+            'Vol': f"{random.randint(30, 400):,}",
+            'IV': f"{random.uniform(25, 45):.1f}%",
+            'Delta': f"{random.uniform(-0.7, -0.3):.2f}",
+            'Gamma': f"{random.uniform(0.01, 0.05):.3f}"
+        })
+    
+    return call_data, put_data, call_volume, put_volume, 0
 
 # === YOUR CLEAN FLOW CHART IS BACK ===
 st.markdown("---")
