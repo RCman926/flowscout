@@ -174,10 +174,10 @@ market_time = datetime.now(market_tz)
 market_time_str = market_time.strftime('%Y-%m-%d %H:%M:%S ET')
 
 # Small header
-st.markdown('<p style="color: #3b82f6; font-size: 18px; margin-bottom: 20px;">Shiftsignal</p>', unsafe_allow_html=True)
+st.markdown('<p style="color: #3b82f6; font-size: 14px; margin-bottom: 10px;">Shiftsignal</p>', unsafe_allow_html=True)
 
 # LIVE PRICES - TOP PRIORITY DISPLAY
-st.markdown('### 📊 Live Market Prices')
+st.markdown('### Live Prices')
 
 symbols = ["SPY", "QQQ", "TSLA", "AAPL", "MSFT", "NVDA", "AMZN", "GOOGL", "META", "AMD", "NFLX", "UBER", "COIN", "PLTR", "SOFI", "HOOD", "RBLX", "SNAP"]
 
@@ -265,12 +265,7 @@ for i, (symbol, data) in enumerate(symbols_data.items()):
         
         # CLICKABLE price box - no separate button needed
         clickable_key = f"clickable_{symbol}_{i}"
-        if st.button(f'''
-{symbol}
-${data['price']:.2f}
-{data['change']} ({data['pct']})
-{"📈 CALL" if signal == "BUY_CALL" else "📉 PUT" if signal == "BUY_PUT" else "⏸️ HOLD"}
-        ''', key=clickable_key, use_container_width=True):
+        if st.button(f'''{symbol} ${data['price']:.2f} {data['change']} {"CALL" if signal == "BUY_CALL" else "PUT" if signal == "BUY_PUT" else "HOLD"}''', key=clickable_key, use_container_width=True):
             st.session_state.selected_symbol = symbol
             st.rerun()
         
@@ -280,7 +275,7 @@ ${data['price']:.2f}
         div[data-testid="stButton"] > button[key="{clickable_key}"] {{
             border: {border}; 
             border-radius: 8px; 
-            padding: 12px; 
+            padding: 8px; 
             text-align: center; 
             background: linear-gradient(135deg, {color}15, {color}05);
             color: {color};
@@ -293,7 +288,7 @@ ${data['price']:.2f}
 
 # OPTIONS PRICING MATRIX - MOVED TO 2ND POSITION AS REQUESTED
 st.markdown("---")
-st.markdown('### 💼 Enhanced Options Pricing Matrix')
+st.markdown('### Options Pricing')
 
 # Calculate intelligent premium pricing based on current market conditions
 try:
@@ -346,15 +341,14 @@ with premium_col1:
     <div style="
         background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); 
         border: 2px solid #3b82f6; 
-        padding: 20px; 
-        border-radius: 12px; 
+        padding: 12px; 
+        border-radius: 6px; 
         text-align: center;
         box-shadow: 0 4px 20px rgba(59, 130, 246, 0.3);
     ">
-        <div style="color: #3b82f6; font-size: 14px; font-weight: 700; margin-bottom: 10px;">🎯 ENTRY PRICE</div>
-        <div style="color: #ffffff; font-size: 32px; font-weight: 800; margin-bottom: 6px;">${entry_price:.2f}</div>
-        <div style="color: #94a3b8; font-size: 12px;">Optimal Entry Point</div>
-        <div style="color: #3b82f6; font-size: 11px; margin-top: 6px;">Vol: {abs(price_change_pct):.1f}%</div>
+        <div style="color: #3b82f6; font-size: 11px; font-weight: 600; margin-bottom: 4px;">ENTRY</div>
+        <div style="color: #ffffff; font-size: 18px; font-weight: 700; margin-bottom: 2px;">${entry_price:.2f}</div>
+        <div style="color: #94a3b8; font-size: 9px;">Vol: {abs(price_change_pct):.1f}%</div>
     </div>
     ''', unsafe_allow_html=True)
 
@@ -364,15 +358,14 @@ with premium_col2:
     <div style="
         background: linear-gradient(135deg, #065f46 0%, #064e3b 100%); 
         border: 2px solid #10b981; 
-        padding: 20px; 
-        border-radius: 12px; 
+        padding: 12px; 
+        border-radius: 6px; 
         text-align: center;
         box-shadow: 0 4px 20px rgba(16, 185, 129, 0.3);
     ">
-        <div style="color: #10b981; font-size: 14px; font-weight: 700; margin-bottom: 10px;">🛡️ CONSERVATIVE</div>
-        <div style="color: #ffffff; font-size: 32px; font-weight: 800; margin-bottom: 6px;">${conservative_exit:.2f}</div>
-        <div style="color: #10b981; font-size: 12px;">+{conservative_pct:.0f}% Profit</div>
-        <div style="color: #86efac; font-size: 11px; margin-top: 6px;">Safe Target</div>
+        <div style="color: #10b981; font-size: 11px; font-weight: 600; margin-bottom: 4px;">CONSERVATIVE</div>
+        <div style="color: #ffffff; font-size: 18px; font-weight: 700; margin-bottom: 2px;">${conservative_exit:.2f}</div>
+        <div style="color: #10b981; font-size: 9px;">+{conservative_pct:.0f}%</div>
     </div>
     ''', unsafe_allow_html=True)
 
@@ -382,15 +375,14 @@ with premium_col3:
     <div style="
         background: linear-gradient(135deg, #92400e 0%, #78350f 100%); 
         border: 2px solid #f59e0b; 
-        padding: 20px; 
-        border-radius: 12px; 
+        padding: 12px; 
+        border-radius: 6px; 
         text-align: center;
         box-shadow: 0 4px 20px rgba(245, 158, 11, 0.3);
     ">
-        <div style="color: #f59e0b; font-size: 14px; font-weight: 700; margin-bottom: 10px;">⚡ AGGRESSIVE</div>
-        <div style="color: #ffffff; font-size: 32px; font-weight: 800; margin-bottom: 6px;">${aggressive_exit:.2f}</div>
-        <div style="color: #f59e0b; font-size: 12px;">+{aggressive_pct:.0f}% Profit</div>
-        <div style="color: #fbbf24; font-size: 11px; margin-top: 6px;">High Reward</div>
+        <div style="color: #f59e0b; font-size: 11px; font-weight: 600; margin-bottom: 4px;">AGGRESSIVE</div>
+        <div style="color: #ffffff; font-size: 18px; font-weight: 700; margin-bottom: 2px;">${aggressive_exit:.2f}</div>
+        <div style="color: #f59e0b; font-size: 9px;">+{aggressive_pct:.0f}%</div>
     </div>
     ''', unsafe_allow_html=True)
 
@@ -400,15 +392,14 @@ with premium_col4:
     <div style="
         background: linear-gradient(135deg, #581c87 0%, #4c1d95 100%); 
         border: 2px solid #8b5cf6; 
-        padding: 20px; 
-        border-radius: 12px; 
+        padding: 12px; 
+        border-radius: 6px; 
         text-align: center;
         box-shadow: 0 4px 20px rgba(139, 92, 246, 0.3);
     ">
-        <div style="color: #8b5cf6; font-size: 14px; font-weight: 700; margin-bottom: 10px;">🚀 ULTRA</div>
-        <div style="color: #ffffff; font-size: 32px; font-weight: 800; margin-bottom: 6px;">${ultra_exit:.2f}</div>
-        <div style="color: #8b5cf6; font-size: 12px;">+{ultra_pct:.0f}% Profit</div>
-        <div style="color: #c4b5fd; font-size: 11px; margin-top: 6px;">Maximum Target</div>
+        <div style="color: #8b5cf6; font-size: 11px; font-weight: 600; margin-bottom: 4px;">ULTRA</div>
+        <div style="color: #ffffff; font-size: 18px; font-weight: 700; margin-bottom: 2px;">${ultra_exit:.2f}</div>
+        <div style="color: #8b5cf6; font-size: 9px;">+{ultra_pct:.0f}%</div>
     </div>
     ''', unsafe_allow_html=True)
 
@@ -416,20 +407,14 @@ with premium_col4:
 st.markdown(f'''
 <div style="
     text-align: center; 
-    margin: 20px 0; 
-    padding: 15px; 
+    margin: 10px 0; 
+    padding: 8px; 
     background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-    border-radius: 8px;
+    border-radius: 4px;
     border: 1px solid #334155;
 ">
-    <div style="color: #e2e8f0; font-size: 14px; font-weight: 600; margin-bottom: 8px;">
-        📊 {current_symbol} Options Strategy Path
-    </div>
-    <div style="color: #64748b; font-size: 13px;">
-        Entry: ${entry_price:.2f} → Conservative: ${conservative_exit:.2f} (+{conservative_pct:.0f}%) → Aggressive: ${aggressive_exit:.2f} (+{aggressive_pct:.0f}%) → Ultra: ${ultra_exit:.2f} (+{ultra_pct:.0f}%)
-    </div>
-    <div style="color: #94a3b8; font-size: 11px; margin-top: 6px;">
-        Based on current volatility: {abs(price_change_pct):.1f}% | Updated: {market_time_str}
+    <div style="color: #64748b; font-size: 11px;">
+        {current_symbol}: ${entry_price:.2f} → ${conservative_exit:.2f} → ${aggressive_exit:.2f} → ${ultra_exit:.2f} | Vol: {abs(price_change_pct):.1f}%
     </div>
 </div>
 ''', unsafe_allow_html=True)
@@ -438,10 +423,10 @@ st.markdown("---")  # Separator
 
 # Left sidebar with Neural Controls and Symbol Prices (as requested)
 with st.sidebar:
-    st.markdown('### 🧠 Neural Controls')
+    st.markdown('### Neural Controls')
     
     # Auto-refresh controls
-    st.markdown('### ⚡ Auto-Refresh')
+    st.markdown('### Auto-Refresh')
     auto_refresh = st.checkbox('Enable Auto-Refresh', value=st.session_state.auto_refresh)
     refresh_interval = st.selectbox('Refresh Interval', 
                                    options=[10, 15, 30, 60, 120], 
@@ -620,7 +605,7 @@ try:
     
     # ENHANCED INDICATORS DISPLAY - Now that indicators are calculated
     st.markdown("---")
-    st.markdown('### 🔍 Technical Indicators Suite')
+    st.markdown('### Technical Indicators')
     
     # Create indicator cards in a professional layout
     ind_col1, ind_col2, ind_col3 = st.columns(3)
@@ -629,11 +614,11 @@ try:
         rsi_color = "#059669" if rsi < 30 else "#dc2626" if rsi > 70 else "#6b7280"
         bb_color = "#059669" if bb_percent < 20 else "#dc2626" if bb_percent > 80 else "#6b7280"
         st.markdown(f'''
-        <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); border: 1px solid #334155; padding: 15px; border-radius: 8px; margin: 5px 0;">
-            <div style="color: #e2e8f0; font-size: 12px; font-weight: 600; margin-bottom: 8px;">MOMENTUM</div>
-            <div style="color: {rsi_color}; font-size: 14px; margin: 4px 0;"><strong>RSI:</strong> {rsi:.1f}</div>
-            <div style="color: #64748b; font-size: 14px; margin: 4px 0;"><strong>MACD:</strong> {macd:.3f}</div>
-            <div style="color: {bb_color}; font-size: 14px; margin: 4px 0;"><strong>BB%:</strong> {bb_percent:.1f}%</div>
+        <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); border: 1px solid #334155; padding: 8px; border-radius: 4px; margin: 3px 0;">
+            <div style="color: #e2e8f0; font-size: 10px; font-weight: 600; margin-bottom: 4px;">MOMENTUM</div>
+            <div style="color: {rsi_color}; font-size: 11px; margin: 2px 0;">RSI: {rsi:.0f}</div>
+            <div style="color: #64748b; font-size: 11px; margin: 2px 0;">MACD: {macd:.2f}</div>
+            <div style="color: {bb_color}; font-size: 11px; margin: 2px 0;">BB%: {bb_percent:.0f}%</div>
         </div>
         ''', unsafe_allow_html=True)
     
@@ -641,22 +626,22 @@ try:
         wr_color = "#059669" if williams_r < -80 else "#dc2626" if williams_r > -20 else "#6b7280"
         mfi_color = "#059669" if mfi < 20 else "#dc2626" if mfi > 80 else "#6b7280"
         st.markdown(f'''
-        <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); border: 1px solid #334155; padding: 15px; border-radius: 8px; margin: 5px 0;">
-            <div style="color: #e2e8f0; font-size: 12px; font-weight: 600; margin-bottom: 8px;">OSCILLATORS</div>
-            <div style="color: {wr_color}; font-size: 14px; margin: 4px 0;"><strong>Williams %R:</strong> {williams_r:.1f}</div>
-            <div style="color: {mfi_color}; font-size: 14px; margin: 4px 0;"><strong>MFI:</strong> {mfi:.1f}</div>
-            <div style="color: #64748b; font-size: 14px; margin: 4px 0;"><strong>CCI:</strong> {cci:.1f}</div>
+        <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); border: 1px solid #334155; padding: 8px; border-radius: 4px; margin: 3px 0;">
+            <div style="color: #e2e8f0; font-size: 10px; font-weight: 600; margin-bottom: 4px;">OSCILLATORS</div>
+            <div style="color: {wr_color}; font-size: 11px; margin: 2px 0;">WR: {williams_r:.0f}</div>
+            <div style="color: {mfi_color}; font-size: 11px; margin: 2px 0;">MFI: {mfi:.0f}</div>
+            <div style="color: #64748b; font-size: 11px; margin: 2px 0;">CCI: {cci:.0f}</div>
         </div>
         ''', unsafe_allow_html=True)
     
     with ind_col3:
         vol_color = "#f59e0b" if volume_ratio > 2.0 else "#059669" if volume_ratio > 1.5 else "#6b7280"
         st.markdown(f'''
-        <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); border: 1px solid #334155; padding: 15px; border-radius: 8px; margin: 5px 0;">
-            <div style="color: #e2e8f0; font-size: 12px; font-weight: 600; margin-bottom: 8px;">VOLUME & VOLATILITY</div>
-            <div style="color: {vol_color}; font-size: 14px; margin: 4px 0;"><strong>Volume Ratio:</strong> {volume_ratio:.2f}x</div>
-            <div style="color: #64748b; font-size: 14px; margin: 4px 0;"><strong>ATR:</strong> ${atr:.2f}</div>
-            <div style="color: #64748b; font-size: 14px; margin: 4px 0;"><strong>PSAR:</strong> ${psar:.2f}</div>
+        <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); border: 1px solid #334155; padding: 8px; border-radius: 4px; margin: 3px 0;">
+            <div style="color: #e2e8f0; font-size: 10px; font-weight: 600; margin-bottom: 4px;">VOLUME</div>
+            <div style="color: {vol_color}; font-size: 11px; margin: 2px 0;">Vol: {volume_ratio:.1f}x</div>
+            <div style="color: #64748b; font-size: 11px; margin: 2px 0;">ATR: ${atr:.2f}</div>
+            <div style="color: #64748b; font-size: 11px; margin: 2px 0;">PSAR: ${psar:.2f}</div>
         </div>
         ''', unsafe_allow_html=True)
     
@@ -824,7 +809,7 @@ with signal_col2:
     ''', unsafe_allow_html=True)
 
 # Professional metrics display
-st.markdown('### 📊 Model Performance')
+st.markdown('### Model Performance')
 
 confidence_pct = confidence * 100
 neural_score = min(95.0, confidence_pct + 10)
@@ -972,7 +957,7 @@ with col_analysis2:
 
 
 # OPTIONS FLOW TABLE (matching reference image)
-st.markdown(f'### 📊 Options Flow - {selected_symbol}')
+st.markdown(f'### Options Flow - {selected_symbol}')
 
 # Generate realistic options flow data (like the reference image)
 option_strikes = []
