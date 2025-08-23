@@ -116,6 +116,9 @@ market_tz = pytz.timezone('US/Eastern')
 market_time = datetime.now(market_tz)
 market_time_str = market_time.strftime('%Y-%m-%d %H:%M:%S ET')
 
+# Small header
+st.markdown('<p style="color: #3b82f6; font-size: 18px; margin-bottom: 20px;">Shiftsignal</p>', unsafe_allow_html=True)
+
 
 # Left sidebar with Neural Controls and Symbol Prices (as requested)
 with st.sidebar:
