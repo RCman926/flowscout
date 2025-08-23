@@ -80,7 +80,10 @@ def get_quick_signal(symbol):
             return "PUT", "#dc2626"   # Red for puts
         else:
             # Even neutral gets a slight bias toward calls (bullish market bias)
-            return "CALL", "#059669" if score >= 0 else "PUT", "#dc2626"
+            if score >= 0:
+                return "CALL", "#059669"
+            else:
+                return "PUT", "#dc2626"
     except:
         return "CALL", "#059669"
 
@@ -184,15 +187,15 @@ def calculate_technical_indicators(symbol):
         bb_upper = sma + (std * 2)
         bb_lower = sma - (std * 2)
         
-        current_price = hist['Close'].iloc[-1]
-        bb_position = ((current_price - bb_lower.iloc[-1]) / (bb_upper.iloc[-1] - bb_lower.iloc[-1])) * 100
+        current_price = float(hist['Close'].iloc[-1])
+        bb_position = ((current_price - float(bb_lower.iloc[-1])) / (float(bb_upper.iloc[-1]) - float(bb_lower.iloc[-1]))) * 100
         
         return {
             'rsi': float(rsi.iloc[-1]),
             'macd': float(macd.iloc[-1]),
             'macd_signal': float(macd_signal.iloc[-1]),
             'bb_position': float(bb_position),
-            'current_price': float(current_price)
+            'current_price': current_price
         }
     except:
         return {
@@ -203,9 +206,28 @@ def calculate_technical_indicators(symbol):
             'current_price': 150.0
         }
 
-# Get real market data
+# Get real market data with error handling
 market_data = get_real_market_data(selected_symbol)
+if market_data is None:
+    market_data = {
+        'symbol': selected_symbol,
+        'price': 150.0,
+        'change': 0.0,
+        'change_pct': 0.0,
+        'volume': 0,
+        'market_state': 'CLOSED',
+        'history': pd.DataFrame()
+    }
+
 tech_indicators = calculate_technical_indicators(selected_symbol)
+if tech_indicators is None:
+    tech_indicators = {
+        'rsi': 50.0,
+        'macd': 0.0,
+        'macd_signal': 0.0,
+        'bb_position': 50.0,
+        'current_price': market_data['price']
+    }
 
 # Show currently selected symbol
 st.markdown(f"### 📊 **Currently Analyzing: {selected_symbol}**")
