@@ -1246,52 +1246,81 @@ if call_data and put_data:
                  "Strong" if call_volume > put_volume * 1.5 else "")
 
     with flow_col2:
-        # Your preferred clean flow chart - smaller and dynamic
+        # Connected 0DTE Flow Chart with Outlook
         fig = go.Figure()
         
-        # Calculate dynamic positioning based on dominance
+        # Calculate flow percentages for 0DTE
         total_volume = call_volume + put_volume
-        call_pct = call_volume / max(1, total_volume) * 100
-        put_pct = put_volume / max(1, total_volume) * 100
+        call_flow = call_volume / max(1, total_volume)
+        put_flow = put_volume / max(1, total_volume)
         
-        # Create side-by-side bars that shift based on volume
-        fig.add_trace(go.Bar(
-            x=[0, 1],
-            y=[call_pct, put_pct], 
-            marker_color=['#00ff00', '#ff0000'],
-            text=[f'{call_volume:,}', f'{put_volume:,}'],
-            textposition='auto',
-            name='Flow %',
-            width=[0.4, 0.4],  # Thinner bars
-            marker_line=dict(width=1, color='white')
+        # Create connected flow areas (like a flow river)
+        x_positions = [0, 0.5, 1]
+        
+        # Call side (left to center)
+        call_heights = [call_flow * 100, call_flow * 80, 0]
+        fig.add_trace(go.Scatter(
+            x=x_positions,
+            y=call_heights,
+            fill='tonexty',
+            fillcolor='rgba(0, 255, 0, 0.6)',
+            line=dict(color='#00ff00', width=2),
+            name='Call Flow',
+            text=[f'C: {call_volume:,}', '', ''],
+            textposition='top center',
+            mode='lines+text'
         ))
         
-        # Dynamic title based on dominance
-        if call_volume > put_volume * 1.5:
-            direction_text = "📈 CALL DOMINANT"
-            title_color = "#00ff00"
-        elif put_volume > call_volume * 1.5:
-            direction_text = "📉 PUT DOMINANT" 
-            title_color = "#ff0000"
-        else:
-            direction_text = "⚖️ MIXED FLOW"
-            title_color = "#ffff00"
+        # Put side (right to center) 
+        put_heights = [0, put_flow * 80, put_flow * 100]
+        fig.add_trace(go.Scatter(
+            x=x_positions,
+            y=put_heights,
+            fill='tonexty',
+            fillcolor='rgba(255, 0, 0, 0.6)',
+            line=dict(color='#ff0000', width=2),
+            name='Put Flow',
+            text=['', '', f'P: {put_volume:,}'],
+            textposition='top center',
+            mode='lines+text'
+        ))
         
-        # Smaller, cleaner layout
+        # Add 0DTE outlook indicator
+        import datetime
+        now = datetime.datetime.now()
+        market_close = now.replace(hour=16, minute=0, second=0, microsecond=0)
+        time_left = market_close - now
+        hours_left = max(0, time_left.total_seconds() / 3600) if time_left.total_seconds() > 0 else 0
+        
+        # Outlook based on time decay and flow
+        if hours_left < 1:
+            outlook_text = "🔥 FINAL HOUR"
+            outlook_color = "#ff6600"
+        elif call_flow > 0.6:
+            outlook_text = "📈 BULLISH 0DTE"
+            outlook_color = "#00ff00"
+        elif put_flow > 0.6:
+            outlook_text = "📉 BEARISH 0DTE"
+            outlook_color = "#ff0000"
+        else:
+            outlook_text = "⚖️ NEUTRAL 0DTE"
+            outlook_color = "#ffff00"
+        
+        # Connected layout
         fig.update_layout(
-            title=f"{direction_text}",
+            title=f"{outlook_text} | {hours_left:.1f}h left",
             showlegend=False,
-            height=120,  # Much smaller
-            margin=dict(l=0, r=0, t=25, b=0),
+            height=110,
+            margin=dict(l=10, r=10, t=30, b=10),
             paper_bgcolor='rgba(0,0,0,0)',
             plot_bgcolor='rgba(0,0,0,0)',
-            title_font_color=title_color,
+            title_font_color=outlook_color,
             title_font_size=11,
-            xaxis=dict(tickvals=[0, 1], ticktext=['CALLS', 'PUTS'], showgrid=False),
-            yaxis=dict(showgrid=False, range=[0, max(call_pct, put_pct) * 1.1])
+            xaxis=dict(tickvals=[0, 0.5, 1], ticktext=['CALLS', 'FLOW', 'PUTS'], showgrid=False),
+            yaxis=dict(showgrid=False, range=[0, 110])
         )
         
-        st.plotly_chart(fig, use_container_width=True, key="main_flow_chart")
+        st.plotly_chart(fig, use_container_width=True, key="connected_0dte_flow")
 
     with flow_col3:
         cp_ratio = call_volume / max(1, put_volume)
