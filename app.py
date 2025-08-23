@@ -236,6 +236,10 @@ def calculate_institutional_signal(symbol):
     except Exception as e:
         return "NEUTRAL", "#6b7280", 25
 
+# === SYMBOL DEFINITIONS ===
+# High-liquidity options tickers only (removed: BABA, PLTR, COIN, GME, AMC, ARKK, TQQQ, SQQQ)
+symbols = ['AAPL', 'TSLA', 'NVDA', 'MSFT', 'GOOGL', 'AMZN', 'META', 'NFLX', 'AMD', 'CRM', 'SPY', 'QQQ', 'IWM', 'DIA', 'XLF', 'XLE', 'XLK']
+
 # === INSTITUTIONAL HEADER WITH LIVE STATUS ===
 market_open = datetime.now().weekday() < 5 and 9 <= datetime.now().hour <= 16
 status_color = "#10b981" if market_open else "#dc2626"
@@ -283,8 +287,6 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # === SYMBOL SELECTOR ===
-# High-liquidity options tickers only (removed: BABA, PLTR, COIN, GME, AMC, ARKK, TQQQ, SQQQ)
-symbols = ['AAPL', 'TSLA', 'NVDA', 'MSFT', 'GOOGL', 'AMZN', 'META', 'NFLX', 'AMD', 'CRM', 'SPY', 'QQQ', 'IWM', 'DIA', 'XLF', 'XLE', 'XLK']
 cols = st.columns(min(len(symbols), 8))  # Show 8 per row
 selected_symbol = st.session_state.get('selected_symbol', 'SPY')
 
