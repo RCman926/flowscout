@@ -400,7 +400,16 @@ if auto_refresh:
 # INSTANT symbol switching - use cached data for speed
 current_price = symbols_data.get(selected_symbol, {}).get("price", 100.0)
 price_change_str = symbols_data.get(selected_symbol, {}).get("change", "0.0")
-price_change = float(price_change_str.replace("+", ""))
+
+# Handle loading state safely
+try:
+    if 'Loading' in str(price_change_str) or price_change_str == 'N/A':
+        price_change = 0.0
+    else:
+        price_change = float(str(price_change_str).replace("+", ""))
+except (ValueError, TypeError):
+    price_change = 0.0
+
 market_status_label = symbols_data.get(selected_symbol, {}).get("status", "MARKET HOURS")
 
 # Get AI predictions and signals
@@ -438,7 +447,15 @@ try:
     
     # Simulate price change from symbols data
     price_change_str = symbols_data[selected_symbol]["change"].replace("+", "").replace("%", "")
-    price_change_pct = float(symbols_data[selected_symbol]["pct"].replace("+", "").replace("%", ""))
+    # Handle percentage conversion safely
+    try:
+        pct_str = symbols_data[selected_symbol]["pct"]
+        if 'Loading' in str(pct_str) or pct_str == 'N/A':
+            price_change_pct = 0.0
+        else:
+            price_change_pct = float(str(pct_str).replace("+", "").replace("%", ""))
+    except (ValueError, TypeError, KeyError):
+        price_change_pct = 0.0
     
     if abs(price_change_pct) > 3:
         momentum_score = 25 if price_change_pct > 0 else -25
