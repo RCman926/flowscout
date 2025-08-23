@@ -91,10 +91,22 @@ def get_real_market_data(symbol):
 def calculate_advanced_technical_indicators(symbol):
     """Calculate advanced technical indicators for institutional-grade analysis"""
     try:
+        # Enhanced data fetching for better accuracy
         ticker = yf.Ticker(symbol)
-        hist = ticker.history(period="6mo", interval="1d")
         
-        if len(hist) < 50:
+        # Get multiple timeframes for comprehensive analysis
+        hist_1yr = ticker.history(period="1y", interval="1d")
+        hist_6mo = ticker.history(period="6mo", interval="1d") 
+        hist_3mo = ticker.history(period="3mo", interval="1d")
+        
+        # Use best available dataset
+        if len(hist_1yr) >= 200:
+            hist = hist_1yr
+        elif len(hist_6mo) >= 100:
+            hist = hist_6mo
+        elif len(hist_3mo) >= 50:
+            hist = hist_3mo
+        else:
             return None
             
         close_prices = np.array(hist['Close'].values, dtype=float)
@@ -298,11 +310,11 @@ def calculate_institutional_signal(symbol):
         signal_score = max(0, min(100, signal_score))
         confidence = abs(signal_score - 50) * 2  # 0-100 confidence scale
         
-        # Enhanced signal determination with higher baseline confidence
-        confidence = min(95, max(50, confidence + 25))  # Boost confidence by 25 points
+        # Real confidence calculation - no artificial boost
+        confidence = min(95, max(15, confidence))  # Real confidence levels
         
-        # Don't show signals if confidence is too low
-        if confidence < 60:
+        # Show neutral for low confidence but keep signal for analysis
+        if confidence < 45:
             return "NEUTRAL", "#6b7280", confidence  # Gray for low confidence
         
         if signal_score >= 62:
@@ -451,7 +463,7 @@ st.markdown("### 🎯 **Institutional Trading Recommendations**")
 signal, signal_color, confidence = calculate_institutional_signal(selected_symbol)
 current_price = market_data['price']
 
-if signal in ["CALL", "PUT"] and confidence >= 60:
+if signal in ["CALL", "PUT", "NEUTRAL"]:
     st.markdown(f"**🚀 {signal} Signal - {confidence:.0f}% Confidence**")
     
     if signal == "CALL":
@@ -530,9 +542,42 @@ if signal in ["CALL", "PUT"] and confidence >= 60:
             - **Target High**: $7.10
             """)
             
+elif signal == "NEUTRAL":
+    st.markdown(f"⚫ **NEUTRAL SIGNAL - {confidence:.0f}% Confidence**")
+    st.markdown("**📊 INSTITUTIONAL ANALYSIS RECOMMENDATIONS**")
+    
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        st.markdown(f"""
+        **🔍 MARKET WATCH**
+        - **Current Price**: ${current_price:.2f}
+        - **Support Level**: ${current_price * 0.97:.2f}
+        - **Resistance**: ${current_price * 1.03:.2f}
+        - **Action**: Monitor for breakout
+        """)
+        
+    with col2:
+        st.markdown(f"""
+        **⏳ WAIT FOR SETUP** 
+        - **Entry Above**: ${current_price * 1.015:.2f}
+        - **Entry Below**: ${current_price * 0.985:.2f}
+        - **Stop Loss**: 2% from entry
+        - **Action**: Wait for clear direction
+        """)
+        
+    with col3:
+        st.markdown(f"""
+        **📈 RISK MANAGEMENT**
+        - **Position Size**: 1-2% of capital
+        - **Time Frame**: 1-3 days
+        - **Volatility**: Monitor closely
+        - **Action**: No position until signal
+        """)
+        
 else:
-    st.markdown("⚫ **NEUTRAL - Insufficient Signal Confidence**")
-    st.markdown("Wait for clearer market direction before entering positions.")
+    st.markdown("❌ **NO SIGNAL - Market Analysis Unavailable**")
+    st.markdown("Unable to generate reliable trading signal. Check back later.")
 
 # Portfolio Performance Section
 st.markdown("---")
