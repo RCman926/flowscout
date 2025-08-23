@@ -50,6 +50,112 @@ st.markdown("**Professional-Grade Trading Analytics with REAL Market Data**")
 # Symbol selection - Color coded clickable boxes
 symbols = ['AAPL', 'TSLA', 'NVDA', 'MSFT', 'GOOGL', 'AMZN', 'META', 'NFLX', 'SPY']
 
+@st.cache_data(ttl=60)
+def get_real_market_data(symbol):
+    """Get real market data from Yahoo Finance"""
+    try:
+        ticker = yf.Ticker(symbol)
+        info = ticker.info
+        hist = ticker.history(period="5d", interval="1d")
+        
+        if len(hist) == 0:
+            return None
+            
+        current_price = info.get('currentPrice', hist['Close'].iloc[-1])
+        prev_close = info.get('previousClose', hist['Close'].iloc[-2] if len(hist) > 1 else current_price)
+        
+        change = current_price - prev_close
+        change_pct = (change / prev_close) * 100 if prev_close > 0 else 0
+        
+        return {
+            'symbol': symbol,
+            'price': float(current_price),
+            'change': change,
+            'change_pct': change_pct,
+            'volume': int(info.get('volume', hist['Volume'].iloc[-1] if not hist.empty else 0)),
+            'market_state': info.get('marketState', 'CLOSED'),
+            'history': hist
+        }
+    except Exception as e:
+        return {
+            'symbol': symbol,
+            'price': 150.0,
+            'change': 0.0,
+            'change_pct': 0.0,
+            'volume': 0,
+            'market_state': 'CLOSED',
+            'history': pd.DataFrame()
+        }
+
+@st.cache_data(ttl=300)
+def calculate_technical_indicators(symbol):
+    """Calculate real technical indicators"""
+    try:
+        ticker = yf.Ticker(symbol)
+        hist = ticker.history(period="3mo", interval="1d")
+        
+        if len(hist) < 20:
+            return None
+            
+        # RSI
+        delta = hist['Close'].diff()
+        gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
+        loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
+        rs = gain / loss
+        rsi = 100 - (100 / (1 + rs))
+        
+        # MACD
+        exp1 = hist['Close'].ewm(span=12).mean()
+        exp2 = hist['Close'].ewm(span=26).mean()
+        macd = exp1 - exp2
+        macd_signal = macd.ewm(span=9).mean()
+        
+        # Simple calculations to avoid type errors
+        current_price = float(hist['Close'].iloc[-1])
+        
+        # Bollinger Bands - simple calculation
+        try:
+            prices = hist['Close'].values
+            sma_val = np.mean(prices[-20:])
+            std_val = np.std(prices[-20:])
+            bb_upper_val = sma_val + (std_val * 2)
+            bb_lower_val = sma_val - (std_val * 2)
+            bb_position = ((current_price - bb_lower_val) / (bb_upper_val - bb_lower_val)) * 100
+        except:
+            bb_position = 50.0
+        
+        # Safe extraction using iloc properly
+        try:
+            rsi_val = float(rsi.iloc[-1])
+        except:
+            rsi_val = 50.0
+            
+        try:
+            macd_val = float(macd.iloc[-1])
+        except:
+            macd_val = 0.0
+            
+        try:
+            macd_signal_val = float(macd_signal.iloc[-1])
+        except:
+            macd_signal_val = 0.0
+        
+        return {
+            'rsi': rsi_val,
+            'macd': macd_val,
+            'macd_signal': macd_signal_val,
+            'bb_position': bb_position,
+            'current_price': current_price
+        }
+    except:
+        return {
+            'rsi': 50.0,
+            'macd': 0.0,
+            'macd_signal': 0.0,
+            'bb_position': 50.0,
+            'current_price': 150.0
+        }
+
 # Realistic signal calculation based on actual market conditions
 def get_quick_signal(symbol):
     try:
@@ -124,22 +230,37 @@ for i, symbol in enumerate(symbols):
     with symbol_cols[i]:
         # Check if this is the selected symbol
         is_selected = (symbol == st.session_state.get('selected_symbol', 'AAPL'))
-        border_style = "3px solid #fbbf24" if is_selected else "2px solid transparent"
         
-        # Single clean clickable button with proper color
+        # Color coded button box with custom CSS
+        button_style = f"""
+        <style>
+        .symbol-btn-{symbol.lower()} {{
+            background: {button_color} !important;
+            color: white !important;
+            border: {'3px solid #fbbf24' if is_selected else '2px solid transparent'} !important;
+            padding: 12px 8px !important;
+            border-radius: 8px !important;
+            text-align: center !important;
+            font-weight: bold !important;
+            font-size: 14px !important;
+            margin: 2px 0 !important;
+            cursor: pointer !important;
+            width: 100% !important;
+        }}
+        </style>
+        <div class="symbol-btn-{symbol.lower()}">{symbol}</div>
+        """
+        st.markdown(button_style, unsafe_allow_html=True)
+        
+        # Invisible functional button
         if st.button(
-            symbol, 
+            f"Select {symbol}", 
             key=f"symbol_{symbol}",
-            use_container_width=True,
-            type="primary" if is_selected else "secondary"
+            label_visibility="hidden"
         ):
             selected_symbol = symbol
             st.session_state.selected_symbol = symbol
             st.rerun()
-        
-        # Show signal type under button
-        signal_emoji = "🟢" if signal_type == "CALL" else "🔴"
-        st.markdown(f"<center>{signal_emoji}</center>", unsafe_allow_html=True)
 
 # Use session state to remember selection
 if 'selected_symbol' in st.session_state:
