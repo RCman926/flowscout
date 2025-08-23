@@ -1175,20 +1175,57 @@ if call_data and put_data:
             df_puts = pd.DataFrame(put_strikes)
             st.dataframe(df_puts, use_container_width=True, hide_index=True)
     
-    # ACTIONABLE OPTION CONTRACTS - Show exact option details
+    # PROFESSIONAL OPTION TRADING TARGETS
     st.markdown("---")
-    st.markdown("**💰 Exact Option Contract Targets**")
+    st.markdown("## 🎯 Professional Option Trading Targets")
     
     if call_strikes and put_strikes:
+        # Create professional styling
+        st.markdown("""
+        <style>
+        .option-card {
+            background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+            padding: 1.5rem;
+            border-radius: 12px;
+            border: 1px solid #475569;
+            margin: 0.5rem 0;
+            color: white;
+        }
+        .call-card {
+            border-left: 4px solid #10b981;
+        }
+        .put-card {
+            border-left: 4px solid #ef4444;
+        }
+        .contract-symbol {
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 1.1rem;
+            font-weight: bold;
+            background: rgba(0,0,0,0.3);
+            padding: 0.5rem;
+            border-radius: 6px;
+            margin: 0.5rem 0;
+        }
+        .price-target {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem;
+            margin: 0.3rem 0;
+            border-radius: 6px;
+            background: rgba(0,0,0,0.2);
+        }
+        </style>
+        """, unsafe_allow_html=True)
+        
         target_col1, target_col2 = st.columns(2)
         
         with target_col1:
-            st.markdown("**🟢 BEST CALL OPTION**")
-            best_call = call_strikes[0]  # First/best call option
+            best_call = call_strikes[0]
             buy_price = float(best_call['Buy Price'].replace('$', ''))
             strike_price = best_call['Strike'].replace('$', '')
             
-            # Create proper option contract format
+            # Get expiry date
             try:
                 ticker = yf.Ticker(selected_symbol)
                 exp_dates = ticker.options
@@ -1199,69 +1236,157 @@ if call_data and put_data:
             
             option_symbol = f"{selected_symbol} {exp_short} ${strike_price}C"
             
-            col1, col2 = st.columns(2)
-            with col1:
-                st.metric("🎯 OPTION CONTRACT", option_symbol, f"Strike: ${strike_price}")
-                st.metric("💰 BUY PRICE", best_call['Buy Price'], "Entry Point")
-            
-            with col2:
-                st.markdown("**SELL TARGETS:**")
-                st.metric("🟢 25% Profit", best_call['Low Target'], f"Profit: +${(buy_price * 0.25):.2f}")
-                st.metric("🟡 50% Profit", best_call['Med Target'], f"Profit: +${(buy_price * 0.50):.2f}")
-                st.metric("🔴 100% Profit", best_call['High Target'], f"Profit: +${buy_price:.2f}")
+            # Professional call option card
+            st.markdown(f"""
+            <div class="option-card call-card">
+                <h3 style="color: #10b981; margin-top: 0;">🟢 CALL OPTION TRADE</h3>
+                <div class="contract-symbol">{option_symbol}</div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1rem 0;">
+                    <div>
+                        <strong>Strike Price:</strong><br>
+                        <span style="font-size: 1.2rem; color: #10b981;">${strike_price}</span>
+                    </div>
+                    <div>
+                        <strong>Entry Price:</strong><br>
+                        <span style="font-size: 1.2rem; color: #10b981;">{best_call['Buy Price']}</span>
+                    </div>
+                </div>
+                <h4 style="color: #e2e8f0; margin-bottom: 0.5rem;">Profit Targets:</h4>
+                <div class="price-target" style="background: rgba(16, 185, 129, 0.1);">
+                    <span>🟢 Conservative (25%)</span>
+                    <span><strong>{best_call['Low Target']}</strong> (+${(buy_price * 0.25):.2f})</span>
+                </div>
+                <div class="price-target" style="background: rgba(251, 191, 36, 0.1);">
+                    <span>🟡 Balanced (50%)</span>
+                    <span><strong>{best_call['Med Target']}</strong> (+${(buy_price * 0.50):.2f})</span>
+                </div>
+                <div class="price-target" style="background: rgba(239, 68, 68, 0.1);">
+                    <span>🔴 Aggressive (100%)</span>
+                    <span><strong>{best_call['High Target']}</strong> (+${buy_price:.2f})</span>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
         
         with target_col2:
-            st.markdown("**🔴 BEST PUT OPTION**")
-            best_put = put_strikes[0]  # First/best put option
+            best_put = put_strikes[0]
             buy_price = float(best_put['Buy Price'].replace('$', ''))
             strike_price = best_put['Strike'].replace('$', '')
             
-            # Create proper option contract format
-            try:
-                ticker = yf.Ticker(selected_symbol)
-                exp_dates = ticker.options
-                nearest_exp = exp_dates[0] if exp_dates else "08/29"
-                exp_short = datetime.strptime(nearest_exp, '%Y-%m-%d').strftime('%m/%d')
-            except:
-                exp_short = "08/29"
-            
             option_symbol = f"{selected_symbol} {exp_short} ${strike_price}P"
             
-            col1, col2 = st.columns(2)
-            with col1:
-                st.metric("🎯 OPTION CONTRACT", option_symbol, f"Strike: ${strike_price}")
-                st.metric("💰 BUY PRICE", best_put['Buy Price'], "Entry Point")
-            
-            with col2:
-                st.markdown("**SELL TARGETS:**")
-                st.metric("🟢 25% Profit", best_put['Low Target'], f"Profit: +${(buy_price * 0.25):.2f}")
-                st.metric("🟡 50% Profit", best_put['Med Target'], f"Profit: +${(buy_price * 0.50):.2f}")
-                st.metric("🔴 100% Profit", best_put['High Target'], f"Profit: +${buy_price:.2f}")
+            # Professional put option card
+            st.markdown(f"""
+            <div class="option-card put-card">
+                <h3 style="color: #ef4444; margin-top: 0;">🔴 PUT OPTION TRADE</h3>
+                <div class="contract-symbol">{option_symbol}</div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1rem 0;">
+                    <div>
+                        <strong>Strike Price:</strong><br>
+                        <span style="font-size: 1.2rem; color: #ef4444;">${strike_price}</span>
+                    </div>
+                    <div>
+                        <strong>Entry Price:</strong><br>
+                        <span style="font-size: 1.2rem; color: #ef4444;">{best_put['Buy Price']}</span>
+                    </div>
+                </div>
+                <h4 style="color: #e2e8f0; margin-bottom: 0.5rem;">Profit Targets:</h4>
+                <div class="price-target" style="background: rgba(16, 185, 129, 0.1);">
+                    <span>🟢 Conservative (25%)</span>
+                    <span><strong>{best_put['Low Target']}</strong> (+${(buy_price * 0.25):.2f})</span>
+                </div>
+                <div class="price-target" style="background: rgba(251, 191, 36, 0.1);">
+                    <span>🟡 Balanced (50%)</span>
+                    <span><strong>{best_put['Med Target']}</strong> (+${(buy_price * 0.50):.2f})</span>
+                </div>
+                <div class="price-target" style="background: rgba(239, 68, 68, 0.1);">
+                    <span>🔴 Aggressive (100%)</span>
+                    <span><strong>{best_put['High Target']}</strong> (+${buy_price:.2f})</span>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
         
-        # Example order format
+        # Professional order instructions
         st.markdown("---")
-        st.markdown("**📋 How To Place Order:**")
+        st.markdown("### 📋 Professional Order Instructions")
+        
+        # Create order instruction cards
         order_col1, order_col2 = st.columns(2)
         
         with order_col1:
             st.markdown(f"""
-            **Call Order Example:**
-            - Symbol: `{selected_symbol} {exp_short} ${call_strikes[0]['Strike'].replace('$', '')}C`
-            - Action: BUY TO OPEN
-            - Quantity: 1 contract (100 shares)
-            - Price: {call_strikes[0]['Buy Price']} or better
-            - Order Type: Limit Order
-            """)
+            <div style="background: linear-gradient(135deg, #065f46 0%, #047857 100%); padding: 1rem; border-radius: 8px; color: white; margin: 0.5rem 0;">
+                <h4 style="color: #10b981; margin-top: 0;">🟢 Call Order Setup</h4>
+                <div style="font-family: Monaco, monospace; background: rgba(0,0,0,0.3); padding: 0.5rem; border-radius: 4px; margin: 0.5rem 0;">
+                    {selected_symbol} {exp_short} ${call_strikes[0]['Strike'].replace('$', '')}C
+                </div>
+                <div style="display: grid; gap: 0.3rem;">
+                    <div><strong>Action:</strong> BUY TO OPEN</div>
+                    <div><strong>Quantity:</strong> 1 contract (100 shares)</div>
+                    <div><strong>Price:</strong> {call_strikes[0]['Buy Price']} or better</div>
+                    <div><strong>Order Type:</strong> Limit Order</div>
+                    <div><strong>Time:</strong> Day Order</div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
         
         with order_col2:
             st.markdown(f"""
-            **Put Order Example:**
-            - Symbol: `{selected_symbol} {exp_short} ${put_strikes[0]['Strike'].replace('$', '')}P`
-            - Action: BUY TO OPEN
-            - Quantity: 1 contract (100 shares)
-            - Price: {put_strikes[0]['Buy Price']} or better
-            - Order Type: Limit Order
-            """)
+            <div style="background: linear-gradient(135deg, #7f1d1d 0%, #991b1b 100%); padding: 1rem; border-radius: 8px; color: white; margin: 0.5rem 0;">
+                <h4 style="color: #ef4444; margin-top: 0;">🔴 Put Order Setup</h4>
+                <div style="font-family: Monaco, monospace; background: rgba(0,0,0,0.3); padding: 0.5rem; border-radius: 4px; margin: 0.5rem 0;">
+                    {selected_symbol} {exp_short} ${put_strikes[0]['Strike'].replace('$', '')}P
+                </div>
+                <div style="display: grid; gap: 0.3rem;">
+                    <div><strong>Action:</strong> BUY TO OPEN</div>
+                    <div><strong>Quantity:</strong> 1 contract (100 shares)</div>
+                    <div><strong>Price:</strong> {put_strikes[0]['Buy Price']} or better</div>
+                    <div><strong>Order Type:</strong> Limit Order</div>
+                    <div><strong>Time:</strong> Day Order</div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        # Risk management section
+        st.markdown("---")
+        st.markdown("### ⚠️ Risk Management Guidelines")
+        
+        risk_col1, risk_col2, risk_col3 = st.columns(3)
+        
+        with risk_col1:
+            st.markdown("""
+            <div style="background: #fef3c7; padding: 1rem; border-radius: 8px; border-left: 4px solid #f59e0b;">
+                <h5 style="color: #92400e; margin-top: 0;">🟡 Position Sizing</h5>
+                <ul style="color: #92400e; margin: 0;">
+                    <li>Risk max 2% of account</li>
+                    <li>Start with 1 contract</li>
+                    <li>Never go all-in</li>
+                </ul>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        with risk_col2:
+            st.markdown("""
+            <div style="background: #fee2e2; padding: 1rem; border-radius: 8px; border-left: 4px solid #ef4444;">
+                <h5 style="color: #991b1b; margin-top: 0;">🔴 Stop Loss</h5>
+                <ul style="color: #991b1b; margin: 0;">
+                    <li>Set -30% stop loss</li>
+                    <li>Stick to the plan</li>
+                    <li>Don't average down</li>
+                </ul>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        with risk_col3:
+            st.markdown("""
+            <div style="background: #dcfce7; padding: 1rem; border-radius: 8px; border-left: 4px solid #10b981;">
+                <h5 style="color: #065f46; margin-top: 0;">🟢 Take Profits</h5>
+                <ul style="color: #065f46; margin: 0;">
+                    <li>Take 25% at first target</li>
+                    <li>Scale out gradually</li>
+                    <li>Don't get greedy</li>
+                </ul>
+            </div>
+            """, unsafe_allow_html=True)
     
     # Quick reference guide
     st.markdown("---")
