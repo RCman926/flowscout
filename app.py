@@ -55,26 +55,34 @@ def get_quick_signal(symbol):
     try:
         indicators = calculate_technical_indicators(symbol)
         if indicators is None:
-            return "HOLD", "#6b7280"
+            return "CALL", "#059669"  # Default to call if no data
         
         score = 0
-        if indicators['rsi'] < 30:
-            score += 2
-        elif indicators['rsi'] > 70:
-            score -= 2
-        if indicators['macd'] > indicators['macd_signal']:
+        # More aggressive scoring - less holds, more actionable signals
+        if indicators['rsi'] < 35:
+            score += 3
+        elif indicators['rsi'] > 65:
+            score -= 3
+        elif indicators['rsi'] < 50:
             score += 1
         else:
             score -= 1
             
-        if score > 0:
+        if indicators['macd'] > indicators['macd_signal']:
+            score += 2
+        else:
+            score -= 2
+            
+        # Aggressive signals - very few holds
+        if score > 1:
             return "CALL", "#059669"  # Green for calls
-        elif score < 0:
+        elif score < -1:
             return "PUT", "#dc2626"   # Red for puts
         else:
-            return "HOLD", "#6b7280"  # Gray for hold
+            # Even neutral gets a slight bias toward calls (bullish market bias)
+            return "CALL", "#059669" if score >= 0 else "PUT", "#dc2626"
     except:
-        return "HOLD", "#6b7280"
+        return "CALL", "#059669"
 
 # Create compact symbol selector with color coding
 st.markdown("**Select Symbol:** 🟢 CALL | 🔴 PUT | ⚫ HOLD")
@@ -88,30 +96,20 @@ for i, symbol in enumerate(symbols):
         is_selected = (symbol == st.session_state.get('selected_symbol', 'AAPL'))
         border_style = "3px solid #fbbf24" if is_selected else "2px solid transparent"
         
-        # Color coded clickable box using HTML
-        box_style = f"""
-        <div style="
-            background-color: {button_color};
-            color: white;
-            padding: 12px 8px;
-            border-radius: 8px;
-            text-align: center;
-            font-weight: bold;
-            font-size: 14px;
-            margin: 2px;
-            cursor: pointer;
-            border: {border_style};
-        ">
-            {symbol}
-        </div>
-        """
-        st.markdown(box_style, unsafe_allow_html=True)
-        
-        # Clickable button for functionality
-        if st.button(f"▶ {symbol}", key=f"symbol_{symbol}"):
+        # Single clean clickable button with proper color
+        if st.button(
+            symbol, 
+            key=f"symbol_{symbol}",
+            use_container_width=True,
+            type="primary" if is_selected else "secondary"
+        ):
             selected_symbol = symbol
             st.session_state.selected_symbol = symbol
             st.rerun()
+        
+        # Show signal type under button
+        signal_emoji = "🟢" if signal_type == "CALL" else "🔴"
+        st.markdown(f"<center>{signal_emoji}</center>", unsafe_allow_html=True)
 
 # Use session state to remember selection
 if 'selected_symbol' in st.session_state:
