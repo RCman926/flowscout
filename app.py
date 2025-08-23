@@ -116,8 +116,6 @@ market_tz = pytz.timezone('US/Eastern')
 market_time = datetime.now(market_tz)
 market_time_str = market_time.strftime('%Y-%m-%d %H:%M:%S ET')
 
-# Spyshiftsignal Header
-st.markdown('<h1 style="color: #3b82f6; text-align: center; margin-bottom: 30px;">Spyshiftsignal</h1>', unsafe_allow_html=True)
 
 # Left sidebar with Neural Controls and Symbol Prices (as requested)
 with st.sidebar:
@@ -302,18 +300,13 @@ except Exception:
     confidence = np.random.uniform(0.80, 0.95)
     basic_signal = market_direction
 
-# MAIN NEURAL CORTEX HEADER with symbol and signal on right (as requested)
-header_col1, header_col2 = st.columns([4, 1])
+# Signal display
+signal_col1, signal_col2 = st.columns([5, 1])
 
-with header_col1:
-    st.markdown(f'''
-    <div class="neural-header">
-        <h2 style="color: white; margin: 0;">Spyshiftsignal: {selected_symbol}</h2>
-        <p style="color: #94a3b8; margin: 5px 0 0 0;">Real-time {selected_symbol} Analysis | {market_time_str}</p>
-    </div>
-    ''', unsafe_allow_html=True)
-
-with header_col2:
+with signal_col1:
+    pass  # Empty space
+    
+with signal_col2:
     # BUY_CALL/BUY_PUT signal on the RIGHT as requested
     signal_class = "signal-button" if basic_signal == "BUY_CALL" else "signal-button put-signal" if basic_signal == "BUY_PUT" else "signal-button"
     signal_style = "background: #059669;" if basic_signal == "BUY_CALL" else "background: #dc2626;" if basic_signal == "BUY_PUT" else "background: #6b7280;"
