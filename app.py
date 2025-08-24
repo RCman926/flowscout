@@ -626,13 +626,12 @@ with target_col3:
         # INSTITUTIONAL EXECUTION CALCULATIONS
         bid_price = max(0.01, call_premium * 0.98)  # Slightly below mid for better fill
         ask_price = call_premium * 1.02  # Slightly above mid
-        stop_loss = max(call_strike * 0.99, current_price - (call_premium * 0.2))  # 20% below premium
+        stop_loss = current_price * 0.995  # Stop loss at underlying price level
         
-        # PROFESSIONAL STAGED TARGETS (Based on underlying movement)
-        breakeven_price = call_strike + call_premium
-        target_1 = breakeven_price + (breakeven_price - current_price) * 0.3  # Quick 30% move
-        target_2 = breakeven_price + (breakeven_price - current_price) * 0.7  # Medium 70% move  
-        target_3 = breakeven_price + (breakeven_price - current_price) * 1.2  # Aggressive 120% move
+        # PROFESSIONAL OPTIONS TARGETS (Based on premium appreciation)
+        target_1 = current_price + (call_premium * 1.5)  # 50% premium profit
+        target_2 = current_price + (call_premium * 2.0)  # 100% premium profit  
+        target_3 = current_price + (call_premium * 3.0)  # 200% premium profit
         
         st.markdown(f"""
         <div style="background: #059669; padding: 0.6rem; border-radius: 6px; color: white;">
@@ -678,13 +677,12 @@ with target_col4:
         # INSTITUTIONAL PUT EXECUTION CALCULATIONS
         bid_price = max(0.01, put_premium * 0.98)  # Slightly below mid for better fill
         ask_price = put_premium * 1.02  # Slightly above mid  
-        stop_loss = min(put_strike * 1.01, current_price + (put_premium * 0.2))  # 20% above premium
+        stop_loss = current_price * 1.005  # Stop loss at underlying price level
         
-        # PROFESSIONAL PUT TARGETS (Based on downside movement)
-        breakeven_price = put_strike - put_premium
-        target_1 = breakeven_price - (current_price - breakeven_price) * 0.3  # Quick 30% down move
-        target_2 = breakeven_price - (current_price - breakeven_price) * 0.7  # Medium 70% down move
-        target_3 = breakeven_price - (current_price - breakeven_price) * 1.2  # Aggressive 120% down move
+        # PROFESSIONAL PUT TARGETS (Based on premium appreciation)
+        target_1 = current_price - (put_premium * 1.5)  # 50% premium profit
+        target_2 = current_price - (put_premium * 2.0)  # 100% premium profit
+        target_3 = current_price - (put_premium * 3.0)  # 200% premium profit
         
         st.markdown(f"""
         <div style="background: #991b1b; padding: 0.6rem; border-radius: 6px; color: white;">
