@@ -599,22 +599,45 @@ with target_col2:
     """, unsafe_allow_html=True)
 
 with target_col3:
-    # Calculate call targets
+    # Calculate detailed call execution plan
     if best_flow:
         call_strike = best_flow['top_call_strike']
-        call_breakeven = call_strike + (best_flow['call_premium'] / best_flow['top_call_volume'] / 100) if best_flow['top_call_volume'] > 0 else call_strike
-        call_target = call_strike * 1.05
+        call_premium = best_flow['call_premium'] / max(1, best_flow['top_call_volume']) / 100
+        call_breakeven = call_strike + call_premium
+        call_volume = best_flow['top_call_volume']
+        
+        # Calculate multiple targets and entry/exit prices
+        bid_price = call_premium * 0.98  # Slightly below mid for better fill
+        ask_price = call_premium * 1.02  # Slightly above mid
+        stop_loss = call_strike - (call_strike - current_price) * 0.5  # 50% of intrinsic value
+        
+        target_1 = call_strike * 1.02   # Quick 2% target
+        target_2 = call_strike * 1.05   # Medium 5% target
+        target_3 = call_strike * 1.08   # Aggressive 8% target
         
         st.markdown(f"""
         <div style="background: #059669; padding: 0.6rem; border-radius: 6px; color: white;">
-            <h5 style="margin: 0; color: white; font-size: 0.9rem; text-align: center;">📞 CALL DETAILS</h5>
-            <div style="margin: 0.3rem 0; font-size: 0.8rem;">
-                <div><strong>Strike:</strong> ${call_strike:.0f}</div>
-                <div><strong>Breakeven:</strong> ${call_breakeven:.2f}</div>
-                <div><strong>Target:</strong> ${call_target:.2f}</div>
+            <h5 style="margin: 0; color: white; font-size: 0.8rem; text-align: center;">📞 CALL EXECUTION PLAN</h5>
+            
+            <div style="background: rgba(255,255,255,0.1); padding: 0.3rem; border-radius: 3px; margin: 0.3rem 0; font-size: 0.7rem;">
+                <div style="display: flex; justify-content: space-between;"><span>Strike:</span><span>${call_strike:.0f}</span></div>
+                <div style="display: flex; justify-content: space-between;"><span>Premium:</span><span>${call_premium:.2f}</span></div>
+                <div style="display: flex; justify-content: space-between;"><span>Volume:</span><span>{call_volume:,}</span></div>
             </div>
-            <div style="background: rgba(255,255,255,0.1); padding: 0.2rem; border-radius: 3px; margin-top: 0.3rem;">
-                <div style="font-size: 0.7rem; text-align: center;">Profit above ${call_breakeven:.2f}</div>
+            
+            <div style="background: rgba(16,185,129,0.2); padding: 0.3rem; border-radius: 3px; margin: 0.3rem 0; font-size: 0.7rem;">
+                <div style="font-weight: bold; margin-bottom: 0.2rem;">ENTRY STRATEGY:</div>
+                <div style="display: flex; justify-content: space-between;"><span>Bid @ $</span><span>{bid_price:.2f}</span></div>
+                <div style="display: flex; justify-content: space-between;"><span>Ask @ $</span><span>{ask_price:.2f}</span></div>
+                <div style="display: flex; justify-content: space-between;"><span>Stop @ $</span><span>{stop_loss:.2f}</span></div>
+            </div>
+            
+            <div style="background: rgba(16,185,129,0.3); padding: 0.3rem; border-radius: 3px; margin: 0.3rem 0; font-size: 0.7rem;">
+                <div style="font-weight: bold; margin-bottom: 0.2rem;">PROFIT TARGETS:</div>
+                <div style="display: flex; justify-content: space-between;"><span>T1 (25%):</span><span>${target_1:.2f}</span></div>
+                <div style="display: flex; justify-content: space-between;"><span>T2 (50%):</span><span>${target_2:.2f}</span></div>
+                <div style="display: flex; justify-content: space-between;"><span>T3 (25%):</span><span>${target_3:.2f}</span></div>
+                <div style="text-align: center; margin-top: 0.3rem; font-weight: bold;">Breakeven: ${call_breakeven:.2f}</div>
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -626,22 +649,45 @@ with target_col3:
         """, unsafe_allow_html=True)
 
 with target_col4:
-    # Calculate put targets  
+    # Calculate detailed put execution plan
     if best_flow:
         put_strike = best_flow['top_put_strike']
-        put_breakeven = put_strike - (best_flow['put_premium'] / best_flow['top_put_volume'] / 100) if best_flow['top_put_volume'] > 0 else put_strike
-        put_target = put_strike * 0.95
+        put_premium = best_flow['put_premium'] / max(1, best_flow['top_put_volume']) / 100
+        put_breakeven = put_strike - put_premium
+        put_volume = best_flow['top_put_volume']
+        
+        # Calculate multiple targets and entry/exit prices
+        bid_price = put_premium * 0.98  # Slightly below mid for better fill
+        ask_price = put_premium * 1.02  # Slightly above mid
+        stop_loss = put_strike + (current_price - put_strike) * 0.5  # 50% of intrinsic value
+        
+        target_1 = put_strike * 0.98   # Quick 2% target down
+        target_2 = put_strike * 0.95   # Medium 5% target down
+        target_3 = put_strike * 0.92   # Aggressive 8% target down
         
         st.markdown(f"""
         <div style="background: #991b1b; padding: 0.6rem; border-radius: 6px; color: white;">
-            <h5 style="margin: 0; color: white; font-size: 0.9rem; text-align: center;">📉 PUT DETAILS</h5>
-            <div style="margin: 0.3rem 0; font-size: 0.8rem;">
-                <div><strong>Strike:</strong> ${put_strike:.0f}</div>
-                <div><strong>Breakeven:</strong> ${put_breakeven:.2f}</div>
-                <div><strong>Target:</strong> ${put_target:.2f}</div>
+            <h5 style="margin: 0; color: white; font-size: 0.8rem; text-align: center;">📉 PUT EXECUTION PLAN</h5>
+            
+            <div style="background: rgba(255,255,255,0.1); padding: 0.3rem; border-radius: 3px; margin: 0.3rem 0; font-size: 0.7rem;">
+                <div style="display: flex; justify-content: space-between;"><span>Strike:</span><span>${put_strike:.0f}</span></div>
+                <div style="display: flex; justify-content: space-between;"><span>Premium:</span><span>${put_premium:.2f}</span></div>
+                <div style="display: flex; justify-content: space-between;"><span>Volume:</span><span>{put_volume:,}</span></div>
             </div>
-            <div style="background: rgba(255,255,255,0.1); padding: 0.2rem; border-radius: 3px; margin-top: 0.3rem;">
-                <div style="font-size: 0.7rem; text-align: center;">Profit below ${put_breakeven:.2f}</div>
+            
+            <div style="background: rgba(220,38,38,0.2); padding: 0.3rem; border-radius: 3px; margin: 0.3rem 0; font-size: 0.7rem;">
+                <div style="font-weight: bold; margin-bottom: 0.2rem;">ENTRY STRATEGY:</div>
+                <div style="display: flex; justify-content: space-between;"><span>Bid @ $</span><span>{bid_price:.2f}</span></div>
+                <div style="display: flex; justify-content: space-between;"><span>Ask @ $</span><span>{ask_price:.2f}</span></div>
+                <div style="display: flex; justify-content: space-between;"><span>Stop @ $</span><span>{stop_loss:.2f}</span></div>
+            </div>
+            
+            <div style="background: rgba(220,38,38,0.3); padding: 0.3rem; border-radius: 3px; margin: 0.3rem 0; font-size: 0.7rem;">
+                <div style="font-weight: bold; margin-bottom: 0.2rem;">PROFIT TARGETS:</div>
+                <div style="display: flex; justify-content: space-between;"><span>T1 (25%):</span><span>${target_1:.2f}</span></div>
+                <div style="display: flex; justify-content: space-between;"><span>T2 (50%):</span><span>${target_2:.2f}</span></div>
+                <div style="display: flex; justify-content: space-between;"><span>T3 (25%):</span><span>${target_3:.2f}</span></div>
+                <div style="text-align: center; margin-top: 0.3rem; font-weight: bold;">Breakeven: ${put_breakeven:.2f}</div>
             </div>
         </div>
         """, unsafe_allow_html=True)
