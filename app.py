@@ -491,14 +491,16 @@ with catalyst_col1:
         }
     ]
     
-    st.markdown('<div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">', unsafe_allow_html=True)
+    st.markdown('<div style="display: flex; gap: 0.4rem; flex-wrap: wrap;">', unsafe_allow_html=True)
     for event in upcoming_events:
         st.markdown(f"""
-        <div style="background: #1e293b; padding: 0.4rem; border-left: 3px solid {event['color']}; border-radius: 3px; flex: 1; min-width: 140px;">
-            <div style="color: white; font-size: 0.7rem;">
-                <div style="font-weight: bold; color: {event['color']};">{event['date']}</div>
-                <div style="margin-top: 0.2rem;">{event['event']}</div>
-                <span style="background: {event['color']}; padding: 0.1rem 0.3rem; border-radius: 2px; font-size: 0.6rem;">{event['impact']}</span>
+        <div style="background: #1e293b; padding: 0.3rem; border-left: 2px solid {event['color']}; border-radius: 3px; flex: 1; min-width: 120px;">
+            <div style="color: white; font-size: 0.65rem;">
+                <div style="font-weight: bold; color: {event['color']}; margin-bottom: 0.1rem;">{event['date']}</div>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span>{event['event']}</span>
+                    <span style="background: {event['color']}; padding: 0.05rem 0.2rem; border-radius: 2px; font-size: 0.55rem; margin-left: 0.2rem;">{event['impact']}</span>
+                </div>
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -706,72 +708,6 @@ if flow_data and flow_data['analysis']:
                 puts_df_display = pd.DataFrame(put_data)
                 st.dataframe(puts_df_display, use_container_width=True, hide_index=True)
             
-            # Quick order examples
-            st.markdown("---")
-            st.markdown("**🎯 QUICK ORDER EXAMPLES**")
-            
-            order_col1, order_col2 = st.columns(2)
-            
-            # Find ATM options for examples
-            atm_call = calls_filtered.iloc[(calls_filtered['strike'] - atm_strike).abs().argsort()[:1]]
-            atm_put = puts_filtered.iloc[(puts_filtered['strike'] - atm_strike).abs().argsort()[:1]]
-            
-            if not atm_call.empty and not atm_put.empty:
-                call_strike = atm_call.iloc[0]['strike']
-                call_ask = atm_call.iloc[0]['ask']
-                call_bid = atm_call.iloc[0]['bid']
-                
-                put_strike = atm_put.iloc[0]['strike']
-                put_ask = atm_put.iloc[0]['ask'] 
-                put_bid = atm_put.iloc[0]['bid']
-                
-                with order_col1:
-                    st.markdown(f"""
-                    <div style="background: #10b981; padding: 1rem; border-radius: 8px; color: white;">
-                        <h5 style="margin: 0; color: white;">🟢 BUY CALL ORDER</h5>
-                        <div style="margin: 0.5rem 0;">
-                            <strong>Symbol:</strong> {selected_symbol} {exp_short} ${call_strike:.0f}C<br>
-                            <strong>Action:</strong> BUY TO OPEN<br>
-                            <strong>Price:</strong> ${call_ask:.2f} (ASK)<br>
-                            <strong>Limit:</strong> ${call_ask:.2f} or better
-                        </div>
-                    </div>
-                    """, unsafe_allow_html=True)
-                
-                with order_col2:
-                    st.markdown(f"""
-                    <div style="background: #dc2626; padding: 1rem; border-radius: 8px; color: white;">
-                        <h5 style="margin: 0; color: white;">🔴 BUY PUT ORDER</h5>
-                        <div style="margin: 0.5rem 0;">
-                            <strong>Symbol:</strong> {selected_symbol} {exp_short} ${put_strike:.0f}P<br>
-                            <strong>Action:</strong> BUY TO OPEN<br>
-                            <strong>Price:</strong> ${put_ask:.2f} (ASK)<br>
-                            <strong>Limit:</strong> ${put_ask:.2f} or better
-                        </div>
-                    </div>
-                    """, unsafe_allow_html=True)
-                
-                # Trading instructions
-                st.markdown("---")
-                st.markdown("**📋 TRADING INSTRUCTIONS**")
-                
-                inst_col1, inst_col2 = st.columns(2)
-                
-                with inst_col1:
-                    st.markdown("""
-                    **🟢 TO BUY OPTIONS:**
-                    - Use **ASK price** (higher price)
-                    - Action: BUY TO OPEN
-                    - You pay the ASK price
-                    """)
-                
-                with inst_col2:
-                    st.markdown("""
-                    **🔴 TO SELL OPTIONS:**
-                    - Use **BID price** (lower price)  
-                    - Action: SELL TO CLOSE
-                    - You receive the BID price
-                    """)
                     
     except Exception as e:
         st.warning("Unable to fetch live options prices. Market may be closed.")
