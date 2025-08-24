@@ -943,20 +943,19 @@ if st.session_state.sentiment_data and st.session_state.prediction_data:
         if 'predictions' in prediction_data:
             predictions = prediction_data['predictions']
             
-            pred_display = """
+            st.markdown("""
             <div style="background: #1e293b; padding: 0.5rem; border-radius: 4px; font-size: 0.8rem;">
-            """
+            """, unsafe_allow_html=True)
             
             for timeframe, pred in predictions.items():
-                pred_display += f"""
+                st.markdown(f"""
                 <div style="display: flex; justify-content: space-between; margin: 0.2rem 0;">
                     <span>{timeframe.upper()}:</span>
                     <span>${pred.get('predicted_price', 0):.2f} ({pred.get('predicted_return', 0):+.1f}%)</span>
                 </div>
-                """
+                """, unsafe_allow_html=True)
             
-            pred_display += "</div></div>"
-            st.markdown(pred_display, unsafe_allow_html=True)
+            st.markdown("</div>", unsafe_allow_html=True)
     
     with ai_col3:
         st.markdown("**⚡ SMART ALERTS**")
@@ -1000,43 +999,6 @@ if st.session_state.sentiment_data and st.session_state.prediction_data:
         
         st.markdown("</div></div>", unsafe_allow_html=True)
     
-    # AI Sentiment Visualization
-    st.markdown("**📈 SENTIMENT TREND VISUALIZATION**")
-    
-    # Create sentiment breakdown chart
-    sentiment_breakdown = sentiment_data.get('sentiment_breakdown', {})
-    
-    if sentiment_breakdown:
-        # Prepare data for visualization
-        categories = ['News', 'Technical', 'Social', 'Market Structure']
-        scores = [
-            sentiment_breakdown.get('news', {}).get('score', 0),
-            sentiment_breakdown.get('technical', {}).get('score', 0), 
-            sentiment_breakdown.get('social', {}).get('score', 0),
-            sentiment_breakdown.get('market_structure', {}).get('score', 0)
-        ]
-        
-        colors = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6']
-        
-        fig_sentiment = go.Figure()
-        fig_sentiment.add_trace(go.Bar(
-            x=categories,
-            y=scores,
-            marker_color=colors,
-            text=[f"{score:.3f}" for score in scores],
-            textposition='auto',
-        ))
-        
-        fig_sentiment.update_layout(
-            title=f"{selected_symbol} AI Sentiment Breakdown",
-            yaxis_title="Sentiment Score",
-            height=300,
-            plot_bgcolor='rgba(0,0,0,0)',
-            paper_bgcolor='rgba(0,0,0,0)',
-            font=dict(color='white', size=10)
-        )
-        
-        st.plotly_chart(fig_sentiment, use_container_width=True)
 
 else:
     st.info("🤖 AI sentiment analysis will appear here when market data is available")
