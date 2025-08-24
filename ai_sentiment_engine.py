@@ -116,7 +116,8 @@ class AIMarketSentimentEngine:
                     if text.strip():
                         # Analyze sentiment
                         blob = TextBlob(text)
-                        sentiment_score = blob.sentiment.polarity
+                        sentiment_obj = getattr(blob, 'sentiment', None)
+                        sentiment_score = getattr(sentiment_obj, 'polarity', 0.0) if sentiment_obj else 0.0
                         sentiments.append(sentiment_score)
                         
                         # Extract key themes
@@ -203,10 +204,12 @@ class AIMarketSentimentEngine:
             
             # Volume sentiment
             volume_ratio = indicators.get('volume_ratio', 1)
-            if volume_ratio > 1.5:
-                sentiment_components.append(0.15)  # High volume = bullish
-            elif volume_ratio < 0.7:
-                sentiment_components.append(-0.1)  # Low volume = bearish
+            if (volume_ratio is not None and isinstance(volume_ratio, (int, float)) and 
+                not np.isnan(volume_ratio)):
+                if volume_ratio > 1.5:
+                    sentiment_components.append(0.15)  # High volume = bullish
+                elif volume_ratio < 0.7:
+                    sentiment_components.append(-0.1)  # Low volume = bearish
             
             technical_sentiment = np.mean(sentiment_components) if sentiment_components else 0.0
             
@@ -237,8 +240,18 @@ class AIMarketSentimentEngine:
             recent_price = hist_data['Close'].iloc[-1]
             prev_price = hist_data['Close'].iloc[-2] if len(hist_data) > 1 else recent_price
             
-            price_change = (recent_price - prev_price) / prev_price
-            volume_ratio = recent_volume / avg_volume if avg_volume > 0 else 1
+            # Ensure values are scalar numbers, not pandas Series
+            recent_price = float(recent_price) if hasattr(recent_price, '__float__') else 0.0
+            prev_price = float(prev_price) if hasattr(prev_price, '__float__') else 0.0
+            recent_volume = float(recent_volume) if hasattr(recent_volume, '__float__') else 0.0
+            avg_volume = float(avg_volume) if hasattr(avg_volume, '__float__') else 1.0
+            
+            price_change = (recent_price - prev_price) / prev_price if prev_price > 0 else 0.0
+            volume_ratio = recent_volume / avg_volume if avg_volume > 0 else 1.0
+            
+            # Ensure values are not None
+            price_change = price_change if price_change is not None else 0.0
+            volume_ratio = volume_ratio if volume_ratio is not None else 1.0
             
             # Social sentiment based on activity and price movement
             social_sentiment = 0.0
@@ -301,12 +314,21 @@ class AIMarketSentimentEngine:
                     market_sentiment = -0.4
             
             # Correlation analysis
-            if len(spy_data) >= 5 and len(symbol_data) >= 5:
-                spy_returns = spy_data['Close'].pct_change().dropna()
-                symbol_returns = symbol_data['Close'].pct_change().dropna()
-                correlation = spy_returns.corr(symbol_returns) if len(spy_returns) > 1 else 0
-            else:
-                correlation = 0
+            correlation = 0.0
+            try:
+                if len(spy_data) >= 5 and len(symbol_data) >= 5:
+                    spy_returns = spy_data['Close'].pct_change().dropna()
+                    symbol_returns = symbol_data['Close'].pct_change().dropna()
+                    
+                    # Ensure both series have same length and enough data
+                    min_len = min(len(spy_returns), len(symbol_returns))
+                    if min_len > 1:
+                        spy_returns = spy_returns.iloc[:min_len]
+                        symbol_returns = symbol_returns.iloc[:min_len]
+                        correlation = float(spy_returns.corr(symbol_returns))
+                        correlation = correlation if not np.isnan(correlation) else 0.0
+            except Exception:
+                correlation = 0.0
             
             return {
                 'score': round(market_sentiment, 3),
