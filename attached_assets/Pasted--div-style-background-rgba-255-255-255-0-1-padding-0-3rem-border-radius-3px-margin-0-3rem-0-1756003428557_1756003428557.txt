@@ -1,0 +1,42 @@
+<div style="background: rgba(255,255,255,0.1); padding: 0.3rem; border-radius: 3px; margin: 0.3rem 0; font-size: 0.7rem;">
+    <div style="display: flex; justify-content: space-between;"><span>Strike:</span><span>$646</span></div>
+    <div style="display: flex; justify-content: space-between;"><span>Premium:</span><span>$0.10</span></div>
+    <div style="display: flex; justify-content: space-between;"><span>Volume:</span><span>101,664</span></div>
+</div>
+
+<div style="background: rgba(16,185,129,0.2); padding: 0.3rem; border-radius: 3px; margin: 0.3rem 0; font-size: 0.7rem;">
+    <div style="font-weight: bold; margin-bottom: 0.2rem;">ENTRY STRATEGY:</div>
+    <div style="display: flex; justify-content: space-between;"><span>Bid @ $</span><span>0.10</span></div>
+    <div style="display: flex; justify-content: space-between;"><span>Ask @ $</span><span>0.10</span></div>
+    <div style="display: flex; justify-content: space-between;"><span>Stop @ $</span><span>645.22</span></div>
+</div>
+
+<div style="background: rgba(16,185,129,0.3); padding: 0.3rem; border-radius: 3px; margin: 0.3rem 0; font-size: 0.7rem;">
+    <div style="font-weight: bold; margin-bottom: 0.2rem;">PROFIT TARGETS:</div>
+    <div style="display: flex; justify-content: space-between;"><span>T1 (25%):</span><span>$646.36</span></div>
+    <div style="display: flex; justify-content: space-between;"><span>T2 (50%):</span><span>$646.70</span></div>
+    <div style="display: flex; justify-content: space-between;"><span>T3 (25%):</span><span>$647.13</span></div>
+    <div style="text-align: center; margin-top: 0.3rem; font-weight: bold;">Breakeven: $646.10</div>
+</div>
+
+📉 PUT EXECUTION PLAN
+<div style="background: rgba(255,255,255,0.1); padding: 0.3rem; border-radius: 3px; margin: 0.3rem 0; font-size: 0.7rem;">
+    <div style="display: flex; justify-content: space-between;"><span>Strike:</span><span>$645</span></div>
+    <div style="display: flex; justify-content: space-between;"><span>Premium:</span><span>$0.04</span></div>
+    <div style="display: flex; justify-content: space-between;"><span>Volume:</span><span>114,947</span></div>
+</div>
+
+<div style="background: rgba(220,38,38,0.2); padding: 0.3rem; border-radius: 3px; margin: 0.3rem 0; font-size: 0.7rem;">
+    <div style="font-weight: bold; margin-bottom: 0.2rem;">ENTRY STRATEGY:</div>
+    <div style="display: flex; justify-content: space-between;"><span>Bid @ $</span><span>0.04</span></div>
+    <div style="display: flex; justify-content: space-between;"><span>Ask @ $</span><span>0.04</span></div>
+    <div style="display: flex; justify-content: space-between;"><span>Stop @ $</span><span>645.25</span></div>
+</div>
+
+<div style="background: rgba(220,38,38,0.3); padding: 0.3rem; border-radius: 3px; margin: 0.3rem 0; font-size: 0.7rem;">
+    <div style="font-weight: bold; margin-bottom: 0.2rem;">PROFIT TARGETS:</div>
+    <div style="display: flex; justify-content: space-between;"><span>T1 (25%):</span><span>$644.88</span></div>
+    <div style="display: flex; justify-content: space-between;"><span>T2 (50%):</span><span>$644.77</span></div>
+    <div style="display: flex; justify-content: space-between;"><span>T3 (25%):</span><span>$644.63</span></div>
+    <div style="text-align: center; margin-top: 0.3rem; font-weight: bold;">Breakeven: $644.96</div>
+</div>

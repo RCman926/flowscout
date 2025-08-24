@@ -20,6 +20,15 @@ from telegram_alerts import telegram_alerts
 from ai_sentiment_engine import ai_sentiment
 from predictive_models import predictive_models
 
+# Import real position tracking and live news
+try:
+    from position_tracker import position_tracker
+    from live_news_engine import live_news_engine
+    ADVANCED_FEATURES = True
+except ImportError:
+    ADVANCED_FEATURES = False
+    print("Advanced features not available - using basic mode")
+
 # === INSTITUTIONAL GRADE CONFIGURATION ===
 st.set_page_config(
     page_title="Institutional Options Flow",
@@ -614,14 +623,16 @@ with target_col3:
         call_breakeven = call_strike + call_premium
         call_volume = best_flow['top_call_volume']
         
-        # Calculate multiple targets and entry/exit prices
-        bid_price = call_premium * 0.98  # Slightly below mid for better fill
+        # INSTITUTIONAL EXECUTION CALCULATIONS
+        bid_price = max(0.01, call_premium * 0.98)  # Slightly below mid for better fill
         ask_price = call_premium * 1.02  # Slightly above mid
-        stop_loss = call_strike - (call_strike - current_price) * 0.5  # 50% of intrinsic value
+        stop_loss = max(call_strike * 0.99, current_price - (call_premium * 0.2))  # 20% below premium
         
-        target_1 = call_strike * 1.02   # Quick 2% target
-        target_2 = call_strike * 1.05   # Medium 5% target
-        target_3 = call_strike * 1.08   # Aggressive 8% target
+        # PROFESSIONAL STAGED TARGETS (Based on underlying movement)
+        breakeven_price = call_strike + call_premium
+        target_1 = breakeven_price + (breakeven_price - current_price) * 0.3  # Quick 30% move
+        target_2 = breakeven_price + (breakeven_price - current_price) * 0.7  # Medium 70% move  
+        target_3 = breakeven_price + (breakeven_price - current_price) * 1.2  # Aggressive 120% move
         
         st.markdown(f"""
         <div style="background: #059669; padding: 0.6rem; border-radius: 6px; color: white;">
@@ -664,14 +675,16 @@ with target_col4:
         put_breakeven = put_strike - put_premium
         put_volume = best_flow['top_put_volume']
         
-        # Calculate multiple targets and entry/exit prices
-        bid_price = put_premium * 0.98  # Slightly below mid for better fill
-        ask_price = put_premium * 1.02  # Slightly above mid
-        stop_loss = put_strike + (current_price - put_strike) * 0.5  # 50% of intrinsic value
+        # INSTITUTIONAL PUT EXECUTION CALCULATIONS
+        bid_price = max(0.01, put_premium * 0.98)  # Slightly below mid for better fill
+        ask_price = put_premium * 1.02  # Slightly above mid  
+        stop_loss = min(put_strike * 1.01, current_price + (put_premium * 0.2))  # 20% above premium
         
-        target_1 = put_strike * 0.98   # Quick 2% target down
-        target_2 = put_strike * 0.95   # Medium 5% target down
-        target_3 = put_strike * 0.92   # Aggressive 8% target down
+        # PROFESSIONAL PUT TARGETS (Based on downside movement)
+        breakeven_price = put_strike - put_premium
+        target_1 = breakeven_price - (current_price - breakeven_price) * 0.3  # Quick 30% down move
+        target_2 = breakeven_price - (current_price - breakeven_price) * 0.7  # Medium 70% down move
+        target_3 = breakeven_price - (current_price - breakeven_price) * 1.2  # Aggressive 120% down move
         
         st.markdown(f"""
         <div style="background: #991b1b; padding: 0.6rem; border-radius: 6px; color: white;">

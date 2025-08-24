@@ -198,8 +198,61 @@ class TechnicalAnalyzer:
                 close_array = np.array(data, dtype=float)
                 return talib.ADX(close_array, close_array, close_array, timeperiod=period)[-1]
             else:
-                # Simplified ADX calculation
-                return None  # Cannot calculate ADX - no fake neutral values
+                # PROFESSIONAL ADX CALCULATION (Average Directional Index)
+                if len(data) < 30:
+                    return None  # Need minimum 30 periods for ADX
+                
+                # Calculate price movements
+                price_changes = np.diff(data)
+                up_moves = np.where(price_changes > 0, price_changes, 0)
+                down_moves = np.where(price_changes < 0, np.abs(price_changes), 0)
+                
+                # Calculate True Range (simplified for close prices only)
+                true_ranges = np.abs(price_changes)
+                
+                # Apply Wilder's smoothing (exponential moving average with alpha = 1/period)
+                alpha = 1.0 / period
+                
+                # Smoothed True Range
+                atr_values = []
+                atr_values.append(true_ranges[0])
+                for i in range(1, len(true_ranges)):
+                    atr_values.append(alpha * true_ranges[i] + (1 - alpha) * atr_values[-1])
+                
+                # Smoothed Directional Movements
+                plus_dm = []
+                minus_dm = []
+                plus_dm.append(up_moves[0])
+                minus_dm.append(down_moves[0])
+                
+                for i in range(1, len(up_moves)):
+                    plus_dm.append(alpha * up_moves[i] + (1 - alpha) * plus_dm[-1])
+                    minus_dm.append(alpha * down_moves[i] + (1 - alpha) * minus_dm[-1])
+                
+                # Calculate +DI and -DI
+                plus_di = [(dm / atr) * 100 for dm, atr in zip(plus_dm, atr_values)]
+                minus_di = [(dm / atr) * 100 for dm, atr in zip(minus_dm, atr_values)]
+                
+                # Calculate DX (Directional Index)
+                dx_values = []
+                for pdi, mdi in zip(plus_di, minus_di):
+                    if (pdi + mdi) != 0:
+                        dx_values.append(abs(pdi - mdi) / (pdi + mdi) * 100)
+                    else:
+                        dx_values.append(0)
+                
+                # Calculate ADX (smoothed DX)
+                if len(dx_values) < period:
+                    return None
+                    
+                adx_values = []
+                adx_values.append(np.mean(dx_values[:period]))  # Initial ADX
+                
+                for i in range(len(dx_values) - period):
+                    idx = i + period
+                    adx_values.append(alpha * dx_values[idx] + (1 - alpha) * adx_values[-1])
+                
+                return round(float(adx_values[-1]), 2) if adx_values else None
         except:
             return None
     
