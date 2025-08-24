@@ -67,11 +67,12 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # === REAL DATA FUNCTIONS ===
+@st.cache_data(ttl=10)  # Cache for 10 seconds to improve performance
 def get_real_market_data(symbol):
     """Get real market data from Yahoo Finance"""
     try:
         ticker = yf.Ticker(symbol)
-        hist = ticker.history(period="2d", interval="1m")
+        hist = ticker.history(period="1d", interval="5m")  # Faster data fetch
         if hist.empty:
             return None
         
@@ -93,6 +94,7 @@ def get_real_market_data(symbol):
     except Exception as e:
         return None
 
+@st.cache_data(ttl=10)  # Cache for 10 seconds to improve performance
 def get_institutional_flow_data(symbol):
     """Get institutional-grade options flow analysis"""
     try:
@@ -111,7 +113,7 @@ def get_institutional_flow_data(symbol):
         total_call_premium = 0
         total_put_premium = 0
         
-        for i, exp_date in enumerate(exp_dates[:3]):  # Top 3 expiries
+        for i, exp_date in enumerate(exp_dates[:2]):  # Only 2 expiries for faster loading
             try:
                 exp_datetime = datetime.strptime(exp_date, '%Y-%m-%d')
                 dte = (exp_datetime - datetime.now()).days
@@ -287,7 +289,7 @@ st.markdown("""
             <strong>EXACT PRICES</strong>
         </div>
         <div style="text-align: center; margin: 0.2rem; font-size: 0.7rem;">
-            <strong>5-SEC REFRESH</strong>
+            <strong>15-SEC REFRESH</strong>
         </div>
         <div style="text-align: center; margin: 0.2rem; font-size: 0.7rem;">
             <strong>RISK ALERTS</strong>
@@ -1454,9 +1456,9 @@ with alert_col2:
             st.metric("Success Rate", f"{alert_stats.get('success_rate', 0):.0f}%")
 
 # === REAL-TIME MONITORING ===
-# Auto-refresh every 5 seconds during market hours
+# Auto-refresh every 15 seconds for better performance
 current_time = time.time()
-refresh_key = int(current_time // 5)
+refresh_key = int(current_time // 15)
 now = datetime.now()
 
 is_market_hours = (9.5 <= now.hour + now.minute/60 <= 16) and now.weekday() < 5
@@ -1464,7 +1466,7 @@ is_market_hours = (9.5 <= now.hour + now.minute/60 <= 16) and now.weekday() < 5
 if is_market_hours:
     st.markdown(f"""
     <div style="background: #10b981; padding: 0.5rem; border-radius: 4px; color: white; text-align: center; margin-top: 1rem;">
-        🔥 LIVE TRADING • Auto-refresh every 5s • Last update: {now.strftime('%H:%M:%S')}
+        🔥 LIVE TRADING • Auto-refresh every 15s • Last update: {now.strftime('%H:%M:%S')}
     </div>
     """, unsafe_allow_html=True)
 else:
