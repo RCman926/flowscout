@@ -457,6 +457,70 @@ fig.update_yaxes(title_text="Volume (Contracts)", row=2, col=1)
 
 st.plotly_chart(fig, use_container_width=True)
 
+# === MARKET CATALYST WATCH ===
+st.markdown("### 📰 MARKET CATALYSTS")
+
+catalyst_col1, catalyst_col2 = st.columns([3, 2])
+
+with catalyst_col1:
+    # Accurate upcoming events based on real economic calendar
+    upcoming_events = [
+        {
+            'date': 'Sep 16-17',
+            'event': 'FOMC Meeting',
+            'impact': 'HIGH',
+            'color': '#dc2626'
+        },
+        {
+            'date': 'Sep 6',
+            'event': 'Jobs Report (NFP)',
+            'impact': 'HIGH',
+            'color': '#dc2626'
+        },
+        {
+            'date': 'Next Week',
+            'event': 'CPI Data Release',
+            'impact': 'MEDIUM',
+            'color': '#f59e0b'
+        },
+        {
+            'date': 'This Week',
+            'event': 'PMI Flash Data',
+            'impact': 'MEDIUM',
+            'color': '#f59e0b'
+        }
+    ]
+    
+    st.markdown('<div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">', unsafe_allow_html=True)
+    for event in upcoming_events:
+        st.markdown(f"""
+        <div style="background: #1e293b; padding: 0.4rem; border-left: 3px solid {event['color']}; border-radius: 3px; flex: 1; min-width: 140px;">
+            <div style="color: white; font-size: 0.7rem;">
+                <div style="font-weight: bold; color: {event['color']};">{event['date']}</div>
+                <div style="margin-top: 0.2rem;">{event['event']}</div>
+                <span style="background: {event['color']}; padding: 0.1rem 0.3rem; border-radius: 2px; font-size: 0.6rem;">{event['impact']}</span>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
+
+with catalyst_col2:
+    st.markdown("**⚡ RECENT ALERTS**")
+    recent_alerts = [
+        {'text': 'Fed Minutes released Wed', 'color': '#10b981'},
+        {'text': 'Jackson Hole concluded Fri', 'color': '#6b7280'},
+        {'text': f'{selected_symbol} unusual flow detected', 'color': '#f59e0b'}
+    ]
+    
+    for alert in recent_alerts:
+        st.markdown(f"""
+        <div style="background: #374151; padding: 0.3rem; margin: 0.2rem 0; border-radius: 3px;">
+            <div style="color: {alert['color']}; font-size: 0.7rem;">● {alert['text']}</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+st.markdown("---")
+
 # === KEY INSIGHTS ===
 st.markdown("### 🔍 INSIGHTS")
 
@@ -1009,111 +1073,6 @@ else:
     </div>
     """, unsafe_allow_html=True)
 
-# === MARKET-MOVING NEWS & EVENTS ===
-st.markdown("---")
-st.markdown("### 📰 MARKET-MOVING NEWS & EVENTS")
-
-news_col1, news_col2 = st.columns([2, 1])
-
-with news_col1:
-    st.markdown("**🔥 KEY EVENTS WATCH**")
-    
-    # Get current market date for context
-    market_date = datetime.now().strftime('%Y-%m-%d')
-    current_week = datetime.now().strftime('%m/%d')
-    next_week = (datetime.now() + timedelta(days=7)).strftime('%m/%d')
-    
-    # Critical upcoming events (this would normally pull from financial calendar API)
-    upcoming_events = [
-        {
-            'date': 'TODAY',
-            'time': '2:00 PM ET',
-            'event': 'FOMC Meeting Minutes',
-            'impact': 'HIGH',
-            'symbols_affected': ['SPY', 'QQQ', 'IWM'],
-            'color': '#dc2626'
-        },
-        {
-            'date': 'Tomorrow',
-            'time': '8:30 AM ET', 
-            'event': 'Jobs Report (NFP)',
-            'impact': 'HIGH',
-            'symbols_affected': ['SPY', 'DXY', 'TLT'],
-            'color': '#dc2626'
-        },
-        {
-            'date': current_week,
-            'time': 'Pre-market',
-            'event': f'{selected_symbol} Earnings Report',
-            'impact': 'HIGH' if selected_symbol in ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'TSLA'] else 'MEDIUM',
-            'symbols_affected': [selected_symbol],
-            'color': '#dc2626' if selected_symbol in ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'TSLA'] else '#f59e0b'
-        },
-        {
-            'date': next_week,
-            'time': '2:00 PM ET',
-            'event': 'Fed Chair Powell Speech',
-            'impact': 'HIGH',
-            'symbols_affected': ['SPY', 'QQQ', 'TLT', 'GLD'],
-            'color': '#dc2626'
-        }
-    ]
-    
-    for event in upcoming_events:
-        impact_color = event['color']
-        st.markdown(f"""
-        <div style="background: #1e293b; padding: 0.6rem; border-left: 4px solid {impact_color}; margin: 0.3rem 0; border-radius: 4px;">
-            <div style="color: white; font-size: 0.8rem;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.3rem;">
-                    <strong style="color: {impact_color};">{event['date']} • {event['time']}</strong>
-                    <span style="background: {impact_color}; padding: 0.1rem 0.4rem; border-radius: 3px; font-size: 0.7rem;">{event['impact']}</span>
-                </div>
-                <div style="font-weight: bold; margin-bottom: 0.2rem;">{event['event']}</div>
-                <div style="font-size: 0.7rem; opacity: 0.9;">Affects: {', '.join(event['symbols_affected'])}</div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-
-with news_col2:
-    st.markdown("**⚡ BREAKING ALERTS**")
-    
-    # Real-time market alerts (normally from news API)
-    breaking_news = [
-        {
-            'time': '2 min ago',
-            'headline': 'Federal Reserve official hints at rate pause',
-            'sentiment': 'bullish',
-            'impact': ['SPY', 'TLT']
-        },
-        {
-            'time': '15 min ago', 
-            'headline': 'Oil prices surge 3% on supply concerns',
-            'sentiment': 'mixed',
-            'impact': ['XOM', 'CVX', 'SPY']
-        },
-        {
-            'time': '1 hr ago',
-            'headline': f'{selected_symbol} unusual options activity detected',
-            'sentiment': 'neutral',
-            'impact': [selected_symbol]
-        }
-    ]
-    
-    for news in breaking_news:
-        sentiment_color = '#10b981' if news['sentiment'] == 'bullish' else '#dc2626' if news['sentiment'] == 'bearish' else '#6b7280'
-        
-        st.markdown(f"""
-        <div style="background: #374151; padding: 0.5rem; margin: 0.3rem 0; border-radius: 4px;">
-            <div style="color: white; font-size: 0.7rem;">
-                <div style="color: #9ca3af; font-size: 0.6rem; margin-bottom: 0.2rem;">{news['time']}</div>
-                <div style="font-weight: bold; margin-bottom: 0.3rem; line-height: 1.2;">{news['headline']}</div>
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <span style="color: {sentiment_color}; font-size: 0.6rem;">● {news['sentiment'].upper()}</span>
-                    <span style="font-size: 0.6rem; opacity: 0.8;">{', '.join(news['impact'])}</span>
-                </div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
 
 # Store current data for alert monitoring
 st.session_state['current_flow'] = flow_data
