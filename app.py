@@ -273,10 +273,7 @@ st.markdown("""
             <strong>5-SEC REFRESH</strong>
         </div>
         <div style="text-align: center; margin: 0.2rem; font-size: 0.7rem;">
-            <strong>POSITION SIZING</strong>
-        </div>
-        <div style="text-align: center; margin: 0.2rem; font-size: 0.7rem;">
-            <strong>IV ANALYSIS</strong>
+            <strong>RISK ALERTS</strong>
         </div>
     </div>
 </div>
@@ -735,115 +732,6 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# === POSITION SIZING & RISK MANAGEMENT ===
-st.markdown("### 💰 POSITION SIZING & RISK MANAGEMENT")
-
-if flow_data and flow_data['analysis']:
-    current_price = market_data['price']
-    
-    # Calculate position sizing based on account risk
-    pos_col1, pos_col2, pos_col3 = st.columns(3)
-    
-    with pos_col1:
-        account_size = st.selectbox("Account Size", [
-            "$1,000", "$5,000", "$10,000", "$25,000", "$50,000", "$100,000", "$250,000", "$500,000"
-        ], index=3)
-        
-        risk_pct = st.selectbox("Risk Per Trade", [
-            "1%", "2%", "3%", "5%", "10%"
-        ], index=1)
-    
-    # Extract numeric values
-    account_value = float(account_size.replace("$", "").replace(",", ""))
-    risk_percentage = float(risk_pct.replace("%", "")) / 100
-    risk_amount = account_value * risk_percentage
-    
-    # Get current signal and calculate position size
-    signal, color, confidence = calculate_institutional_signal(selected_symbol)
-    
-    if signal in ["STRONG BUY", "BUY"]:
-        # Get ATM call option for position sizing
-        best_exp = max(flow_data['analysis'], key=lambda x: x['call_volume'])
-        exp_date = best_exp['exp_date']
-        
-        try:
-            ticker = yf.Ticker(selected_symbol)
-            options_chain = ticker.option_chain(exp_date)
-            calls_df = options_chain.calls
-            
-            if not calls_df.empty:
-                # Find ATM call
-                atm_strike = round(current_price / 5) * 5
-                atm_calls = calls_df[calls_df['strike'] == atm_strike]
-                
-                if not atm_calls.empty:
-                    option_price = atm_calls.iloc[0]['ask']
-                    contracts = max(1, int(risk_amount / (option_price * 100)))
-                    total_cost = contracts * option_price * 100
-                    
-                    with pos_col2:
-                        st.markdown(f"""
-                        <div style="background: #10b981; padding: 1rem; border-radius: 8px; color: white;">
-                            <h5 style="margin: 0; color: white;">🟢 CALL POSITION</h5>
-                            <div style="margin: 0.5rem 0;">
-                                <strong>Contracts:</strong> {contracts}<br>
-                                <strong>Strike:</strong> ${atm_strike:.0f}C<br>
-                                <strong>Cost:</strong> ${total_cost:,.0f}<br>
-                                <strong>Risk:</strong> {(total_cost/account_value)*100:.1f}%
-                            </div>
-                        </div>
-                        """, unsafe_allow_html=True)
-                        
-        except:
-            pass
-            
-    elif signal in ["STRONG SELL", "SELL"]:
-        # Get ATM put option for position sizing
-        best_exp = max(flow_data['analysis'], key=lambda x: x['put_volume'])
-        exp_date = best_exp['exp_date']
-        
-        try:
-            ticker = yf.Ticker(selected_symbol)
-            options_chain = ticker.option_chain(exp_date)
-            puts_df = options_chain.puts
-            
-            if not puts_df.empty:
-                # Find ATM put
-                atm_strike = round(current_price / 5) * 5
-                atm_puts = puts_df[puts_df['strike'] == atm_strike]
-                
-                if not atm_puts.empty:
-                    option_price = atm_puts.iloc[0]['ask']
-                    contracts = max(1, int(risk_amount / (option_price * 100)))
-                    total_cost = contracts * option_price * 100
-                    
-                    with pos_col2:
-                        st.markdown(f"""
-                        <div style="background: #dc2626; padding: 1rem; border-radius: 8px; color: white;">
-                            <h5 style="margin: 0; color: white;">🔴 PUT POSITION</h5>
-                            <div style="margin: 0.5rem 0;">
-                                <strong>Contracts:</strong> {contracts}<br>
-                                <strong>Strike:</strong> ${atm_strike:.0f}P<br>
-                                <strong>Cost:</strong> ${total_cost:,.0f}<br>
-                                <strong>Risk:</strong> {(total_cost/account_value)*100:.1f}%
-                            </div>
-                        </div>
-                        """, unsafe_allow_html=True)
-        except:
-            pass
-    
-    with pos_col3:
-        st.markdown(f"""
-        <div style="background: #6b7280; padding: 1rem; border-radius: 8px; color: white;">
-            <h5 style="margin: 0; color: white;">⚡ RISK PROFILE</h5>
-            <div style="margin: 0.5rem 0;">
-                <strong>Max Risk:</strong> ${risk_amount:,.0f}<br>
-                <strong>Signal:</strong> {signal}<br>
-                <strong>Confidence:</strong> {confidence:.0f}%<br>
-                <strong>Risk Level:</strong> {'LOW' if risk_percentage <= 0.02 else 'MEDIUM' if risk_percentage <= 0.05 else 'HIGH'}
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
 
 # === IMPLIED VOLATILITY ANALYSIS ===
 st.markdown("### 📈 IMPLIED VOLATILITY ENVIRONMENT")
@@ -1025,8 +913,12 @@ with risk_col3:
 
 with risk_col4:
     # Time decay risk for best opportunity
-    time_risk = "HIGH" if best_flow['dte'] <= 1 else "MEDIUM" if best_flow['dte'] <= 7 else "LOW"
-    st.metric("TIME DECAY RISK", f"{best_flow['dte']}DTE", time_risk)
+    if flow_data and flow_data['analysis']:
+        best_flow = max(flow_data['analysis'], key=lambda x: x['call_premium'] + x['put_premium'])
+        time_risk = "HIGH" if best_flow['dte'] <= 1 else "MEDIUM" if best_flow['dte'] <= 7 else "LOW"
+        st.metric("TIME DECAY RISK", f"{best_flow['dte']}DTE", time_risk)
+    else:
+        st.metric("TIME DECAY RISK", "N/A", "NO DATA")
 
 # === ALERT SYSTEM ===
 st.markdown("---")
