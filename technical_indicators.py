@@ -54,15 +54,17 @@ class TechnicalAnalyzer:
             return self._default_indicators()
     
     def _default_indicators(self):
-        """Return default indicator values when calculation fails"""
+        """Return error indicators when calculation fails - NO FAKE NEUTRAL VALUES"""
+        print("CRITICAL ERROR: Technical indicators calculation failed - cannot provide fake values for institutional trading")
         return {
-            'rsi': 50, 'macd': 0, 'macd_signal': 0,
-            'bb_upper': 0, 'bb_lower': 0, 'bb_middle': 0, 'bb_percent': 50,
-            'stoch_k': 50, 'stoch_d': 50,
-            'ema_20': 0, 'ema_50': 0, 'sma_20': 0, 'sma_50': 0,
-            'atr': 0, 'adx': 0, 'cci': 0, 'williams_r': -50,
-            'volume_sma': 0, 'volume_ratio': 1, 'obv': 0, 'cmf': 0,
-            'support': 0, 'resistance': 0, 'trend': 'sideways'
+            'rsi': None, 'macd': None, 'macd_signal': None,
+            'bb_upper': None, 'bb_lower': None, 'bb_middle': None, 'bb_percent': None,
+            'stoch_k': None, 'stoch_d': None,
+            'ema_20': None, 'ema_50': None, 'sma_20': None, 'sma_50': None,
+            'atr': None, 'adx': None, 'cci': None, 'williams_r': None,
+            'volume_sma': None, 'volume_ratio': None, 'obv': None, 'cmf': None,
+            'support': None, 'resistance': None, 'trend': 'DATA_ERROR',
+            'status': 'CALCULATION_FAILED'
         }
     
     def calculate_rsi(self, data, period=14):
@@ -86,8 +88,8 @@ class TechnicalAnalyzer:
                 return 100 - (100 / (1 + rs))
                 
         except Exception as e:
-            print(f"RSI calculation error: {e}")
-            return 50
+            print(f"CRITICAL: RSI calculation failed: {e}")
+            return None  # No fake neutral values for institutional trading
     
     def calculate_macd(self, data, fast=12, slow=26, signal=9):
         """Calculate MACD indicator"""
@@ -156,8 +158,8 @@ class TechnicalAnalyzer:
                 return k_percent.iloc[-1], d_percent.iloc[-1]
                 
         except Exception as e:
-            print(f"Stochastic calculation error: {e}")
-            return 50, 50
+            print(f"CRITICAL: Stochastic calculation failed: {e}")
+            return None, None  # No fake neutral values for institutional trading
     
     def calculate_ema(self, data, period):
         """Calculate Exponential Moving Average"""
@@ -198,9 +200,9 @@ class TechnicalAnalyzer:
                 return talib.ADX(close_array, close_array, close_array, timeperiod=period)[-1]
             else:
                 # Simplified ADX calculation
-                return 25  # Neutral ADX value
+                return None  # Cannot calculate ADX - no fake neutral values
         except:
-            return 25
+            return None
     
     def calculate_cci(self, data, period=20):
         """Calculate Commodity Channel Index"""
