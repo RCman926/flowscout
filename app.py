@@ -400,67 +400,76 @@ with col6:
     status = "🔥 ACTIVE" if hours_left > 1 else "⚠️ FINAL HOUR" if hours_left > 0 else "🔴 CLOSED"
     st.metric("MARKET STATUS", status, f"{hours_left:.1f}h left")
 
-# === LIVE FLOW ANALYSIS ===
-st.markdown("### 🔥 FLOW ANALYSIS")
+# === 0DTE FLOW ANALYSIS ===
+st.markdown("### 🔥 0DTE LIVE FLOW")
 
-# Single comprehensive chart showing both volume and premium
-fig = make_subplots(
-    rows=2, cols=1,
-    subplot_titles=("💰 Premium Flow (Dollars)", "📊 Volume Flow (Contracts)"),
-    specs=[[{"secondary_y": False}], [{"secondary_y": False}]],
-    vertical_spacing=0.15
-)
+# Find 0DTE data from flow analysis
+dte_0_data = None
+for exp in flow_data['analysis']:
+    if exp['dte'] == 0:
+        dte_0_data = exp
+        break
 
-# Extract data for chart
-exp_labels = [f"{f['dte']}DTE" for f in flow_data['analysis']]
-call_premiums = [f['call_premium']/1e6 for f in flow_data['analysis']]  # Convert to millions
-put_premiums = [f['put_premium']/1e6 for f in flow_data['analysis']]
-call_volumes = [f['call_volume'] for f in flow_data['analysis']]
-put_volumes = [f['put_volume'] for f in flow_data['analysis']]
-
-# Premium flow (top chart)
-fig.add_trace(
-    go.Bar(x=exp_labels, y=call_premiums, name="Call Premium", 
-           marker_color="#10b981", text=[f"${p:.1f}M" for p in call_premiums],
-           textposition="auto", showlegend=True),
-    row=1, col=1
-)
-
-fig.add_trace(
-    go.Bar(x=exp_labels, y=put_premiums, name="Put Premium", 
-           marker_color="#dc2626", text=[f"${p:.1f}M" for p in put_premiums],
-           textposition="auto", showlegend=True),
-    row=1, col=1
-)
-
-# Volume flow (bottom chart)
-fig.add_trace(
-    go.Bar(x=exp_labels, y=call_volumes, name="Call Volume", 
-           marker_color="#22c55e", text=[f"{v:,}" for v in call_volumes],
-           textposition="auto", showlegend=False),
-    row=2, col=1
-)
-
-fig.add_trace(
-    go.Bar(x=exp_labels, y=put_volumes, name="Put Volume", 
-           marker_color="#ef4444", text=[f"{v:,}" for v in put_volumes],
-           textposition="auto", showlegend=False),
-    row=2, col=1
-)
-
-fig.update_layout(
-    height=250, 
-    title_text=f"Flow Analysis - {flow_data['flow_signal']}",
-    paper_bgcolor='rgba(0,0,0,0)',
-    plot_bgcolor='rgba(0,0,0,0)',
-    barmode='group',
-    margin=dict(t=40, b=20, l=20, r=20)
-)
-
-fig.update_yaxes(title_text="Premium ($M)", row=1, col=1)
-fig.update_yaxes(title_text="Volume (Contracts)", row=2, col=1)
-
-st.plotly_chart(fig, use_container_width=True)
+if dte_0_data:
+    # Extract 0DTE call and put data
+    dte_call_volume = dte_0_data['call_volume']
+    dte_put_volume = dte_0_data['put_volume']
+    
+    # Create simple left-right bar chart
+    fig = go.Figure()
+    
+    # Calls on left (positive values)
+    fig.add_trace(go.Bar(
+        x=['CALLS'],
+        y=[dte_call_volume],
+        marker_color='#10b981',
+        text=f"{dte_call_volume:,} contracts",
+        textposition='auto',
+        name='Calls',
+        width=0.4
+    ))
+    
+    # Puts on right (positive values)  
+    fig.add_trace(go.Bar(
+        x=['PUTS'],
+        y=[dte_put_volume],
+        marker_color='#dc2626',
+        text=f"{dte_put_volume:,} contracts",
+        textposition='auto',
+        name='Puts',
+        width=0.4
+    ))
+    
+    fig.update_layout(
+        height=200,
+        title=f"{selected_symbol} 0DTE Flow - {dte_call_volume:,} Calls vs {dte_put_volume:,} Puts",
+        showlegend=False,
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)',
+        margin=dict(t=60, b=20, l=20, r=20),
+        font=dict(color='white', size=12)
+    )
+    
+    fig.update_yaxes(title_text="Volume (Contracts)")
+    fig.update_xaxes(categoryorder='array', categoryarray=['CALLS', 'PUTS'])
+    
+    st.plotly_chart(fig, use_container_width=True)
+    
+    # Show call/put ratio below chart
+    if dte_put_volume > 0:
+        call_put_ratio = dte_call_volume / dte_put_volume
+        ratio_color = "#10b981" if call_put_ratio > 1 else "#dc2626"
+        bias_text = "CALL HEAVY" if call_put_ratio > 1.2 else "PUT HEAVY" if call_put_ratio < 0.8 else "BALANCED"
+        
+        st.markdown(f"""
+        <div style="text-align: center; background: #1e293b; padding: 0.5rem; border-radius: 4px; margin: 0.5rem 0;">
+            <span style="color: {ratio_color}; font-weight: bold; font-size: 1rem;">
+                {bias_text} • {call_put_ratio:.2f} Call/Put Ratio
+            </span>
+        </div>
+        """, unsafe_allow_html=True)
+else:
+    st.warning("⚠️ No 0DTE options flow data available for this symbol")
 
 # === MARKET CATALYST WATCH ===
 st.markdown("### 📰 MARKET CATALYSTS")
