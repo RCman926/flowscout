@@ -63,15 +63,15 @@ def get_real_market_data(symbol):
         if hist.empty:
             return None
         
-        current_price = hist['Close'][-1]
-        prev_close = hist['Close'][-2] if len(hist) > 1 else current_price
+        current_price = float(hist['Close'].iloc[-1])
+        prev_close = float(hist['Close'].iloc[-2]) if len(hist) > 1 else current_price
         change = current_price - prev_close
         change_pct = (change / prev_close) * 100
         volume = int(hist['Volume'].iloc[-1]) if not pd.isna(hist['Volume'].iloc[-1]) else 0
         
         return {
             'symbol': symbol,
-            'price': float(current_price),
+            'price': current_price,
             'change': float(change),
             'change_pct': float(change_pct),
             'volume': volume,
