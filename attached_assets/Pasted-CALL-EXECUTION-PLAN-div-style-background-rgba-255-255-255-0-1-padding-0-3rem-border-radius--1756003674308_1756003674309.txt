@@ -1,0 +1,44 @@
+CALL EXECUTION PLAN
+<div style="background: rgba(255,255,255,0.1); padding: 0.3rem; border-radius: 3px; margin: 0.3rem 0; font-size: 0.7rem;">
+    <div style="display: flex; justify-content: space-between;"><span>Strike:</span><span>$646</span></div>
+    <div style="display: flex; justify-content: space-between;"><span>Premium:</span><span>$99482.28</span></div>
+    <div style="display: flex; justify-content: space-between;"><span>Volume:</span><span>101,664</span></div>
+</div>
+
+<div style="background: rgba(16,185,129,0.2); padding: 0.3rem; border-radius: 3px; margin: 0.3rem 0; font-size: 0.7rem;">
+    <div style="font-weight: bold; margin-bottom: 0.2rem;">ENTRY STRATEGY:</div>
+    <div style="display: flex; justify-content: space-between;"><span>Bid @ $</span><span>97492.64</span></div>
+    <div style="display: flex; justify-content: space-between;"><span>Ask @ $</span><span>101471.93</span></div>
+    <div style="display: flex; justify-content: space-between;"><span>Stop @ $</span><span>642.01</span></div>
+</div>
+
+<div style="background: rgba(16,185,129,0.3); padding: 0.3rem; border-radius: 3px; margin: 0.3rem 0; font-size: 0.7rem;">
+    <div style="font-weight: bold; margin-bottom: 0.2rem;">PROFIT TARGETS:</div>
+    <div style="display: flex; justify-content: space-between;"><span>T1 (25%):</span><span>$149868.67</span></div>
+    <div style="display: flex; justify-content: space-between;"><span>T2 (50%):</span><span>$199609.81</span></div>
+    <div style="display: flex; justify-content: space-between;"><span>T3 (25%):</span><span>$299092.09</span></div>
+    <div style="text-align: center; margin-top: 0.3rem; font-weight: bold;">Breakeven: $100128.28</div>
+</div>
+
+📉 PUT EXECUTION PLAN
+<div style="background: rgba(255,255,255,0.1); padding: 0.3rem; border-radius: 3px; margin: 0.3rem 0; font-size: 0.7rem;">
+    <div style="display: flex; justify-content: space-between;"><span>Strike:</span><span>$645</span></div>
+    <div style="display: flex; justify-content: space-between;"><span>Premium:</span><span>$37412.60</span></div>
+    <div style="display: flex; justify-content: space-between;"><span>Volume:</span><span>114,947</span></div>
+</div>
+
+<div style="background: rgba(220,38,38,0.2); padding: 0.3rem; border-radius: 3px; margin: 0.3rem 0; font-size: 0.7rem;">
+    <div style="font-weight: bold; margin-bottom: 0.2rem;">ENTRY STRATEGY:</div>
+    <div style="display: flex; justify-content: space-between;"><span>Bid @ $</span><span>36664.35</span></div>
+    <div style="display: flex; justify-content: space-between;"><span>Ask @ $</span><span>38160.86</span></div>
+    <div style="display: flex; justify-content: space-between;"><span>Stop @ $</span><span>648.47</span></div>
+</div>
+
+<div style="background: rgba(220,38,38,0.3); padding: 0.3rem; border-radius: 3px; margin: 0.3rem 0; font-size: 0.7rem;">
+    <div style="font-weight: bold; margin-bottom: 0.2rem;">PROFIT TARGETS:</div>
+    <div style="display: flex; justify-content: space-between;"><span>T1 (25%):</span><span>$-55473.67</span></div>
+    <div style="display: flex; justify-content: space-between;"><span>T2 (50%):</span><span>$-74179.97</span></div>
+    <div style="display: flex; justify-content: space-between;"><span>T3 (25%):</span><span>$-111592.57</span></div>
+    <div style="text-align: center; margin-top: 0.3rem; font-weight: bold;">Breakeven: $-36767.60</div>
+</div>
+

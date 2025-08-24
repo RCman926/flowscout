@@ -20,14 +20,17 @@ from telegram_alerts import telegram_alerts
 from ai_sentiment_engine import ai_sentiment
 from predictive_models import predictive_models
 
-# Import real position tracking and live news
+# Import institutional trading engines
 try:
     from position_tracker import position_tracker
     from live_news_engine import live_news_engine
-    ADVANCED_FEATURES = True
+    from institutional_risk_engine import risk_engine
+    from market_structure_analyzer import market_analyzer
+    from gamma_exposure_tracker import gamma_tracker
+    INSTITUTIONAL_GRADE = True
 except ImportError:
-    ADVANCED_FEATURES = False
-    print("Advanced features not available - using basic mode")
+    INSTITUTIONAL_GRADE = False
+    print("Institutional features not available - using basic mode")
 
 # === INSTITUTIONAL GRADE CONFIGURATION ===
 st.set_page_config(
@@ -1307,16 +1310,66 @@ with alert_col1:
         """, unsafe_allow_html=True)
 
 with alert_col2:
-    # Alert statistics
-    alert_stats = telegram_alerts.get_alert_stats()
-    stats_metrics = st.columns(3)
-    
-    with stats_metrics[0]:
-        st.metric("Alerts Today", alert_stats.get('today', 0))
-    with stats_metrics[1]:
-        st.metric("Total Sent", alert_stats.get('total', 0))
-    with stats_metrics[2]:
-        st.metric("Success Rate", f"{alert_stats.get('success_rate', 0):.0f}%")
+    # Institutional Risk Dashboard
+    if INSTITUTIONAL_GRADE:
+        st.markdown("### 🏛️ INSTITUTIONAL INTELLIGENCE")
+        
+        # Get current positions for risk analysis
+        positions = position_tracker.get_current_positions()
+        
+        # Real-time risk monitoring
+        risk_status = asyncio.run(risk_engine.monitor_real_time_risk(positions))
+        
+        # Display risk status
+        status_color = {
+            'NORMAL': '#10b981',
+            'WARNING': '#f59e0b', 
+            'CRITICAL': '#ef4444'
+        }.get(risk_status['status'], '#6b7280')
+        
+        st.markdown(f"""
+        <div style="background: {status_color}; padding: 0.5rem; border-radius: 4px; color: white; margin-bottom: 0.5rem;">
+            <div style="font-weight: bold; text-align: center;">RISK STATUS: {risk_status['status']}</div>
+            <div style="font-size: 0.8rem; text-align: center;">Risk Score: {risk_status['metrics'].get('risk_score', 0):.0f}/100</div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Market structure analysis
+        market_structure = asyncio.run(market_analyzer.analyze_market_structure(selected_symbol))
+        
+        structure_cols = st.columns(2)
+        with structure_cols[0]:
+            st.metric("Market Makers", 
+                     market_structure['market_maker_activity']['activity_level'],
+                     delta=f"{market_structure['market_maker_activity']['strength_score']:.2f}")
+        
+        with structure_cols[1]:
+            st.metric("Dark Pool Est.", 
+                     f"{market_structure['dark_pool_estimate']['estimated_percentage']:.1f}%",
+                     delta=market_structure['institutional_flow']['flow_direction'])
+        
+        # Gamma exposure analysis
+        gamma_profile = asyncio.run(gamma_tracker.calculate_gamma_exposure_profile(selected_symbol))
+        
+        gamma_cols = st.columns(2)
+        with gamma_cols[0]:
+            st.metric("Max Pain", f"${gamma_profile['max_pain']:.0f}", 
+                     delta=f"${gamma_profile['current_price'] - gamma_profile['max_pain']:.0f}")
+        
+        with gamma_cols[1]:
+            st.metric("Gamma Flip", f"${gamma_profile['gamma_flip_level']:.0f}",
+                     delta=gamma_profile['volatility_impact'])
+    else:
+        # Alert statistics (fallback)
+        alert_stats = telegram_alerts.get_alert_stats()
+        stats_metrics = st.columns(3)
+        
+        with stats_metrics[0]:
+            st.metric("Alerts Today", alert_stats.get('today', 0))
+        with stats_metrics[1]:
+            st.metric("Total Sent", alert_stats.get('total', 0))
+        with stats_metrics[2]:
+            st.metric("Success Rate", f"{alert_stats.get('success_rate', 0):.0f}%")
 
 # === REAL-TIME MONITORING ===
 # Auto-refresh every 5 seconds during market hours
