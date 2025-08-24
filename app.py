@@ -507,14 +507,50 @@ with catalyst_col1:
     st.markdown('</div>', unsafe_allow_html=True)
 
 with catalyst_col2:
-    st.markdown("**⚡ RECENT ALERTS**")
-    recent_alerts = [
-        {'text': 'Fed Minutes released Wed', 'color': '#10b981'},
-        {'text': 'Jackson Hole concluded Fri', 'color': '#6b7280'},
-        {'text': f'{selected_symbol} unusual flow detected', 'color': '#f59e0b'}
-    ]
+    st.markdown("**⚡ LIVE ALERTS**")
     
-    for alert in recent_alerts:
+    # Generate real trading alerts based on current data
+    live_alerts = []
+    
+    # Volume alert
+    if flow_data['total_volume'] > 50000:
+        live_alerts.append({
+            'text': f'{selected_symbol} volume spike: {flow_data["total_volume"]:,}', 
+            'color': '#dc2626'
+        })
+    
+    # High confidence signal alert
+    if confidence > 70:
+        live_alerts.append({
+            'text': f'{signal} signal: {confidence:.0f}% confidence', 
+            'color': '#10b981' if 'BUY' in signal else '#dc2626'
+        })
+    
+    # Flow imbalance alert
+    total_calls = sum([exp['call_volume'] for exp in flow_data['analysis']]) if flow_data['analysis'] else 0
+    total_puts = sum([exp['put_volume'] for exp in flow_data['analysis']]) if flow_data['analysis'] else 0
+    if total_calls > 0 and total_puts > 0:
+        call_put_ratio = total_calls / total_puts
+        if call_put_ratio > 2.0:
+            live_alerts.append({
+                'text': f'Heavy call bias: {call_put_ratio:.1f}x calls/puts', 
+                'color': '#10b981'
+            })
+        elif call_put_ratio < 0.5:
+            live_alerts.append({
+                'text': f'Heavy put bias: {1/call_put_ratio:.1f}x puts/calls', 
+                'color': '#dc2626'
+            })
+    
+    # If no significant alerts, show neutral status
+    if not live_alerts:
+        live_alerts = [
+            {'text': 'Normal trading conditions', 'color': '#6b7280'},
+            {'text': f'{selected_symbol} flow within range', 'color': '#6b7280'}
+        ]
+    
+    # Show only top 3 most important alerts
+    for alert in live_alerts[:3]:
         st.markdown(f"""
         <div style="background: #374151; padding: 0.3rem; margin: 0.2rem 0; border-radius: 3px;">
             <div style="color: {alert['color']}; font-size: 0.7rem;">● {alert['text']}</div>
