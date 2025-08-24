@@ -23,6 +23,68 @@ class TelegramAlertsEngine:
         # Alert history for analytics
         self.alert_history = []
         
+    def send_sentiment_alert(self, symbol: str, sentiment_data: Dict, prediction_data: Dict) -> bool:
+        """Send AI sentiment-based trading alert"""
+        try:
+            if not self.bot_token:
+                return False
+                
+            overall_sentiment = sentiment_data.get('overall_sentiment', 0)
+            confidence = sentiment_data.get('confidence', 0)
+            direction = prediction_data.get('direction', 'NEUTRAL')
+            pred_confidence = prediction_data.get('overall_confidence', 50)
+            
+            # Only send alerts for significant sentiment changes
+            if abs(overall_sentiment) < 0.2 or confidence < 0.6:
+                return False
+            
+            # Check alert cooldown
+            alert_key = f"sentiment_{symbol}"
+            now = datetime.now()
+            if alert_key in self.last_alerts:
+                time_since_last = (now - self.last_alerts[alert_key]).total_seconds() / 60
+                if time_since_last < self.cooldown_minutes:
+                    return False
+            
+            # Determine urgency
+            if abs(overall_sentiment) > 0.4 and confidence > 0.8:
+                urgency = "🚨 CRITICAL AI SIGNAL"
+            elif abs(overall_sentiment) > 0.3 and confidence > 0.7:
+                urgency = "⚠️ STRONG AI SIGNAL" 
+            else:
+                urgency = "📊 AI SENTIMENT UPDATE"
+            
+            sentiment_emoji = "🟢" if overall_sentiment > 0 else "🔴"
+            direction_emoji = "📈" if direction == "BULLISH" else "📉" if direction == "BEARISH" else "➡️"
+            
+            current_price = prediction_data.get('current_price', 'N/A')
+            
+            message = f"""
+{urgency} {sentiment_emoji}
+
+🎯 *${symbol}* @ ${current_price}
+📊 Sentiment: *{overall_sentiment:+.3f}* ({confidence:.1%} confidence)
+{direction_emoji} AI Prediction: *{direction}* ({pred_confidence:.1f}%)
+🎚️ Risk: *{sentiment_data.get('risk_assessment', 'MODERATE')}*
+
+📰 News: {sentiment_data.get('news_sentiment', 0):+.3f}
+📊 Technical: {sentiment_data.get('technical_sentiment', 0):+.3f}
+🗣️ Social: {sentiment_data.get('social_sentiment', 0):+.3f}
+
+⏰ {datetime.now().strftime('%H:%M:%S')}
+            """
+            
+            success = self.send_alert(message.strip(), f"sentiment_{symbol}")
+            
+            if success:
+                self.last_alerts[alert_key] = now
+            
+            return success
+            
+        except Exception as e:
+            print(f"Sentiment alert error: {e}")
+            return False
+
     def send_alert(self, message: str, alert_type: str = "general", disable_notification: bool = False) -> bool:
         """Send a Telegram alert with spam protection"""
         try:

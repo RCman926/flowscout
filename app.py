@@ -9,11 +9,16 @@ from plotly.subplots import make_subplots
 import pytz
 from scipy.stats import norm
 import time
+import asyncio
 import warnings
 warnings.filterwarnings('ignore')
 
 # Import Telegram alerts system
 from telegram_alerts import telegram_alerts
+
+# Import AI-powered sentiment and prediction engines
+from ai_sentiment_engine import ai_sentiment
+from predictive_models import predictive_models
 
 # === INSTITUTIONAL GRADE CONFIGURATION ===
 st.set_page_config(
@@ -747,6 +752,217 @@ if flow_data and flow_data['analysis']:
                     
     except Exception as e:
         st.warning("Unable to fetch live options prices. Market may be closed.")
+
+# === AI-POWERED SENTIMENT & PREDICTIONS ===
+st.markdown("---")
+st.markdown("### 🤖 AI-POWERED MARKET SENTIMENT & PREDICTIONS")
+
+# Initialize session state for sentiment data
+if 'sentiment_data' not in st.session_state:
+    st.session_state.sentiment_data = None
+if 'prediction_data' not in st.session_state:
+    st.session_state.prediction_data = None
+
+# Get sentiment and predictions
+with st.spinner("Analyzing market sentiment and generating predictions..."):
+    try:
+        # Get technical indicators first
+        from technical_indicators import TechnicalIndicators
+        tech_analyzer = TechnicalIndicators()
+        
+        # Get price data for indicators
+        ticker = yf.Ticker(selected_symbol)
+        hist_data = ticker.history(period="30d")
+        
+        if not hist_data.empty:
+            price_data = hist_data['Close'].values
+            volume_data = hist_data['Volume'].values
+            indicators = tech_analyzer.calculate_all_indicators(price_data, volume_data)
+        else:
+            indicators = {}
+        
+        # Run sentiment analysis
+        sentiment_data = asyncio.run(ai_sentiment.analyze_market_sentiment(selected_symbol))
+        st.session_state.sentiment_data = sentiment_data
+        
+        # Run predictive analysis
+        prediction_data = asyncio.run(predictive_models.generate_price_prediction(
+            selected_symbol, sentiment_data, indicators
+        ))
+        st.session_state.prediction_data = prediction_data
+        
+        # Check for sentiment-based alerts
+        if sentiment_data and prediction_data:
+            try:
+                # Send sentiment alert if conditions are met
+                alert_sent = telegram_alerts.send_sentiment_alert(
+                    selected_symbol, sentiment_data, prediction_data
+                )
+                if alert_sent:
+                    st.success("🚨 AI sentiment alert sent to Telegram!")
+            except Exception as alert_error:
+                # Don't break the app if alerts fail
+                pass
+        
+    except Exception as e:
+        st.error(f"AI analysis error: {e}")
+        st.session_state.sentiment_data = None
+        st.session_state.prediction_data = None
+
+if st.session_state.sentiment_data and st.session_state.prediction_data:
+    sentiment_data = st.session_state.sentiment_data
+    prediction_data = st.session_state.prediction_data
+    
+    # Main AI Analysis Dashboard
+    ai_col1, ai_col2, ai_col3 = st.columns([2, 2, 2])
+    
+    with ai_col1:
+        st.markdown("**🎯 MARKET SENTIMENT**")
+        
+        overall_sentiment = sentiment_data['overall_sentiment']
+        confidence = sentiment_data['confidence']
+        
+        # Sentiment Score Display
+        sentiment_color = "#10b981" if overall_sentiment > 0.1 else "#dc2626" if overall_sentiment < -0.1 else "#6b7280"
+        sentiment_text = "BULLISH" if overall_sentiment > 0.1 else "BEARISH" if overall_sentiment < -0.1 else "NEUTRAL"
+        
+        st.markdown(f"""
+        <div style="background: #374151; padding: 1rem; border-radius: 6px; margin: 0.5rem 0;">
+            <div style="color: {sentiment_color}; font-size: 1.2rem; font-weight: bold; text-align: center;">
+                {sentiment_text}
+            </div>
+            <div style="color: white; text-align: center; margin: 0.5rem 0;">
+                Score: {overall_sentiment:.3f} | Confidence: {confidence:.1%}
+            </div>
+            <div style="background: #1e293b; padding: 0.5rem; border-radius: 4px; font-size: 0.8rem;">
+                <div>📰 News: {sentiment_data.get('news_sentiment', 0):.3f}</div>
+                <div>📊 Technical: {sentiment_data.get('technical_sentiment', 0):.3f}</div>
+                <div>🗣️ Social: {sentiment_data.get('social_sentiment', 0):.3f}</div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with ai_col2:
+        st.markdown("**🔮 AI PRICE PREDICTIONS**")
+        
+        direction = prediction_data.get('direction', 'NEUTRAL')
+        pred_confidence = prediction_data.get('overall_confidence', 50)
+        strength = prediction_data.get('strength', 'WEAK')
+        
+        # Direction color
+        direction_color = "#10b981" if direction == "BULLISH" else "#dc2626" if direction == "BEARISH" else "#6b7280"
+        
+        st.markdown(f"""
+        <div style="background: #374151; padding: 1rem; border-radius: 6px; margin: 0.5rem 0;">
+            <div style="color: {direction_color}; font-size: 1.2rem; font-weight: bold; text-align: center;">
+                {direction} - {strength}
+            </div>
+            <div style="color: white; text-align: center; margin: 0.5rem 0;">
+                Confidence: {pred_confidence:.1f}%
+            </div>
+        """, unsafe_allow_html=True)
+        
+        # Predictions table
+        if 'predictions' in prediction_data:
+            predictions = prediction_data['predictions']
+            
+            pred_display = """
+            <div style="background: #1e293b; padding: 0.5rem; border-radius: 4px; font-size: 0.8rem;">
+            """
+            
+            for timeframe, pred in predictions.items():
+                pred_display += f"""
+                <div style="display: flex; justify-content: space-between; margin: 0.2rem 0;">
+                    <span>{timeframe.upper()}:</span>
+                    <span>${pred.get('predicted_price', 0):.2f} ({pred.get('predicted_return', 0):+.1f}%)</span>
+                </div>
+                """
+            
+            pred_display += "</div></div>"
+            st.markdown(pred_display, unsafe_allow_html=True)
+    
+    with ai_col3:
+        st.markdown("**⚡ SMART ALERTS**")
+        
+        risk_level = sentiment_data.get('risk_assessment', 'MODERATE')
+        risk_color = "#dc2626" if risk_level == "HIGH" else "#f59e0b" if risk_level == "MODERATE" else "#10b981"
+        
+        st.markdown(f"""
+        <div style="background: #374151; padding: 1rem; border-radius: 6px; margin: 0.5rem 0;">
+            <div style="color: {risk_color}; font-size: 1rem; font-weight: bold; text-align: center;">
+                RISK LEVEL: {risk_level}
+            </div>
+            <div style="background: #1e293b; padding: 0.5rem; border-radius: 4px; margin: 0.5rem 0; font-size: 0.8rem;">
+        """, unsafe_allow_html=True)
+        
+        # Generate smart alerts based on sentiment and predictions
+        smart_alerts = []
+        
+        if abs(overall_sentiment) > 0.2 and confidence > 0.6:
+            smart_alerts.append(f"Strong {sentiment_text.lower()} sentiment detected")
+        
+        if pred_confidence > 70:
+            smart_alerts.append(f"High confidence {direction.lower()} prediction")
+        
+        if 'predictions' in prediction_data and '1d' in prediction_data['predictions']:
+            pred_return = prediction_data['predictions']['1d'].get('predicted_return', 0)
+            if abs(pred_return) > 2:
+                smart_alerts.append(f"Significant {pred_return:+.1f}% move predicted")
+        
+        # Social activity alerts
+        if 'sentiment_breakdown' in sentiment_data and 'social' in sentiment_data['sentiment_breakdown']:
+            social_data = sentiment_data['sentiment_breakdown']['social']
+            if social_data.get('social_activity') == 'HIGH':
+                smart_alerts.append("High social media activity detected")
+        
+        if not smart_alerts:
+            smart_alerts = ["Normal market conditions", "No significant alerts"]
+        
+        for alert in smart_alerts[:3]:
+            st.markdown(f"<div style='color: #94a3b8; margin: 0.3rem 0;'>• {alert}</div>", unsafe_allow_html=True)
+        
+        st.markdown("</div></div>", unsafe_allow_html=True)
+    
+    # AI Sentiment Visualization
+    st.markdown("**📈 SENTIMENT TREND VISUALIZATION**")
+    
+    # Create sentiment breakdown chart
+    sentiment_breakdown = sentiment_data.get('sentiment_breakdown', {})
+    
+    if sentiment_breakdown:
+        # Prepare data for visualization
+        categories = ['News', 'Technical', 'Social', 'Market Structure']
+        scores = [
+            sentiment_breakdown.get('news', {}).get('score', 0),
+            sentiment_breakdown.get('technical', {}).get('score', 0), 
+            sentiment_breakdown.get('social', {}).get('score', 0),
+            sentiment_breakdown.get('market_structure', {}).get('score', 0)
+        ]
+        
+        colors = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6']
+        
+        fig_sentiment = go.Figure()
+        fig_sentiment.add_trace(go.Bar(
+            x=categories,
+            y=scores,
+            marker_color=colors,
+            text=[f"{score:.3f}" for score in scores],
+            textposition='auto',
+        ))
+        
+        fig_sentiment.update_layout(
+            title=f"{selected_symbol} AI Sentiment Breakdown",
+            yaxis_title="Sentiment Score",
+            height=300,
+            plot_bgcolor='rgba(0,0,0,0)',
+            paper_bgcolor='rgba(0,0,0,0)',
+            font=dict(color='white', size=10)
+        )
+        
+        st.plotly_chart(fig_sentiment, use_container_width=True)
+
+else:
+    st.info("🤖 AI sentiment analysis will appear here when market data is available")
 
 # === SIGNAL PERFORMANCE TRACKING ===
 st.markdown("### 📊 SIGNAL PERFORMANCE TRACKING")
