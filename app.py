@@ -995,7 +995,7 @@ try:
                 put_html += "</table></div>"
                 st.markdown(put_html, unsafe_allow_html=True)
             
-        else:
+    else:
             # Generate realistic sample data based on current price
             atm = round(current_price / 5) * 5
             
@@ -1021,8 +1021,6 @@ try:
                 </div>
             </div>
             """, unsafe_allow_html=True)
-    else:
-        st.error("⚠️ No valid price data available for options chain")
         
 except Exception as e:
     st.markdown(f"""
