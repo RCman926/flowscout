@@ -1431,11 +1431,11 @@ with alert_col2:
         gamma_cols = st.columns(2)
         with gamma_cols[0]:
             st.metric("Max Pain", f"${gamma_profile['max_pain']:.0f}", 
-                     delta=f"${gamma_profile['current_price'] - gamma_profile['max_pain']:.0f}")
+                     delta=f"${current_price - gamma_profile['max_pain']:.0f}")
         
         with gamma_cols[1]:
-            st.metric("Gamma Flip", f"${gamma_profile['gamma_flip_level']:.0f}",
-                     delta=gamma_profile['volatility_impact'])
+            st.metric("Gamma Flip", f"${gamma_profile['gamma_flip_point']:.0f}",
+                     delta=f"${gamma_profile['gamma_flip_point'] - current_price:.0f}")
     else:
         # Alert statistics (fallback)
         alert_stats = telegram_alerts.get_alert_stats()
