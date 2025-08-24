@@ -145,16 +145,16 @@ class InstitutionalPredictiveEngine:
             X_train_scaled = scaler.fit_transform(X_train)
             X_test_scaled = scaler.transform(X_test)
             
-            # Train Gradient Boosting (deterministic, institutional-grade)
+            # Train Gradient Boosting (aggressive institutional-grade)
             model = GradientBoostingRegressor(
-                n_estimators=200,
-                learning_rate=0.05,
-                max_depth=6,
-                min_samples_split=10,
-                min_samples_leaf=4,
+                n_estimators=300,
+                learning_rate=0.15,  # Aggressive learning rate for institutional convergence
+                max_depth=8,
+                min_samples_split=5,
+                min_samples_leaf=2,
                 random_state=1,  # Deterministic
-                validation_fraction=0.1,
-                n_iter_no_change=10
+                validation_fraction=0.15,
+                n_iter_no_change=15
             )
             
             model.fit(X_train_scaled, y_train)

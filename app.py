@@ -573,99 +573,167 @@ with catalyst_col2:
 
 st.markdown("---")
 
-# === KEY INSIGHTS ===
-st.markdown("### 🔍 INSIGHTS")
+# === INSTITUTIONAL PRICE TARGETS ===
+st.markdown("### 🎯 BUY/SELL PRICE TARGETS")
 
-insight_col1, insight_col2, insight_col3 = st.columns(3)
+# Calculate key technical levels
+current_price = market_data['price']
+day_high = market_data.get('day_high', current_price * 1.02)
+day_low = market_data.get('day_low', current_price * 0.98)
+volume = market_data.get('volume', 0)
+avg_volume = market_data.get('avg_volume', volume)
 
-# Find most active expiry by total premium
-most_active = max(flow_data['analysis'], key=lambda x: x['call_premium'] + x['put_premium'])
-most_active_exp = datetime.strptime(most_active['exp_date'], '%Y-%m-%d').strftime('%m/%d')
+# Calculate institutional levels
+resistance_1 = current_price * 1.015  # 1.5% resistance
+resistance_2 = current_price * 1.025  # 2.5% resistance  
+support_1 = current_price * 0.985    # 1.5% support
+support_2 = current_price * 0.975    # 2.5% support
 
-with insight_col1:
-    total_premium = most_active['call_premium'] + most_active['put_premium']
-    call_dominance = (most_active['call_premium'] / max(1, total_premium)) * 100
-    
+# Entry/Exit calculations based on flow
+best_flow = max(flow_data['analysis'], key=lambda x: x['call_premium'] + x['put_premium']) if flow_data['analysis'] else None
+
+# Create 4 columns for detailed targets
+target_col1, target_col2, target_col3, target_col4 = st.columns(4)
+
+with target_col1:
     st.markdown(f"""
-    <div style="background: #1e293b; padding: 0.5rem; border-radius: 4px; color: white; text-align: center;">
-        <h6 style="margin: 0; color: #fbbf24; font-size: 0.8rem;">🎯 HOTTEST</h6>
-        <div style="font-size: 1rem; font-weight: bold; margin: 0.2rem 0;">{most_active_exp} ({most_active['dte']}DTE)</div>
-        <div style="font-size: 0.7rem;">${total_premium/1e6:.1f}M • {call_dominance:.0f}% calls</div>
-    </div>
-    """, unsafe_allow_html=True)
-
-with insight_col2:
-    # Calculate premium per contract
-    total_contracts = most_active['call_volume'] + most_active['put_volume']
-    avg_premium_per_contract = total_premium / max(1, total_contracts)
-    
-    st.markdown(f"""
-    <div style="background: #1e293b; padding: 0.5rem; border-radius: 4px; color: white; text-align: center;">
-        <h6 style="margin: 0; color: #10b981; font-size: 0.8rem;">💵 AVG PREMIUM</h6>
-        <div style="font-size: 1rem; font-weight: bold; margin: 0.2rem 0;">${avg_premium_per_contract:.0f}</div>
-        <div style="font-size: 0.7rem;">{total_contracts:,} contracts</div>
-    </div>
-    """, unsafe_allow_html=True)
-
-with insight_col3:
-    # Calculate call/put ratio
-    call_put_ratio = most_active['call_volume'] / max(1, most_active['put_volume'])
-    sentiment = "BULLISH" if call_put_ratio > 1.2 else "BEARISH" if call_put_ratio < 0.8 else "NEUTRAL"
-    sentiment_color = "#10b981" if sentiment == "BULLISH" else "#dc2626" if sentiment == "BEARISH" else "#6b7280"
-    
-    st.markdown(f"""
-    <div style="background: #1e293b; padding: 0.5rem; border-radius: 4px; color: white; text-align: center;">
-        <h6 style="margin: 0; color: {sentiment_color}; font-size: 0.8rem;">📈 SENTIMENT</h6>
-        <div style="font-size: 1rem; font-weight: bold; margin: 0.2rem 0; color: {sentiment_color};">{sentiment}</div>
-        <div style="font-size: 0.7rem;">C/P: {call_put_ratio:.2f}</div>
-    </div>
-    """, unsafe_allow_html=True)
-
-# === INSTITUTIONAL TRADING OPPORTUNITIES ===
-st.markdown("### 🎯 OPPORTUNITIES")
-
-if flow_data and flow_data['analysis']:
-    best_flow = max(flow_data['analysis'], key=lambda x: x['call_premium'] + x['put_premium'])
-    exp_short = datetime.strptime(best_flow['exp_date'], '%Y-%m-%d').strftime('%m/%d')
-    
-    opp_col1, opp_col2, opp_col3 = st.columns(3)
-    
-    with opp_col1:
-        st.markdown(f"""
-        <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 0.5rem; border-radius: 4px; color: white;">
-            <h5 style="margin: 0; color: white; font-size: 0.8rem;">🟢 CALL</h5>
-            <div style="font-size: 0.9rem; font-weight: bold; margin: 0.2rem 0;">
-                {selected_symbol} {exp_short} ${best_flow['top_call_strike']:.0f}C
-            </div>
-            <div style="font-size: 0.7rem;">Vol: {best_flow['top_call_volume']:,} • ${best_flow['call_premium']/1e3:.0f}K</div>
+    <div style="background: #dc2626; padding: 0.6rem; border-radius: 6px; color: white; border: 2px solid #fbbf24;">
+        <h5 style="margin: 0; color: white; font-size: 0.9rem; text-align: center;">🔻 SELL TARGETS</h5>
+        <div style="margin: 0.3rem 0; font-size: 0.8rem;">
+            <div><strong>R2:</strong> ${resistance_2:.2f} (+2.5%)</div>
+            <div><strong>R1:</strong> ${resistance_1:.2f} (+1.5%)</div>
+            <div><strong>Day High:</strong> ${day_high:.2f}</div>
         </div>
-        """, unsafe_allow_html=True)
-    
-    with opp_col2:
-        st.markdown(f"""
-        <div style="background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%); padding: 0.5rem; border-radius: 4px; color: white;">
-            <h5 style="margin: 0; color: white; font-size: 0.8rem;">🔴 PUT</h5>
-            <div style="font-size: 0.9rem; font-weight: bold; margin: 0.2rem 0;">
-                {selected_symbol} {exp_short} ${best_flow['top_put_strike']:.0f}P
-            </div>
-            <div style="font-size: 0.7rem;">Vol: {best_flow['top_put_volume']:,} • ${best_flow['put_premium']/1e3:.0f}K</div>
+        <div style="background: rgba(255,255,255,0.1); padding: 0.2rem; border-radius: 3px; margin-top: 0.3rem;">
+            <div style="font-size: 0.7rem; text-align: center;">Exit above ${resistance_1:.2f}</div>
         </div>
-        """, unsafe_allow_html=True)
-    
-    with opp_col3:
-        flow_direction = "CALLS" if best_flow['call_premium'] > best_flow['put_premium'] else "PUTS"
-        momentum = abs(best_flow['call_premium'] - best_flow['put_premium']) / (best_flow['call_premium'] + best_flow['put_premium']) * 100
+    </div>
+    """, unsafe_allow_html=True)
+
+with target_col2:
+    st.markdown(f"""
+    <div style="background: #10b981; padding: 0.6rem; border-radius: 6px; color: white; border: 2px solid #fbbf24;">
+        <h5 style="margin: 0; color: white; font-size: 0.9rem; text-align: center;">🔺 BUY TARGETS</h5>
+        <div style="margin: 0.3rem 0; font-size: 0.8rem;">
+            <div><strong>Day Low:</strong> ${day_low:.2f}</div>
+            <div><strong>S1:</strong> ${support_1:.2f} (-1.5%)</div>
+            <div><strong>S2:</strong> ${support_2:.2f} (-2.5%)</div>
+        </div>
+        <div style="background: rgba(255,255,255,0.1); padding: 0.2rem; border-radius: 3px; margin-top: 0.3rem;">
+            <div style="font-size: 0.7rem; text-align: center;">Enter below ${support_1:.2f}</div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+with target_col3:
+    # Calculate call targets
+    if best_flow:
+        call_strike = best_flow['top_call_strike']
+        call_breakeven = call_strike + (best_flow['call_premium'] / best_flow['top_call_volume'] / 100) if best_flow['top_call_volume'] > 0 else call_strike
+        call_target = call_strike * 1.05
         
         st.markdown(f"""
-        <div style="background: linear-gradient(135deg, #1e293b 0%, #334155 100%); padding: 1rem; border-radius: 8px; color: white;">
-            <h4 style="margin: 0; color: white;">📈 FLOW DIRECTION</h4>
-            <div style="font-size: 1.1rem; font-weight: bold; margin: 0.5rem 0;">
-                {flow_direction} DOMINANT
+        <div style="background: #059669; padding: 0.6rem; border-radius: 6px; color: white;">
+            <h5 style="margin: 0; color: white; font-size: 0.9rem; text-align: center;">📞 CALL DETAILS</h5>
+            <div style="margin: 0.3rem 0; font-size: 0.8rem;">
+                <div><strong>Strike:</strong> ${call_strike:.0f}</div>
+                <div><strong>Breakeven:</strong> ${call_breakeven:.2f}</div>
+                <div><strong>Target:</strong> ${call_target:.2f}</div>
             </div>
-            <div>Momentum: {momentum:.0f}%</div>
-            <div>Best Expiry: {exp_short} ({best_flow['dte']}DTE)</div>
+            <div style="background: rgba(255,255,255,0.1); padding: 0.2rem; border-radius: 3px; margin-top: 0.3rem;">
+                <div style="font-size: 0.7rem; text-align: center;">Profit above ${call_breakeven:.2f}</div>
+            </div>
         </div>
         """, unsafe_allow_html=True)
+    else:
+        st.markdown("""
+        <div style="background: #374151; padding: 0.6rem; border-radius: 6px; color: white;">
+            <div style="text-align: center; font-size: 0.8rem;">No call flow data</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+with target_col4:
+    # Calculate put targets  
+    if best_flow:
+        put_strike = best_flow['top_put_strike']
+        put_breakeven = put_strike - (best_flow['put_premium'] / best_flow['top_put_volume'] / 100) if best_flow['top_put_volume'] > 0 else put_strike
+        put_target = put_strike * 0.95
+        
+        st.markdown(f"""
+        <div style="background: #991b1b; padding: 0.6rem; border-radius: 6px; color: white;">
+            <h5 style="margin: 0; color: white; font-size: 0.9rem; text-align: center;">📉 PUT DETAILS</h5>
+            <div style="margin: 0.3rem 0; font-size: 0.8rem;">
+                <div><strong>Strike:</strong> ${put_strike:.0f}</div>
+                <div><strong>Breakeven:</strong> ${put_breakeven:.2f}</div>
+                <div><strong>Target:</strong> ${put_target:.2f}</div>
+            </div>
+            <div style="background: rgba(255,255,255,0.1); padding: 0.2rem; border-radius: 3px; margin-top: 0.3rem;">
+                <div style="font-size: 0.7rem; text-align: center;">Profit below ${put_breakeven:.2f}</div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+    else:
+        st.markdown("""
+        <div style="background: #374151; padding: 0.6rem; border-radius: 6px; color: white;">
+            <div style="text-align: center; font-size: 0.8rem;">No put flow data</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+# Add detailed execution parameters
+st.markdown("---")
+st.markdown("### ⚡ EXECUTION PARAMETERS")
+
+exec_col1, exec_col2, exec_col3 = st.columns(3)
+
+with exec_col1:
+    volume_multiplier = volume / max(1, avg_volume) if avg_volume > 0 else 1
+    volume_status = "HIGH" if volume_multiplier > 1.5 else "NORMAL" if volume_multiplier > 0.7 else "LOW"
+    volume_color = "#10b981" if volume_status == "HIGH" else "#f59e0b" if volume_status == "NORMAL" else "#dc2626"
+    
+    st.markdown(f"""
+    <div style="background: #1e293b; padding: 0.5rem; border-radius: 4px; color: white; text-align: center;">
+        <h6 style="margin: 0; color: {volume_color}; font-size: 0.8rem;">📊 VOLUME</h6>
+        <div style="font-size: 1rem; font-weight: bold; margin: 0.2rem 0; color: {volume_color};">{volume_status}</div>
+        <div style="font-size: 0.7rem;">{volume_multiplier:.1f}x avg • {volume:,.0f}</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+with exec_col2:
+    # Calculate optimal position size based on volatility
+    volatility = abs(market_data['change_pct']) if market_data['change_pct'] else 1.0
+    if volatility > 3:
+        pos_size = "SMALL"
+        risk_level = "HIGH"
+        size_color = "#dc2626"
+    elif volatility > 1.5:
+        pos_size = "MEDIUM" 
+        risk_level = "MODERATE"
+        size_color = "#f59e0b"
+    else:
+        pos_size = "LARGE"
+        risk_level = "LOW"
+        size_color = "#10b981"
+    
+    st.markdown(f"""
+    <div style="background: #1e293b; padding: 0.5rem; border-radius: 4px; color: white; text-align: center;">
+        <h6 style="margin: 0; color: {size_color}; font-size: 0.8rem;">💰 POSITION</h6>
+        <div style="font-size: 1rem; font-weight: bold; margin: 0.2rem 0; color: {size_color};">{pos_size}</div>
+        <div style="font-size: 0.7rem;">{risk_level} Risk • {volatility:.1f}% vol</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+with exec_col3:
+    # Time decay urgency for options
+    time_urgency = "URGENT" if best_flow and best_flow['dte'] <= 1 else "NORMAL" if best_flow and best_flow['dte'] <= 7 else "LOW"
+    time_color = "#dc2626" if time_urgency == "URGENT" else "#f59e0b" if time_urgency == "NORMAL" else "#10b981"
+    
+    st.markdown(f"""
+    <div style="background: #1e293b; padding: 0.5rem; border-radius: 4px; color: white; text-align: center;">
+        <h6 style="margin: 0; color: {time_color}; font-size: 0.8rem;">⏰ THETA</h6>
+        <div style="font-size: 1rem; font-weight: bold; margin: 0.2rem 0; color: {time_color};">{time_urgency}</div>
+        <div style="font-size: 0.7rem;">{'0DTE decay' if best_flow and best_flow['dte'] == 0 else f'{best_flow["dte"]}DTE' if best_flow else 'N/A'}</div>
+    </div>
+    """, unsafe_allow_html=True)
 
 # === LIVE OPTIONS CHAIN - BUY/SELL PRICES ===
 st.markdown("### 💰 OPTIONS CHAIN - BUY/SELL PRICES")
