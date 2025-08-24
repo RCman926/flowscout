@@ -285,15 +285,14 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # === SYMBOL SELECTOR ===
-cols = st.columns(min(len(symbols), 8))  # Show 8 per row
 selected_symbol = st.session_state.get('selected_symbol', 'SPY')
 
-# Create rows of symbols
-for row_start in range(0, len(symbols), 8):
-    row_symbols = symbols[row_start:row_start + 8]
-    cols = st.columns(len(row_symbols))
-    
-    for i, symbol in enumerate(row_symbols):
+# Clean compact symbol grid - 4 rows of symbols
+symbol_rows = [symbols[i:i+4] for i in range(0, len(symbols), 4)]
+
+for row in symbol_rows:
+    cols = st.columns(len(row))
+    for i, symbol in enumerate(row):
         signal, color, confidence = calculate_institutional_signal(symbol)
         market_data = get_real_market_data(symbol)
         price = market_data['price'] if market_data else 150.0
@@ -301,50 +300,24 @@ for row_start in range(0, len(symbols), 8):
         
         with cols[i]:
             is_selected = symbol == selected_symbol
+            border = "2px solid #fbbf24" if is_selected else "1px solid #374151"
+            signal_icon = signal.replace("STRONG ", "").replace("BUY", "📈").replace("SELL", "📉").replace("NEUTRAL", "➖")
             
-            # Color-coded signal boxes
-            signal_short = signal.replace("STRONG ", "").replace("BUY", "📈").replace("SELL", "📉").replace("NEUTRAL", "➖")
-            border_style = "3px solid #fbbf24" if is_selected else "2px solid transparent"
-            
-            # Create color-coded clickable box
-            st.markdown(f"""
-        <style>
-        .symbol-box-{symbol.lower()} {{
-            background: {color} !important;
-            color: white !important;
-            border: {border_style} !important;
-            padding: 0.8rem 0.3rem !important;
-            border-radius: 8px !important;
-            text-align: center !important;
-            font-weight: bold !important;
-            margin: 0.2rem 0 !important;
-            cursor: pointer !important;
-            width: 100% !important;
-            transition: all 0.2s ease !important;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.3) !important;
-        }}
-        .symbol-box-{symbol.lower()}:hover {{
-            transform: translateY(-2px) !important;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.4) !important;
-        }}
-        </style>
-        <div class="symbol-box-{symbol.lower()}">
-            <div style="font-size: 0.9rem; font-weight: bold; margin-bottom: 0.2rem;">{symbol}</div>
-            <div style="font-size: 0.8rem; margin: 0.1rem 0;">${price:.1f}</div>
-            <div style="font-size: 0.7rem; margin: 0.1rem 0; opacity: 0.9;">{change_pct:+.1f}%</div>
-            <div style="font-size: 0.7rem; margin-top: 0.2rem;">{signal_short} {confidence:.0f}%</div>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            # Invisible button for selection functionality
+            # Compact clickable button
             if st.button(
-                " ", 
-                key=f"btn_{symbol}",
-                help=f"{symbol} - {signal} ({confidence:.0f}% confidence)",
+                f"**{symbol}**\n${price:.1f} {change_pct:+.1f}%\n{signal_icon} {confidence:.0f}%",
+                key=f"select_{symbol}",
+                help=f"{symbol} - {signal}",
                 use_container_width=True
             ):
                 st.session_state.selected_symbol = symbol
                 st.rerun()
+            
+            # Visual selection indicator only
+            if is_selected:
+                st.markdown(f"""
+                <div style="background: {color}; height: 2px; border-radius: 1px; margin-top: -8px;"></div>
+                """, unsafe_allow_html=True)
 
 # === LIVE FLOW ANALYSIS ===
 flow_data = get_institutional_flow_data(selected_symbol)
