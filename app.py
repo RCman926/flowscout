@@ -245,7 +245,7 @@ def calculate_institutional_signal(symbol):
 
 # === SYMBOL DEFINITIONS ===
 # High-liquidity options tickers only (removed: BABA, PLTR, COIN, GME, AMC, ARKK, TQQQ, SQQQ)
-symbols = ['AAPL', 'TSLA', 'NVDA', 'MSFT', 'GOOGL', 'AMZN', 'META', 'NFLX', 'AMD', 'CRM', 'SPY', 'QQQ', 'IWM', 'DIA', 'XLF', 'XLE', 'XLK']
+symbols = ['AAPL', 'TSLA', 'NVDA', 'MSFT', 'GOOGL', 'AMZN', 'META', 'NFLX', 'AMD', 'SPY', 'QQQ', 'IWM', 'DIA', 'XLF']
 
 # === INSTITUTIONAL HEADER WITH LIVE STATUS ===
 market_open = datetime.now().weekday() < 5 and 9 <= datetime.now().hour <= 16
@@ -303,21 +303,29 @@ for row in symbol_rows:
             border = "2px solid #fbbf24" if is_selected else "1px solid #374151"
             signal_icon = signal.replace("STRONG ", "").replace("BUY", "📈").replace("SELL", "📉").replace("NEUTRAL", "➖")
             
+            # Color-coded button styling
+            button_css = f"""
+            <style>
+            div[data-testid="stButton"] > button[key="select_{symbol}"] {{
+                background: {color} !important;
+                color: white !important;
+                border: {'3px solid #fbbf24' if is_selected else '1px solid transparent'} !important;
+                border-radius: 6px !important;
+                font-weight: bold !important;
+            }}
+            </style>
+            """
+            st.markdown(button_css, unsafe_allow_html=True)
+            
             # Compact clickable button
             if st.button(
                 f"**{symbol}**\n${price:.1f} {change_pct:+.1f}%\n{signal_icon} {confidence:.0f}%",
                 key=f"select_{symbol}",
-                help=f"{symbol} - {signal}",
+                help=f"{symbol} - {signal} ({confidence:.0f}% confidence)",
                 use_container_width=True
             ):
                 st.session_state.selected_symbol = symbol
                 st.rerun()
-            
-            # Visual selection indicator only
-            if is_selected:
-                st.markdown(f"""
-                <div style="background: {color}; height: 2px; border-radius: 1px; margin-top: -8px;"></div>
-                """, unsafe_allow_html=True)
 
 # === LIVE FLOW ANALYSIS ===
 flow_data = get_institutional_flow_data(selected_symbol)
