@@ -619,7 +619,7 @@ with target_col3:
     # Calculate detailed call execution plan
     if best_flow:
         call_strike = best_flow['top_call_strike']
-        call_premium = best_flow['call_premium'] / max(1, best_flow['top_call_volume']) / 100
+        call_premium = max(0.50, best_flow['call_premium'] / max(1, best_flow['top_call_volume'] / 10000))  # Realistic premium
         call_breakeven = call_strike + call_premium
         call_volume = best_flow['top_call_volume']
         
@@ -670,7 +670,7 @@ with target_col4:
     # Calculate detailed put execution plan
     if best_flow:
         put_strike = best_flow['top_put_strike']
-        put_premium = best_flow['put_premium'] / max(1, best_flow['top_put_volume']) / 100
+        put_premium = max(0.25, best_flow['put_premium'] / max(1, best_flow['top_put_volume'] / 10000))  # Realistic premium
         put_breakeven = put_strike - put_premium
         put_volume = best_flow['top_put_volume']
         
