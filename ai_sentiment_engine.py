@@ -171,7 +171,7 @@ class AIMarketSentimentEngine:
             
             # RSI sentiment
             rsi = indicators.get('rsi')
-            if rsi is not None and isinstance(rsi, (int, float)):
+            if rsi is not None and isinstance(rsi, (int, float)) and not np.isnan(rsi):
                 if rsi > 70:
                     sentiment_components.append(-0.3)  # Overbought = bearish
                 elif rsi < 30:
@@ -183,7 +183,8 @@ class AIMarketSentimentEngine:
             macd = indicators.get('macd')
             macd_signal = indicators.get('macd_signal')
             if (macd is not None and macd_signal is not None and
-                isinstance(macd, (int, float)) and isinstance(macd_signal, (int, float))):
+                isinstance(macd, (int, float)) and isinstance(macd_signal, (int, float)) and
+                not np.isnan(macd) and not np.isnan(macd_signal)):
                 if macd > macd_signal:
                     sentiment_components.append(0.2)  # Bullish crossover
                 else:
@@ -193,7 +194,8 @@ class AIMarketSentimentEngine:
             ema_20 = indicators.get('ema_20')
             ema_50 = indicators.get('ema_50')
             if (ema_20 is not None and ema_50 is not None and 
-                isinstance(ema_20, (int, float)) and isinstance(ema_50, (int, float))):
+                isinstance(ema_20, (int, float)) and isinstance(ema_50, (int, float)) and
+                not np.isnan(ema_20) and not np.isnan(ema_50)):
                 if ema_20 > ema_50:
                     sentiment_components.append(0.25)  # Bullish trend
                 elif ema_20 < ema_50:
