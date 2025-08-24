@@ -1169,51 +1169,6 @@ except:
 # Store fear index in session state
 st.session_state.fear_index = vix_level
 
-# === COMPETITIVE ADVANTAGE SECTION ===
-st.markdown("### 🚀 WHY TRADERS CHOOSE THIS PLATFORM")
-
-comp_col1, comp_col2, comp_col3 = st.columns(3)
-
-with comp_col1:
-    st.markdown("""
-    <div style="background: #1e293b; padding: 1.5rem; border-radius: 8px; color: white;">
-        <h4 style="color: #10b981; margin: 0;">VS BLOOMBERG ($2,000/mo)</h4>
-        <ul style="margin: 0.5rem 0; padding-left: 1rem; font-size: 0.8rem;">
-            <li>✅ Options-focused design</li>
-            <li>✅ Live bid/ask prices</li>
-            <li>✅ 95% cheaper</li>
-            <li>✅ Built for active traders</li>
-        </ul>
-    </div>
-    """, unsafe_allow_html=True)
-
-with comp_col2:
-    st.markdown("""
-    <div style="background: #1e293b; padding: 1.5rem; border-radius: 8px; color: white;">
-        <h4 style="color: #3b82f6; margin: 0;">VS TRADINGVIEW ($50/mo)</h4>
-        <ul style="margin: 0.5rem 0; padding-left: 1rem; font-size: 0.8rem;">
-            <li>✅ Live options chains</li>
-            <li>✅ Institutional flow data</li>
-            <li>✅ Position sizing tools</li>
-            <li>✅ IV rank analysis</li>
-        </ul>
-    </div>
-    """, unsafe_allow_html=True)
-
-with comp_col3:
-    st.markdown("""
-    <div style="background: #1e293b; padding: 1.5rem; border-radius: 8px; color: white;">
-        <h4 style="color: #8b5cf6; margin: 0;">VS FREE PLATFORMS</h4>
-        <ul style="margin: 0.5rem 0; padding-left: 1rem; font-size: 0.8rem;">
-            <li>✅ No delays (real-time)</li>
-            <li>✅ Professional analysis</li>
-            <li>✅ Risk management</li>
-            <li>✅ Actionable signals</li>
-        </ul>
-    </div>
-    """, unsafe_allow_html=True)
-
-
 
 
 # === ALERT SYSTEM ===
