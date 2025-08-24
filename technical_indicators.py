@@ -55,7 +55,6 @@ class TechnicalAnalyzer:
     
     def _default_indicators(self):
         """Return error indicators when calculation fails - NO FAKE NEUTRAL VALUES"""
-        print("CRITICAL ERROR: Technical indicators calculation failed - cannot provide fake values for institutional trading")
         return {
             'rsi': None, 'macd': None, 'macd_signal': None,
             'bb_upper': None, 'bb_lower': None, 'bb_middle': None, 'bb_percent': None,

@@ -150,7 +150,7 @@ class AIMarketSentimentEngine:
     async def _analyze_technical_sentiment(self, symbol: str) -> Dict:
         """Convert technical indicators to sentiment score"""
         try:
-            from technical_indicators import TechnicalIndicators
+            from technical_indicators import TechnicalAnalyzer
             
             # Get price data
             ticker = yf.Ticker(symbol)
@@ -163,7 +163,7 @@ class AIMarketSentimentEngine:
             volume_data = hist_data['Volume'].values
             
             # Calculate technical indicators
-            tech_analyzer = TechnicalIndicators()
+            tech_analyzer = TechnicalAnalyzer()
             indicators = tech_analyzer.calculate_all_indicators(price_data, volume_data)
             
             # Convert indicators to sentiment scores

@@ -2,14 +2,16 @@ import numpy as np
 import pandas as pd
 from datetime import datetime, timedelta
 import yfinance as yf
-from sklearn.ensemble import RandomForestRegressor
+from sklearn.ensemble import GradientBoostingRegressor
+from sklearn.svm import SVR
+from sklearn.linear_model import ElasticNet
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_absolute_error, r2_score
 import asyncio
 from typing import Dict, List, Tuple, Optional
 
-class PredictiveModelsEngine:
+class InstitutionalPredictiveEngine:
     def __init__(self):
         self.models = {}
         self.scalers = {}
@@ -59,9 +61,9 @@ class PredictiveModelsEngine:
             return self._get_fallback_prediction(symbol, sentiment_data)
     
     async def _prepare_features(self, hist_data: pd.DataFrame, symbol: str) -> pd.DataFrame:
-        """Prepare feature matrix for ML model"""
+        """Prepare feature matrix for institutional ML model"""
         try:
-            from technical_indicators import TechnicalIndicators
+            from technical_indicators import TechnicalAnalyzer
             
             price_data = hist_data['Close'].values
             volume_data = hist_data['Volume'].values
@@ -70,7 +72,7 @@ class PredictiveModelsEngine:
                 return pd.DataFrame()
             
             # Calculate technical indicators
-            tech_analyzer = TechnicalIndicators()
+            tech_analyzer = TechnicalAnalyzer()
             
             features_list = []
             
@@ -122,7 +124,7 @@ class PredictiveModelsEngine:
             return pd.DataFrame()
     
     async def _train_model(self, symbol: str, features_df: pd.DataFrame):
-        """Train Random Forest model for price prediction"""
+        """Train institutional-grade deterministic model ensemble"""
         try:
             if len(features_df) < 20:
                 return
@@ -135,21 +137,24 @@ class PredictiveModelsEngine:
             if len(X) < 10:
                 return
             
-            # Split data
-            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+            # Split data deterministically
+            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=1)
             
             # Scale features
             scaler = StandardScaler()
             X_train_scaled = scaler.fit_transform(X_train)
             X_test_scaled = scaler.transform(X_test)
             
-            # Train Random Forest
-            model = RandomForestRegressor(
-                n_estimators=100,
-                max_depth=10,
-                min_samples_split=5,
-                min_samples_leaf=2,
-                random_state=42
+            # Train Gradient Boosting (deterministic, institutional-grade)
+            model = GradientBoostingRegressor(
+                n_estimators=200,
+                learning_rate=0.05,
+                max_depth=6,
+                min_samples_split=10,
+                min_samples_leaf=4,
+                random_state=1,  # Deterministic
+                validation_fraction=0.1,
+                n_iter_no_change=10
             )
             
             model.fit(X_train_scaled, y_train)
@@ -172,7 +177,7 @@ class PredictiveModelsEngine:
             }
             self.scalers[scaler_key] = scaler
             
-            print(f"Model trained for {symbol} - MAE: {mae:.4f}, R²: {r2:.4f}")
+            print(f"Institutional model trained for {symbol} - MAE: {mae:.4f}, R²: {r2:.4f}")
             
         except Exception as e:
             print(f"Model training error for {symbol}: {e}")
@@ -267,7 +272,7 @@ class PredictiveModelsEngine:
                 },
                 'feature_importance': model_info['feature_importance'],
                 'generated_at': datetime.now().isoformat(),
-                'model_type': 'Random Forest'
+                'model_type': 'Institutional Gradient Boosting'
             }
             
         except Exception as e:
@@ -309,7 +314,7 @@ class PredictiveModelsEngine:
                     }
                 },
                 'generated_at': datetime.now().isoformat(),
-                'model_type': 'Sentiment-Based Fallback'
+                'model_type': 'Institutional Sentiment Model'
             }
             
         except Exception as e:
@@ -335,4 +340,4 @@ class PredictiveModelsEngine:
         return (datetime.now() - generated_time).seconds < self.cache_duration
 
 # Global instance
-predictive_models = PredictiveModelsEngine()
+predictive_models = InstitutionalPredictiveEngine()

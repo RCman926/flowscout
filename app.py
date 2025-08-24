@@ -776,8 +776,8 @@ if 'prediction_data' not in st.session_state:
 with st.spinner("Analyzing market sentiment and generating predictions..."):
     try:
         # Get technical indicators first
-        from technical_indicators import TechnicalIndicators
-        tech_analyzer = TechnicalIndicators()
+        from technical_indicators import TechnicalAnalyzer
+        tech_analyzer = TechnicalAnalyzer()
         
         # Get price data for indicators
         ticker = yf.Ticker(selected_symbol)
