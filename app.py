@@ -894,106 +894,52 @@ try:
                             col1, col2 = st.columns(2)
                             
                             with col1:
-                                st.markdown("**🟢 CALLS - HEDGE FUND ACTIVITY**")
+                                st.markdown("### 🟢 CALLS - HEDGE FUND ACTIVITY")
                                 if not calls_filtered.empty:
-                                    calls_html = f"""
-                                    <div style="background: #1e293b; padding: 0.5rem; border-radius: 6px;">
-                                        <table style="width: 100%; color: white; font-size: 0.75rem;">
-                                            <tr style="background: #059669; font-weight: bold;">
-                                                <td style="padding: 0.2rem; text-align: center;">Strike</td>
-                                                <td style="padding: 0.2rem; text-align: center;">Days</td>
-                                                <td style="padding: 0.2rem; text-align: center;">Price</td>
-                                                <td style="padding: 0.2rem; text-align: center;">Vol</td>
-                                                <td style="padding: 0.2rem; text-align: center;">Flow</td>
-                                            </tr>
-                                    """
+                                    # Display as clean data frame instead of HTML
+                                    calls_display = calls_filtered.head(5).copy()
+                                    calls_display['Strike'] = calls_display['strike'].astype(int)
+                                    calls_display['Price'] = ((calls_display['bid'] + calls_display['ask']) / 2).round(2)
+                                    calls_display['Volume'] = calls_display['volume'].astype(int)
+                                    calls_display['Flow $'] = (calls_display['Volume'] * calls_display['Price'] / 1000).round(0).astype(str) + 'K'
+                                    calls_display['Days'] = f"{exp_info['dte']}d"
                                     
-                                    for _, row in calls_filtered.iterrows():
-                                        strike = int(row['strike'])
-                                        bid = row['bid'] if row['bid'] > 0.01 else 0.01
-                                        ask = row['ask'] if row['ask'] > bid else bid * 1.05
-                                        mid = (bid + ask) / 2
-                                        volume = int(row['volume'])
-                                        oi = int(row['openInterest']) if pd.notna(row['openInterest']) else 0
-                                        
-                                        # Calculate institutional flow strength
-                                        flow_strength = min(volume * mid / 1000, 999)  # Flow value in $K
-                                        
-                                        # Color by moneyness
-                                        if strike < current_price:
-                                            bg = "#059669"  # ITM - Green
-                                            money_status = "ITM"
-                                        elif abs(strike - current_price) <= 3:
-                                            bg = "#1e40af"  # ATM - Blue
-                                            money_status = "ATM"
-                                        else:
-                                            bg = "#1e293b"  # OTM - Dark
-                                            money_status = "OTM"
-                                        
-                                        calls_html += f"""
-                                        <tr style="background: {bg};">
-                                            <td style="padding: 0.2rem; text-align: center; font-weight: bold;">${strike}</td>
-                                            <td style="padding: 0.2rem; text-align: center;">{exp_info['dte']}d</td>
-                                            <td style="padding: 0.2rem; text-align: center;">${mid:.2f}</td>
-                                            <td style="padding: 0.2rem; text-align: center;">{volume:,}</td>
-                                            <td style="padding: 0.2rem; text-align: center; font-weight: bold;">${flow_strength:.0f}K</td>
-                                        </tr>
-                                        """
+                                    # Show only relevant columns
+                                    display_cols = ['Strike', 'Days', 'Price', 'Volume', 'Flow $']
+                                    st.dataframe(
+                                        calls_display[display_cols], 
+                                        use_container_width=True,
+                                        hide_index=True
+                                    )
                                     
-                                    calls_html += "</table></div>"
-                                    st.markdown(calls_html, unsafe_allow_html=True)
+                                    # Show top metrics
+                                    top_call = calls_display.iloc[0]
+                                    st.metric("🔥 TOP CALL", f"${top_call['Strike']}", f"${top_call['Flow $']}")
                                 else:
                                     st.markdown("*No significant call activity*")
                             
                             with col2:
-                                st.markdown("**🔴 PUTS - HEDGE FUND ACTIVITY**")
+                                st.markdown("### 🔴 PUTS - HEDGE FUND ACTIVITY")
                                 if not puts_filtered.empty:
-                                    puts_html = f"""
-                                    <div style="background: #1e293b; padding: 0.5rem; border-radius: 6px;">
-                                        <table style="width: 100%; color: white; font-size: 0.75rem;">
-                                            <tr style="background: #dc2626; font-weight: bold;">
-                                                <td style="padding: 0.2rem; text-align: center;">Strike</td>
-                                                <td style="padding: 0.2rem; text-align: center;">Days</td>
-                                                <td style="padding: 0.2rem; text-align: center;">Price</td>
-                                                <td style="padding: 0.2rem; text-align: center;">Vol</td>
-                                                <td style="padding: 0.2rem; text-align: center;">Flow</td>
-                                            </tr>
-                                    """
+                                    # Display as clean data frame instead of HTML
+                                    puts_display = puts_filtered.head(5).copy()
+                                    puts_display['Strike'] = puts_display['strike'].astype(int)
+                                    puts_display['Price'] = ((puts_display['bid'] + puts_display['ask']) / 2).round(2)
+                                    puts_display['Volume'] = puts_display['volume'].astype(int)
+                                    puts_display['Flow $'] = (puts_display['Volume'] * puts_display['Price'] / 1000).round(0).astype(str) + 'K'
+                                    puts_display['Days'] = f"{exp_info['dte']}d"
                                     
-                                    for _, row in puts_filtered.iterrows():
-                                        strike = int(row['strike'])
-                                        bid = row['bid'] if row['bid'] > 0.01 else 0.01
-                                        ask = row['ask'] if row['ask'] > bid else bid * 1.05
-                                        mid = (bid + ask) / 2
-                                        volume = int(row['volume'])
-                                        oi = int(row['openInterest']) if pd.notna(row['openInterest']) else 0
-                                        
-                                        # Calculate institutional flow strength
-                                        flow_strength = min(volume * mid / 1000, 999)
-                                        
-                                        # Color by moneyness
-                                        if strike > current_price:
-                                            bg = "#dc2626"  # ITM - Red
-                                            money_status = "ITM"
-                                        elif abs(strike - current_price) <= 3:
-                                            bg = "#1e40af"  # ATM - Blue
-                                            money_status = "ATM"
-                                        else:
-                                            bg = "#1e293b"  # OTM - Dark
-                                            money_status = "OTM"
-                                        
-                                        puts_html += f"""
-                                        <tr style="background: {bg};">
-                                            <td style="padding: 0.2rem; text-align: center; font-weight: bold;">${strike}</td>
-                                            <td style="padding: 0.2rem; text-align: center;">{exp_info['dte']}d</td>
-                                            <td style="padding: 0.2rem; text-align: center;">${mid:.2f}</td>
-                                            <td style="padding: 0.2rem; text-align: center;">{volume:,}</td>
-                                            <td style="padding: 0.2rem; text-align: center; font-weight: bold;">${flow_strength:.0f}K</td>
-                                        </tr>
-                                        """
+                                    # Show only relevant columns
+                                    display_cols = ['Strike', 'Days', 'Price', 'Volume', 'Flow $']
+                                    st.dataframe(
+                                        puts_display[display_cols], 
+                                        use_container_width=True,
+                                        hide_index=True
+                                    )
                                     
-                                    puts_html += "</table></div>"
-                                    st.markdown(puts_html, unsafe_allow_html=True)
+                                    # Show top metrics
+                                    top_put = puts_display.iloc[0]
+                                    st.metric("🔥 TOP PUT", f"${top_put['Strike']}", f"${top_put['Flow $']}")
                                 else:
                                     st.markdown("*No significant put activity*")
                             
