@@ -20,7 +20,7 @@ class SpeedOptimizer:
             st.session_state.cache_times = {}
     
     @st.cache_data(ttl=300, show_spinner=False)  # 5 minute cache
-    def get_all_symbols_data_batch(self, symbols):
+    def get_all_symbols_data_batch(_self, symbols):
         """Batch fetch all symbols data at once for speed"""
         try:
             from dashboard_data_coordinator import data_coordinator
@@ -63,7 +63,7 @@ class SpeedOptimizer:
         })
     
     @st.cache_data(ttl=180, show_spinner=False)  # 3 minute cache for main data
-    def get_main_data_bundle(self, symbol):
+    def get_main_data_bundle(_self, symbol):
         """Get main dashboard data in one optimized call"""
         try:
             from dashboard_data_coordinator import data_coordinator
