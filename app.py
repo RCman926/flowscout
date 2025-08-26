@@ -242,21 +242,49 @@ def main():
         pressure = "HIGH" if total_volume > 100000 else "MEDIUM" if total_volume > 50000 else "LOW"
         st.metric("MM Pressure", pressure, f"{total_volume/1000:.0f}K vol")
     
-    # === EARNINGS CALENDAR (TOP PRIORITY) ===
-    st.markdown("### 📊 Earnings This Week")
+    # === EARNINGS & MARKET NEWS (TOP PRIORITY) ===
+    news_cols = st.columns([2, 3])
     
-    from enhanced_financial_calendar import enhanced_calendar
-    earnings_data = enhanced_calendar.get_key_events_today()
+    with news_cols[0]:
+        st.markdown("### 📊 Earnings This Week")
+        from enhanced_financial_calendar import enhanced_calendar
+        earnings_data = enhanced_calendar.get_key_events_today()
+        
+        earnings_mini_cols = st.columns(3)
+        for i, event in enumerate(earnings_data[:3]):
+            with earnings_mini_cols[i]:
+                impact = event.get('impact', 'medium')
+                if impact == 'high':
+                    st.error(f"🔴 {event.get('time', 'TBD')}")
+                else:
+                    st.info(f"🔵 {event.get('time', 'TBD')}")
+                st.caption(event.get('event', 'Event')[:20] + "...")
     
-    earnings_cols = st.columns(5)
-    for i, event in enumerate(earnings_data[:5]):
-        with earnings_cols[i]:
-            impact = event.get('impact', 'medium')
-            if impact == 'high':
-                st.error(f"🔴 {event.get('time', 'TBD')}")
+    with news_cols[1]:
+        st.markdown("### 📰 Market Intelligence")
+        
+        # Get live news from our news engine
+        from live_news_engine_fixed import news_engine
+        market_news = news_engine.get_market_news(selected_symbol)
+        
+        # Display top 3 news items in compact format
+        for i, news in enumerate(market_news[:3]):
+            headline = news.get('title', 'Market Update')
+            source = news.get('source', 'Financial News')
+            time_ago = news.get('time', '1h ago')
+            impact = news.get('sentiment', 'neutral')
+            
+            # Truncate headline for compact display
+            short_headline = headline[:45] + "..." if len(headline) > 45 else headline
+            
+            if 'positive' in impact.lower() or 'bullish' in impact.lower():
+                st.success(f"📈 {short_headline}")
+            elif 'negative' in impact.lower() or 'bearish' in impact.lower():
+                st.error(f"📉 {short_headline}")
             else:
-                st.info(f"🔵 {event.get('time', 'TBD')}")
-            st.caption(event.get('event', 'Event')[:25] + "...")
+                st.info(f"📰 {short_headline}")
+            
+            st.caption(f"{time_ago} • {source}")
     
     # === MAIN OPTIONS ANALYSIS ===
     st.markdown("#### 🎯 Key Trading Levels")
@@ -424,7 +452,7 @@ def main():
                         st.caption(f"{dte}DTE")
                     
                     with col3:
-                        st.metric("", f"{volume:,}")
+                        st.metric("Volume", f"{volume:,}")
                         
                     with col4:
                         if volume > 1000:
