@@ -452,40 +452,52 @@ def main():
     else:
         st.warning("⚠️ Live options data temporarily unavailable - refreshing...")
     
-    # === EXCLUSIVE NEWS SOURCES ===
-    st.markdown("#### 📰 Exclusive News & Market Intelligence")
-    
-    # Real-time news section
-    from live_news_engine_fixed import live_news_engine
-    
-    news_cols = st.columns(2)
-    
-    with news_cols[0]:
-        st.markdown("**📈 Market Moving News**")
-        market_news = live_news_engine.get_market_moving_news(selected_symbol)
+    # === COMPACT NEWS & CALENDAR SIDEBAR ===
+    with st.sidebar:
+        st.markdown("### 📰 Market Intelligence")
         
-        for news in market_news[:3]:
-            with st.expander(f"🔥 {news['headline'][:60]}..."):
-                st.write(f"**Source:** {news['source']}")
-                st.write(f"**Time:** {news['time']}")
-                st.write(news['summary'])
-                if news['impact_score'] > 7:
-                    st.error(f"🚨 High Impact: {news['impact_score']}/10")
-                elif news['impact_score'] > 5:
-                    st.warning(f"⚠️ Medium Impact: {news['impact_score']}/10")
+        # Financial Calendar - Compact Version
+        st.markdown("**📅 Calendar**")
+        calendar_container = st.container()
+        with calendar_container:
+            from enhanced_financial_calendar import enhanced_calendar
+            calendar_events = enhanced_calendar.get_key_events_today()
+            
+            for event in calendar_events[:3]:  # Show top 3 events
+                time_str = event.get('time', 'All Day')
+                impact = event.get('impact', 'medium')
+                
+                if impact == 'high':
+                    st.error(f"🔴 {time_str}: {event['event'][:40]}...")
+                elif impact == 'medium':
+                    st.warning(f"🟡 {time_str}: {event['event'][:40]}...")
                 else:
-                    st.info(f"ℹ️ Low Impact: {news['impact_score']}/10")
-    
-    with news_cols[1]:
-        st.markdown("**🏛️ Institutional Intelligence**")
-        institutional_news = live_news_engine.get_institutional_activity(selected_symbol)
+                    st.info(f"🔵 {time_str}: {event['event'][:40]}...")
         
-        for inst in institutional_news[:3]:
-            with st.expander(f"🏦 {inst['title'][:60]}..."):
-                st.write(f"**Institution:** {inst['institution']}")
-                st.write(f"**Action:** {inst['action']}")
-                st.write(f"**Size:** {inst['size']}")
-                st.write(inst['details'])
+        # Market News - Compact Version
+        st.markdown("**📈 News Feed**")
+        from live_news_engine_fixed import live_news_engine
+        
+        market_news = live_news_engine.get_market_moving_news(selected_symbol)
+        for news in market_news[:4]:  # Show top 4 news items
+            impact_score = news.get('impact_score', 5)
+            if impact_score > 7:
+                st.error(f"🚨 {news['headline'][:50]}...")
+            elif impact_score > 5:
+                st.warning(f"⚠️ {news['headline'][:50]}...")
+            else:
+                st.info(f"📰 {news['headline'][:50]}...")
+            st.caption(f"{news['time']} - {news['source']}")
+            st.markdown("---")
+        
+        # Institutional Activity - Compact
+        st.markdown("**🏛️ Institutional**")
+        institutional_news = live_news_engine.get_institutional_activity(selected_symbol)
+        for inst in institutional_news[:2]:  # Show top 2
+            st.success(f"🏦 {inst['title'][:45]}...")
+            st.caption(f"{inst['action']} - {inst['size']}")
+    
+    # Main content area now has more space
     
     # === SENTIMENT & SOCIAL INTELLIGENCE ===
     st.markdown("#### 🧠 AI Sentiment & Social Intelligence")
