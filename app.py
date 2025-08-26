@@ -243,53 +243,312 @@ def main():
         vol_regime = "HIGH" if daily_range > 2 else "NORMAL" if daily_range > 0.5 else "LOW"
         st.metric("Vol Regime", vol_regime, f"{daily_range:.1f}% today")
     
-    # === OPTIONS CHAIN DATA ===
-    if flow_data.get('analysis'):
-        st.markdown("#### 📋 Options Chain Analysis")
-        
-        chain_data = []
-        for exp in flow_data['analysis'][:3]:  # Top 3 expirations
-            chain_data.append({
-                'Expiry': exp['expiry'],
-                'DTE': exp['dte'],
-                'Call Vol': f"{exp['call_volume']:,}",
-                'Put Vol': f"{exp['put_volume']:,}",
-                'Call Premium': f"${exp['call_premium']:,.0f}",
-                'Put Premium': f"${exp['put_premium']:,.0f}",
-                'P/C Ratio': f"{exp['pc_ratio']:.2f}"
-            })
-        
-        if chain_data:
-            df = pd.DataFrame(chain_data)
-            st.dataframe(df, use_container_width=True)
+    # === INSTITUTIONAL OPTIONS CHAIN ANALYSIS ===
+    st.markdown("#### 📋 Live Options Chain - Institutional Grade")
     
-    # === TRADING SIGNAL ===
-    st.markdown("#### 🎯 Trading Decision")
-    
-    signal_cols = st.columns([2, 1])
-    
-    with signal_cols[0]:
-        signal = signal_data['signal']
-        confidence = signal_data['confidence']
-        reasons = signal_data.get('reasons', [])
+    try:
+        ticker = yf.Ticker(selected_symbol)
+        current_price = market_data.get('price', 0)
         
-        if 'BUY CALLS' in signal:
-            st.success(f"📈 {signal} - {confidence}% Confidence")
-        elif 'BUY PUTS' in signal:
-            st.error(f"📉 {signal} - {confidence}% Confidence")
+        if current_price > 0 and ticker.options:
+            exp_dates = ticker.options[:3]  # Top 3 expiries
+            
+            for exp_date in exp_dates:
+                exp_dt = datetime.strptime(exp_date, '%Y-%m-%d').date()
+                dte = (exp_dt - datetime.now().date()).days
+                
+                if dte >= 0:
+                    st.markdown(f"**{selected_symbol} @ ${current_price:.2f} - {exp_date} ({dte}DTE)**")
+                    
+                    try:
+                        options_chain = ticker.option_chain(exp_date)
+                        calls_df = options_chain.calls
+                        puts_df = options_chain.puts
+                        
+                        if not calls_df.empty and not puts_df.empty:
+                            # Filter for liquid options around current price
+                            calls_filtered = calls_df[
+                                (calls_df['strike'] >= current_price - 20) & 
+                                (calls_df['strike'] <= current_price + 30) &
+                                (calls_df['volume'] > 5) &
+                                (calls_df['bid'] > 0.01) &
+                                (calls_df['ask'] > calls_df['bid'])
+                            ].sort_values('volume', ascending=False).head(8)
+                            
+                            puts_filtered = puts_df[
+                                (puts_df['strike'] >= current_price - 30) & 
+                                (puts_df['strike'] <= current_price + 20) &
+                                (puts_df['volume'] > 5) &
+                                (puts_df['bid'] > 0.01) &
+                                (puts_df['ask'] > puts_df['bid'])
+                            ].sort_values('volume', ascending=False).head(8)
+                            
+                            # Display calls and puts side by side
+                            chain_cols = st.columns(2)
+                            
+                            with chain_cols[0]:
+                                st.markdown("**🟢 CALLS - TOP VOLUME**")
+                                if not calls_filtered.empty:
+                                    for _, call in calls_filtered.iterrows():
+                                        strike = call['strike']
+                                        volume = int(call['volume'])
+                                        oi = int(call['openInterest'])
+                                        bid = call['bid']
+                                        ask = call['ask']
+                                        mid = (bid + ask) / 2
+                                        
+                                        # Calculate moneyness
+                                        moneyness = (strike - current_price) / current_price * 100
+                                        
+                                        # Color code by moneyness
+                                        if abs(moneyness) < 2:  # ATM
+                                            color = "🔥"
+                                        elif moneyness > 0:  # OTM
+                                            color = "📈"
+                                        else:  # ITM
+                                            color = "💰"
+                                        
+                                        premium_flow = volume * mid * 100
+                                        
+                                        st.markdown(f"""
+                                        <div style='background: rgba(34, 197, 94, 0.1); padding: 0.3rem; border-radius: 3px; margin: 0.2rem 0;'>
+                                        {color} **${strike:.0f}** | Vol: {volume:,} | OI: {oi:,}<br>
+                                        Bid: ${bid:.2f} | Ask: ${ask:.2f} | Mid: **${mid:.2f}**<br>
+                                        Premium Flow: **${premium_flow:,.0f}** | {moneyness:+.1f}%
+                                        </div>
+                                        """, unsafe_allow_html=True)
+                                else:
+                                    st.info("No liquid calls found")
+                            
+                            with chain_cols[1]:
+                                st.markdown("**🔴 PUTS - TOP VOLUME**")
+                                if not puts_filtered.empty:
+                                    for _, put in puts_filtered.iterrows():
+                                        strike = put['strike']
+                                        volume = int(put['volume'])
+                                        oi = int(put['openInterest'])
+                                        bid = put['bid']
+                                        ask = put['ask']
+                                        mid = (bid + ask) / 2
+                                        
+                                        # Calculate moneyness
+                                        moneyness = (current_price - strike) / current_price * 100
+                                        
+                                        # Color code by moneyness
+                                        if abs(moneyness) < 2:  # ATM
+                                            color = "🔥"
+                                        elif moneyness > 0:  # ITM
+                                            color = "💰"
+                                        else:  # OTM
+                                            color = "📉"
+                                        
+                                        premium_flow = volume * mid * 100
+                                        
+                                        st.markdown(f"""
+                                        <div style='background: rgba(239, 68, 68, 0.1); padding: 0.3rem; border-radius: 3px; margin: 0.2rem 0;'>
+                                        {color} **${strike:.0f}** | Vol: {volume:,} | OI: {oi:,}<br>
+                                        Bid: ${bid:.2f} | Ask: ${ask:.2f} | Mid: **${mid:.2f}**<br>
+                                        Premium Flow: **${premium_flow:,.0f}** | {moneyness:+.1f}%
+                                        </div>
+                                        """, unsafe_allow_html=True)
+                                else:
+                                    st.info("No liquid puts found")
+                            
+                            st.markdown("---")
+                    except Exception as e:
+                        st.warning(f"Chain data unavailable for {exp_date}")
         else:
-            st.info(f"⚪ {signal} - {confidence}% Confidence")
-        
-        if reasons:
-            st.caption(f"Reasons: {', '.join(reasons)}")
+            st.error("Options chain data unavailable")
+    except Exception as e:
+        st.error("Unable to load institutional options data")
     
-    with signal_cols[1]:
-        price_target = signal_data.get('price_target', current_price)
-        if price_target != current_price:
-            target_pct = ((price_target - current_price) / current_price) * 100
-            st.metric("Price Target", f"${price_target:.2f}", f"{target_pct:+.1f}%")
+    # === INSTITUTIONAL EXECUTION PLAN ===
+    st.markdown("#### 🎯 Institutional Execution Plan")
+    
+    # Calculate sophisticated trading levels
+    current_price = market_data['price']
+    rsi = tech_data['rsi']
+    bb_upper = tech_data['bb_upper']
+    bb_lower = tech_data['bb_lower']
+    volume_ratio = market_data['volume'] / market_data.get('avg_volume', 1)
+    
+    # Advanced signal analysis
+    signal = signal_data['signal']
+    confidence = signal_data['confidence']
+    reasons = signal_data.get('reasons', [])
+    
+    exec_cols = st.columns([1, 1, 1])
+    
+    with exec_cols[0]:
+        st.markdown("**📈 CALL EXECUTION PLAN**")
+        
+        if 'BUY CALLS' in signal or (rsi < 40 and current_price < bb_lower * 1.01):
+            # Bullish setup
+            entry_price = current_price * 1.005  # Slight premium for entry
+            stop_loss = current_price * 0.985   # 1.5% stop
+            target_1 = current_price * 1.02     # 2% target
+            target_2 = current_price * 1.035    # 3.5% target
+            target_3 = min(bb_upper, current_price * 1.05)  # 5% or BB upper
+            
+            st.markdown(f"""
+            <div style='background: rgba(34, 197, 94, 0.1); padding: 0.5rem; border-radius: 5px;'>
+            <strong>🟢 BULLISH SETUP</strong><br>
+            Entry: ${entry_price:.2f}+<br>
+            Stop: ${stop_loss:.2f}<br>
+            T1: ${target_1:.2f} | T2: ${target_2:.2f}<br>
+            T3: ${target_3:.2f} (Max Target)<br>
+            Risk/Reward: 1:{((target_1 - entry_price) / (entry_price - stop_loss)):.1f}
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # Suggest specific call strikes
+            if ticker.options:
+                try:
+                    near_exp = ticker.options[0]
+                    chain = ticker.option_chain(near_exp)
+                    calls = chain.calls
+                    
+                    # Find ATM and slightly OTM calls
+                    atm_calls = calls[
+                        (calls['strike'] >= current_price - 5) & 
+                        (calls['strike'] <= current_price + 15) &
+                        (calls['volume'] > 0) &
+                        (calls['bid'] > 0.01)
+                    ].sort_values('volume', ascending=False).head(3)
+                    
+                    if not atm_calls.empty:
+                        st.caption("**Recommended Strikes:**")
+                        for _, call in atm_calls.iterrows():
+                            strike = call['strike']
+                            mid_price = (call['bid'] + call['ask']) / 2
+                            delta = (strike - current_price) / current_price * 100
+                            st.caption(f"${strike:.0f} Strike: ${mid_price:.2f} ({delta:+.1f}%)")
+                except Exception:
+                    pass
         else:
-            st.metric("Price Target", "N/A", "No target")
+            st.info("No bullish setup identified")
+    
+    with exec_cols[1]:
+        st.markdown("**📉 PUT EXECUTION PLAN**")
+        
+        if 'BUY PUTS' in signal or (rsi > 60 and current_price > bb_upper * 0.99):
+            # Bearish setup
+            entry_price = current_price * 0.995  # Slight discount for entry
+            stop_loss = current_price * 1.015    # 1.5% stop
+            target_1 = current_price * 0.98      # 2% target
+            target_2 = current_price * 0.965     # 3.5% target
+            target_3 = max(bb_lower, current_price * 0.95)  # 5% or BB lower
+            
+            st.markdown(f"""
+            <div style='background: rgba(239, 68, 68, 0.1); padding: 0.5rem; border-radius: 5px;'>
+            <strong>🔴 BEARISH SETUP</strong><br>
+            Entry: ${entry_price:.2f}-<br>
+            Stop: ${stop_loss:.2f}<br>
+            T1: ${target_1:.2f} | T2: ${target_2:.2f}<br>
+            T3: ${target_3:.2f} (Max Target)<br>
+            Risk/Reward: 1:{((entry_price - target_1) / (stop_loss - entry_price)):.1f}
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # Suggest specific put strikes
+            if ticker.options:
+                try:
+                    near_exp = ticker.options[0]
+                    chain = ticker.option_chain(near_exp)
+                    puts = chain.puts
+                    
+                    # Find ATM and slightly OTM puts
+                    atm_puts = puts[
+                        (puts['strike'] >= current_price - 15) & 
+                        (puts['strike'] <= current_price + 5) &
+                        (puts['volume'] > 0) &
+                        (puts['bid'] > 0.01)
+                    ].sort_values('volume', ascending=False).head(3)
+                    
+                    if not atm_puts.empty:
+                        st.caption("**Recommended Strikes:**")
+                        for _, put in atm_puts.iterrows():
+                            strike = put['strike']
+                            mid_price = (put['bid'] + put['ask']) / 2
+                            delta = (current_price - strike) / current_price * 100
+                            st.caption(f"${strike:.0f} Strike: ${mid_price:.2f} ({delta:+.1f}%)")
+                except Exception:
+                    pass
+        else:
+            st.info("No bearish setup identified")
+    
+    with exec_cols[2]:
+        st.markdown("**⚪ RISK MANAGEMENT**")
+        
+        # Calculate position sizing based on volatility
+        daily_range = abs(market_data['change_pct'])
+        vol_regime = "HIGH" if daily_range > 2 else "NORMAL" if daily_range > 0.5 else "LOW"
+        
+        if vol_regime == "HIGH":
+            position_size = "SMALL (0.5-1%)"
+            max_risk = "2% of portfolio"
+        elif vol_regime == "NORMAL":
+            position_size = "MEDIUM (1-2%)"
+            max_risk = "3% of portfolio"
+        else:
+            position_size = "LARGE (2-3%)"
+            max_risk = "5% of portfolio"
+        
+        st.markdown(f"""
+        <div style='background: rgba(107, 114, 128, 0.1); padding: 0.5rem; border-radius: 5px;'>
+        <strong>Vol Regime: {vol_regime}</strong><br>
+        Position Size: {position_size}<br>
+        Max Risk: {max_risk}<br>
+        Volume Confirmation: {'✓' if volume_ratio > 1.2 else '✗'}<br>
+        Trend Alignment: {'✓' if current_price > tech_data['sma_20'] else '✗'}
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Institutional confidence meter
+        institutional_score = 0
+        if volume_ratio > 1.5: institutional_score += 25
+        if total_volume > 100000: institutional_score += 25
+        if confidence > 70: institutional_score += 25
+        if len(reasons) >= 3: institutional_score += 25
+        
+        if institutional_score >= 75:
+            st.success(f"🏛️ Institutional Grade: {institutional_score}%")
+        elif institutional_score >= 50:
+            st.warning(f"🏛️ Institutional Grade: {institutional_score}%")
+        else:
+            st.error(f"🏛️ Institutional Grade: {institutional_score}%")
+    
+    # === FINAL TRADING RECOMMENDATION ===
+    st.markdown("#### 🏆 Final Recommendation")
+    
+    recommendation_cols = st.columns([2, 1])
+    
+    with recommendation_cols[0]:
+        if confidence > 70 and institutional_score >= 75:
+            if 'BUY CALLS' in signal:
+                st.success("🚀 STRONG BUY CALLS - Ken Griffin would approve this setup")
+            elif 'BUY PUTS' in signal:
+                st.error("🚀 STRONG BUY PUTS - Ken Griffin would approve this setup")
+            else:
+                st.info("⚪ HOLD - Wait for better setup")
+        elif confidence > 60:
+            if 'BUY CALLS' in signal:
+                st.warning("📈 MODERATE BUY CALLS - Proceed with caution")
+            elif 'BUY PUTS' in signal:
+                st.warning("📉 MODERATE BUY PUTS - Proceed with caution")
+            else:
+                st.info("⚪ HOLD - Insufficient conviction")
+        else:
+            st.info("⚪ NO TRADE - Market conditions unclear")
+        
+        st.caption(f"Conviction: {confidence}% | Reasons: {', '.join(reasons)}")
+    
+    with recommendation_cols[1]:
+        # Key metrics for decision
+        st.metric("Conviction", f"{confidence}%", 
+                 "High" if confidence > 70 else "Medium" if confidence > 50 else "Low")
+        st.metric("Institutional Score", f"{institutional_score}%",
+                 "Elite" if institutional_score >= 75 else "Good" if institutional_score >= 50 else "Poor")
 
 # Run the app
 if __name__ == "__main__":
