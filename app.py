@@ -474,74 +474,219 @@ def main():
         else:
             st.error(f"🏛️ Institutional Grade: {institutional_score}%")
     
+    # === TRADING DECISION CENTER ===
+    st.markdown("#### 🎯 Trading Decision Center")
+    
+    # Calculate specific recommendation
+    current_price = market_data['price']
+    rsi = tech_data['rsi']
+    bb_upper = tech_data['bb_upper']
+    bb_lower = tech_data['bb_lower'] 
+    sma_20 = tech_data['sma_20']
+    daily_vol = abs(market_data.get('change_pct', 0))
+    
+    # Decision logic
+    if rsi > 65 and current_price > sma_20 * 1.01:
+        trade_rec = "BUY PUTS"
+        setup_reason = "Overbought conditions"
+        entry_level = current_price * 0.995
+        stop_loss = current_price * 1.015
+        target_1 = current_price * 0.98
+        target_2 = current_price * 0.965
+        color = "error"
+    elif rsi < 35 and current_price < sma_20 * 0.99:
+        trade_rec = "BUY CALLS"
+        setup_reason = "Oversold conditions"
+        entry_level = current_price * 1.005
+        stop_loss = current_price * 0.985
+        target_1 = current_price * 1.02
+        target_2 = current_price * 1.035
+        color = "success"
+    elif current_price > sma_20 and rsi < 60:
+        trade_rec = "SLIGHT CALL BIAS"
+        setup_reason = "Trend following"
+        entry_level = current_price * 1.003
+        stop_loss = current_price * 0.99
+        target_1 = current_price * 1.015
+        target_2 = None
+        color = "info"
+    else:
+        trade_rec = "STAY NEUTRAL"
+        setup_reason = "No clear setup"
+        entry_level = None
+        stop_loss = None
+        target_1 = None
+        target_2 = None
+        color = "info"
+    
+    # Display main recommendation
+    decision_cols = st.columns([1, 2, 1])
+    
+    with decision_cols[1]:
+        if color == "success":
+            st.success(f"📈 {trade_rec}")
+        elif color == "error":
+            st.error(f"📉 {trade_rec}")
+        else:
+            st.info(f"⚪ {trade_rec}")
+        
+        st.caption(f"Reason: {setup_reason}")
+    
+    # Show specific levels if we have a trade
+    if entry_level:
+        levels_cols = st.columns(4)
+        
+        with levels_cols[0]:
+            st.metric("Entry Level", f"${entry_level:.2f}", 
+                     f"{((entry_level - current_price) / current_price * 100):+.1f}%")
+        
+        with levels_cols[1]:
+            st.metric("Stop Loss", f"${stop_loss:.2f}", 
+                     f"{((stop_loss - current_price) / current_price * 100):+.1f}%")
+        
+        with levels_cols[2]:
+            st.metric("Target 1", f"${target_1:.2f}", 
+                     f"{((target_1 - current_price) / current_price * 100):+.1f}%")
+        
+        with levels_cols[3]:
+            if target_2:
+                st.metric("Target 2", f"${target_2:.2f}", 
+                         f"{((target_2 - current_price) / current_price * 100):+.1f}%")
+            else:
+                st.metric("Risk/Reward", "1:1.5", "Good setup")
+    
+    # Position sizing recommendation
+    if daily_vol > 2:
+        position_size = "0.5-1% portfolio"
+        risk_level = "HIGH VOL"
+    elif daily_vol > 1:
+        position_size = "1-2% portfolio"
+        risk_level = "NORMAL VOL"
+    else:
+        position_size = "2-3% portfolio"
+        risk_level = "LOW VOL"
+    
+    sizing_cols = st.columns(3)
+    with sizing_cols[0]:
+        st.info(f"Position Size: {position_size}")
+    with sizing_cols[1]:
+        st.info(f"Vol Regime: {risk_level}")
+    with sizing_cols[2]:
+        st.info("Max Risk: 3% per trade")
+    
+    # === CURRENT OPTION PRICES ===
+    st.markdown("#### 💰 Current Option Prices")
+    
+    try:
+        ticker = yf.Ticker(selected_symbol)
+        if ticker.options:
+            near_exp = ticker.options[0]
+            chain = ticker.option_chain(near_exp)
+            
+            # Find ATM strike
+            atm_strike = round(current_price / 5) * 5
+            
+            # Get ATM options
+            atm_call = chain.calls[chain.calls['strike'] == atm_strike]
+            atm_put = chain.puts[chain.puts['strike'] == atm_strike]
+            
+            price_cols = st.columns(2)
+            
+            with price_cols[0]:
+                st.markdown(f"**${atm_strike:.0f} CALLS (Exp: {near_exp})**")
+                if not atm_call.empty:
+                    call_data = atm_call.iloc[0]
+                    call_ask = call_data['ask']
+                    call_volume = int(call_data['volume'])
+                    
+                    st.metric("Ask Price", f"${call_ask:.2f}", f"${call_ask * 100:.0f} per contract")
+                    st.caption(f"Volume: {call_volume:,} contracts")
+                else:
+                    st.info("No data available")
+            
+            with price_cols[1]:
+                st.markdown(f"**${atm_strike:.0f} PUTS (Exp: {near_exp})**")
+                if not atm_put.empty:
+                    put_data = atm_put.iloc[0]
+                    put_ask = put_data['ask']
+                    put_volume = int(put_data['volume'])
+                    
+                    st.metric("Ask Price", f"${put_ask:.2f}", f"${put_ask * 100:.0f} per contract")
+                    st.caption(f"Volume: {put_volume:,} contracts")
+                else:
+                    st.info("No data available")
+    
+    except Exception:
+        st.warning("Option pricing temporarily unavailable")
+    
     # === MARKET NEWS & ALERTS ===
-    st.markdown("#### 📰 Market News & Analysis")
+    st.markdown("#### 📰 Market Alerts")
     
     news_cols = st.columns(2)
     
-    with news_cols[0]:
-        st.markdown("**Live Market Alerts**")
-        
-        # Generate market alerts based on real data
-        alerts = []
-        
-        # Price movement alerts
-        price_change = market_data.get('change_pct', 0)
-        if abs(price_change) > 2:
-            alerts.append(f"📈 {selected_symbol} moved {price_change:+.1f}% today")
-        
-        # Volume alerts
-        volume = market_data.get('volume', 0)
-        avg_volume = market_data.get('avg_volume', 1)
-        volume_ratio = volume / avg_volume
-        if volume_ratio > 1.5:
-            alerts.append(f"📊 High volume: {volume_ratio:.1f}x average")
-        
-        # Options flow alerts
-        if total_volume > 100000:
-            alerts.append(f"⚡ Unusual options activity: {total_volume:,} contracts")
-        
-        # Technical alerts
-        rsi = tech_data.get('rsi', 50)
-        if rsi > 70:
-            alerts.append(f"📊 {selected_symbol} RSI overbought at {rsi:.1f}")
-        elif rsi < 30:
-            alerts.append(f"📊 {selected_symbol} RSI oversold at {rsi:.1f}")
-        
-        # Volatility alerts
-        daily_range = abs(market_data.get('change_pct', 0))
-        if daily_range > 3:
-            alerts.append(f"⚠️ High volatility: {daily_range:.1f}% daily range")
-        
-        # Display alerts
-        if alerts:
-            for alert in alerts[:4]:  # Show top 4 alerts
-                st.info(alert)
-        else:
-            st.success("📊 Normal market conditions")
+    alert_cols = st.columns(2)
     
-    with news_cols[1]:
-        st.markdown("**Key Market Levels**")
+    with alert_cols[0]:
+        st.markdown("**Watch For These Signals:**")
         
-        # Key price levels for trading
-        current_price = market_data['price']
-        bb_upper = tech_data.get('bb_upper', current_price * 1.02)
-        bb_lower = tech_data.get('bb_lower', current_price * 0.98)
-        sma_20 = tech_data.get('sma_20', current_price)
+        # Generate actionable alerts
+        watch_signals = []
         
-        # Calculate important levels
-        next_resistance = min(bb_upper, current_price * 1.02)
-        next_support = max(bb_lower, current_price * 0.98)
+        if rsi < 70 and rsi > 65:
+            watch_signals.append(f"🔶 RSI at {rsi:.1f} - Watch for 70+ (put signal)")
+        elif rsi > 30 and rsi < 35:
+            watch_signals.append(f"🔶 RSI at {rsi:.1f} - Watch for 30- (call signal)")
         
-        st.info(f"📈 Next Resistance: ${next_resistance:.2f}")
-        st.info(f"📉 Next Support: ${next_support:.2f}")
-        st.info(f"📊 20-Day MA: ${sma_20:.2f}")
+        if current_price < bb_upper * 1.005:
+            distance_to_resistance = ((bb_upper - current_price) / current_price) * 100
+            watch_signals.append(f"🔶 {distance_to_resistance:.1f}% to resistance at ${bb_upper:.2f}")
         
-        # Market status based on levels
-        if current_price > sma_20:
-            st.success("🟢 Above 20-day trend")
+        if current_price > bb_lower * 0.995:
+            distance_to_support = ((current_price - bb_lower) / current_price) * 100
+            watch_signals.append(f"🔶 {distance_to_support:.1f}% above support at ${bb_lower:.2f}")
+        
+        # Options activity
+        if total_volume > 50000:
+            watch_signals.append(f"⚡ Active options: {total_volume:,} contracts")
+        
+        # Display watch signals
+        if watch_signals:
+            for signal in watch_signals[:4]:
+                st.info(signal)
         else:
-            st.error("🔴 Below 20-day trend")
+            st.success("📊 No immediate signals")
+    
+    with alert_cols[1]:
+        st.markdown("**Next Moves:**")
+        
+        # Actionable next steps
+        next_moves = []
+        
+        if rsi > 65:
+            next_moves.append(f"📉 If SPY hits ${bb_upper:.2f} → Buy puts")
+        if rsi < 35:
+            next_moves.append(f"📈 If SPY hits ${bb_lower:.2f} → Buy calls")
+        
+        if current_price > sma_20:
+            pullback_level = sma_20 * 1.005
+            next_moves.append(f"📈 Pullback to ${pullback_level:.2f} = Call opportunity")
+        else:
+            bounce_level = sma_20 * 0.995
+            next_moves.append(f"📉 Rally to ${bounce_level:.2f} = Put opportunity")
+        
+        # Volume confirmation
+        volume_ratio = market_data.get('volume', 1) / market_data.get('avg_volume', 1)
+        if volume_ratio < 1.2:
+            next_moves.append("⏳ Wait for volume confirmation")
+        else:
+            next_moves.append("✓ Volume confirms moves")
+        
+        # Display next moves
+        if next_moves:
+            for move in next_moves:
+                st.info(move)
+        else:
+            st.info("⏳ Wait for clearer setup")
     
     # === FINAL TRADING RECOMMENDATION ===
     st.markdown("#### 🏆 Final Recommendation")
