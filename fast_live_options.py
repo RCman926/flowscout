@@ -26,8 +26,32 @@ class FastLiveOptions:
             if not expirations:
                 return None
             
-            # Only process first expiration for speed
-            exp_date = expirations[0]
+            # Filter out expired options and get valid expiration
+            valid_expirations = []
+            current_date = datetime.now().date()
+            
+            for exp_date in expirations:
+                exp_datetime = datetime.strptime(exp_date, '%Y-%m-%d').date()
+                dte = (exp_datetime - current_date).days
+                
+                # Only include non-expired options (DTE >= 0)
+                if dte >= 0:
+                    valid_expirations.append((exp_date, dte))
+            
+            if not valid_expirations:
+                # No valid expirations found
+                return {
+                    'call_volume': 0,
+                    'put_volume': 0,
+                    'total_volume': 0,
+                    'cp_ratio': 1.0,
+                    'timestamp': datetime.now(),
+                    'expiration': 'No valid options',
+                    'dte': 'N/A'
+                }
+            
+            # Use nearest valid expiration for speed
+            exp_date, dte = valid_expirations[0]
             options_chain = ticker.option_chain(exp_date)
             
             calls = options_chain.calls
@@ -43,7 +67,8 @@ class FastLiveOptions:
                 'total_volume': int(call_volume + put_volume),
                 'cp_ratio': call_volume / max(1, put_volume),
                 'timestamp': datetime.now(),
-                'expiration': exp_date
+                'expiration': exp_date,
+                'dte': dte
             }
             
         except Exception as e:

@@ -283,7 +283,16 @@ def main():
     with flow_cols[1]:
         put_vol = quick_data['put_volume'] 
         st.metric("🔴 PUT Volume", f"{put_vol:,}")
-        st.caption(f"Exp: {quick_data['expiration']}")
+        dte = quick_data.get('dte', 'N/A')
+        if isinstance(dte, int):
+            if dte == 0:
+                st.caption("⚡ 0DTE (Same Day Expiry)")
+            elif dte == 1:
+                st.caption("📅 1DTE (Tomorrow)")
+            else:
+                st.caption(f"📅 {dte}DTE ({dte} days)")
+        else:
+            st.caption(f"Exp: {quick_data['expiration']}")
     
     with flow_cols[2]:
         total_vol = quick_data['total_volume']
