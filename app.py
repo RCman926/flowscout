@@ -626,6 +626,10 @@ def main():
         setup_reason = f"Bullish signal detected - {', '.join(signal_data.get('reasons', ['Technical alignment']))}"
         entry_level = current_price * 1.005
         stop_loss = current_price * 0.98  # 2% max risk
+        target_1 = current_price * 1.02   # 2% target
+        target_2 = current_price * 1.05   # 5% target
+        target_3 = current_price * 1.08   # 8% target
+        color = "success"
     elif 'BUY PUTS' in main_signal or main_signal == 'BUY PUTS':
         trade_rec = "📉 BUY PUTS"
         setup_reason = f"Bearish signal detected - {', '.join(signal_data.get('reasons', ['Technical divergence']))}"
@@ -634,6 +638,7 @@ def main():
         target_1 = current_price * 0.98   # 2% target
         target_2 = current_price * 0.95   # 5% target  
         target_3 = current_price * 0.92   # 8% target
+        color = "error"
     else:
         trade_rec = "⚪ HOLD"
         setup_reason = f"No clear setup - Current signal: {main_signal}"
@@ -642,6 +647,7 @@ def main():
         target_1 = current_price * 1.02
         target_2 = current_price * 1.04
         target_3 = current_price * 1.06
+        color = "info"
     
     # Display main recommendation
     decision_cols = st.columns([1, 2, 1])
