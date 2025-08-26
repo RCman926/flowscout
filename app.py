@@ -617,52 +617,31 @@ def main():
     sma_20 = tech_data['sma_20']
     daily_vol = abs(market_data.get('change_pct', 0))
     
-    # Decision logic with aggressive profit targets
-    if rsi > 65 and current_price > sma_20 * 1.01:
-        trade_rec = "BUY PUTS"
-        setup_reason = "Overbought conditions - High probability reversal"
-        entry_level = current_price * 0.995
-        stop_loss = current_price * 1.03  # 3% max risk
-        target_1 = current_price * 0.85   # 15% gain target
-        target_2 = current_price * 0.60   # 40% gain target
-        target_3 = current_price * 0.20   # 80% gain target
-        color = "error"
-    elif rsi < 35 and current_price < sma_20 * 0.99:
-        trade_rec = "BUY CALLS" 
-        setup_reason = "Oversold conditions - High probability bounce"
+    # Decision logic aligned with main signal generator
+    main_signal = signal_data.get('signal', 'HOLD')
+    
+    # Use the main signal generator's recommendation for consistency
+    if 'BUY CALLS' in main_signal or main_signal == 'BUY CALLS':
+        trade_rec = "📈 BUY CALLS"
+        setup_reason = f"Bullish signal detected - {', '.join(signal_data.get('reasons', ['Technical alignment']))}"
         entry_level = current_price * 1.005
-        stop_loss = current_price * 0.97   # 3% max risk
-        target_1 = current_price * 1.15    # 15% gain target
-        target_2 = current_price * 1.40    # 40% gain target
-        target_3 = current_price * 1.80    # 80% gain target
-        color = "success"
-    elif current_price > sma_20 and rsi < 60:
-        trade_rec = "MODERATE CALL BIAS"
-        setup_reason = "Trend continuation - Medium probability"
-        entry_level = current_price * 1.003
-        stop_loss = current_price * 0.975  # 2.5% risk
-        target_1 = current_price * 1.10    # 10% gain target
-        target_2 = current_price * 1.25    # 25% gain target
-        target_3 = current_price * 1.50    # 50% gain target
-        color = "info"
-    elif current_price < sma_20 and rsi > 40:
-        trade_rec = "MODERATE PUT BIAS"
-        setup_reason = "Trend continuation down - Medium probability" 
-        entry_level = current_price * 0.997
-        stop_loss = current_price * 1.025  # 2.5% risk
-        target_1 = current_price * 0.90    # 10% gain target
-        target_2 = current_price * 0.75    # 25% gain target
-        target_3 = current_price * 0.50    # 50% gain target
-        color = "info"
+        stop_loss = current_price * 0.98  # 2% max risk
+    elif 'BUY PUTS' in main_signal or main_signal == 'BUY PUTS':
+        trade_rec = "📉 BUY PUTS"
+        setup_reason = f"Bearish signal detected - {', '.join(signal_data.get('reasons', ['Technical divergence']))}"
+        entry_level = current_price * 0.995
+        stop_loss = current_price * 1.02  # 2% max risk
+        target_1 = current_price * 0.98   # 2% target
+        target_2 = current_price * 0.95   # 5% target  
+        target_3 = current_price * 0.92   # 8% target
     else:
-        trade_rec = "STAY NEUTRAL"
-        setup_reason = "No clear setup - Wait for better odds"
-        entry_level = None
-        stop_loss = None
-        target_1 = None
-        target_2 = None
-        target_3 = None
-        color = "info"
+        trade_rec = "⚪ HOLD"
+        setup_reason = f"No clear setup - Current signal: {main_signal}"
+        entry_level = current_price
+        stop_loss = current_price * 0.98
+        target_1 = current_price * 1.02
+        target_2 = current_price * 1.04
+        target_3 = current_price * 1.06
     
     # Display main recommendation
     decision_cols = st.columns([1, 2, 1])
