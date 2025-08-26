@@ -402,6 +402,9 @@ def calculate_institutional_signal(symbol):
         print(f"Signal calculation error for {symbol}: {e}")
         return "NEUTRAL", "#6b7280", 25
 
+# === UNIFIED DATA SYSTEM ===
+from dashboard_data_coordinator import data_coordinator
+
 # === SYMBOL DEFINITIONS ===
 # High-liquidity options tickers only (removed: BABA, PLTR, COIN, GME, AMC, ARKK, TQQQ, SQQQ)
 symbols = ['AAPL', 'TSLA', 'NVDA', 'MSFT', 'GOOGL', 'AMZN', 'META', 'NFLX', 'AMD', 'SPY', 'QQQ', 'IWM', 'DIA', 'XLF']
@@ -433,8 +436,16 @@ with refresh_cols[0]:
             market_status = market_data.get('market_status', 'UNKNOWN')
             data_freshness = market_data.get('data_freshness', 'DELAYED')
             
-            # Calculate how long ago the data was
-            minutes_ago = (datetime.now() - data_time).total_seconds() / 60
+            # Calculate how long ago the data was (handle timezone issues)
+            try:
+                if hasattr(data_time, 'tzinfo') and data_time.tzinfo is not None:
+                    # Convert timezone-aware datetime to naive for comparison
+                    data_time_naive = data_time.replace(tzinfo=None)
+                    minutes_ago = (datetime.now() - data_time_naive).total_seconds() / 60
+                else:
+                    minutes_ago = (datetime.now() - data_time).total_seconds() / 60
+            except Exception:
+                minutes_ago = 0
             if minutes_ago < 60:
                 time_ago = f"{int(minutes_ago)}m ago"
             else:
@@ -459,8 +470,13 @@ symbol_rows = [symbols[i:i+7] for i in range(0, len(symbols), 7)]
 for row in symbol_rows:
     cols = st.columns(len(row))
     for i, symbol in enumerate(row):
-        signal, color, confidence = calculate_institutional_signal(symbol)
-        market_data = get_real_market_data(symbol)
+        signal_data = data_coordinator.generate_trading_signal(symbol)
+        market_data = data_coordinator.get_market_data(symbol)
+        
+        # Extract signal info
+        signal = signal_data.get('signal', 'HOLD') if signal_data else 'HOLD'
+        confidence = signal_data.get('confidence', 50) if signal_data else 50
+        
         price = market_data['price'] if market_data else 150.0
         change_pct = market_data['change_pct'] if market_data else 0.0
         
@@ -473,9 +489,9 @@ for row in symbol_rows:
                 button_label = f"✓ {button_label}"
             
             # Apply CSS class based on signal
-            if "BUY" in signal:
+            if "BUY CALLS" in signal:
                 st.markdown('<div class="buy-button">', unsafe_allow_html=True)
-            elif "SELL" in signal:
+            elif "BUY PUTS" in signal:
                 st.markdown('<div class="sell-button">', unsafe_allow_html=True)
             else:
                 st.markdown('<div>', unsafe_allow_html=True)
@@ -492,14 +508,32 @@ for row in symbol_rows:
             st.markdown('</div>', unsafe_allow_html=True)
 
 # === LIVE FLOW ANALYSIS ===
-flow_data = get_institutional_flow_data(selected_symbol) or {
-    'analysis': [], 'flow_signal': 'NEUTRAL', 'flow_confidence': 50, 
-    'total_call_premium': 0, 'total_put_premium': 0, 'total_volume': 100
-}
-market_data = get_real_market_data(selected_symbol) or {
-    'symbol': selected_symbol, 'price': 587.45, 'change': -2.35, 'change_pct': -0.4, 'volume': 1000000
-}
-signal, signal_color, confidence = calculate_institutional_signal(selected_symbol)
+# Get all data from unified coordinator
+market_data = data_coordinator.get_market_data(selected_symbol)
+flow_data = data_coordinator.get_options_flow(selected_symbol)
+signal_data = data_coordinator.generate_trading_signal(selected_symbol)
+
+# Set defaults if data unavailable
+if not market_data:
+    market_data = {'symbol': selected_symbol, 'price': 587.45, 'change': -2.35, 'change_pct': -0.4, 'volume': 1000000, 'timestamp': datetime.now()}
+
+if not flow_data:
+    flow_data = {'analysis': [], 'total_volume': 100}
+
+# Extract signal info
+if signal_data:
+    signal = signal_data.get('signal', 'HOLD')
+    confidence = signal_data.get('confidence', 50)
+    
+    # Map to display colors
+    if 'BUY CALLS' in signal:
+        signal_color = "#059669"
+    elif 'BUY PUTS' in signal:
+        signal_color = "#dc2626"
+    else:
+        signal_color = "#6b7280"
+else:
+    signal, signal_color, confidence = "HOLD", "#6b7280", 50
 
 if not flow_data or not market_data:
     st.error("⚠️ Unable to fetch real market data for analysis")
@@ -966,7 +1000,6 @@ daily_range = abs(market_data.get('change_pct', 0))
 volume_profile = market_data.get('volume', 0) / market_data.get('avg_volume', 1)
 
 # Technical levels from actual data
-from dashboard_data_coordinator import data_coordinator
 tech_data = data_coordinator.get_technical_indicators(selected_symbol)
 bb_upper = tech_data.get('bb_upper', current_price * 1.02)
 bb_lower = tech_data.get('bb_lower', current_price * 0.98)
