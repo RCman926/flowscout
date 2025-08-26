@@ -40,16 +40,16 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Compact professional styling - smaller boxes and text
+# Institutional styling - clean grays and professional colors
 st.markdown("""
 <style>
     .main > div { padding-top: 0.2rem; }
     .stMetric { 
-        background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%) !important; 
+        background: linear-gradient(135deg, #374151 0%, #4b5563 100%) !important; 
         padding: 0.3rem !important; 
         border-radius: 4px !important; 
         margin: 0.1rem 0 !important; 
-        border: 1px solid #3b82f6 !important; 
+        border: 1px solid #6b7280 !important; 
         color: white !important;
         box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
     }
@@ -62,20 +62,20 @@ st.markdown("""
     .stMetric [data-testid="metric-value"] {
         font-size: 1.1rem !important;
         font-weight: 600 !important;
-        color: #60a5fa !important;
+        color: #e5e7eb !important;
     }
     .stMetric [data-testid="metric-delta"] {
         font-size: 0.7rem !important;
         font-weight: 500 !important;
     }
     .block-container { padding-top: 0.5rem !important; padding-bottom: 0.5rem !important; }
-    h1, h2, h3 { color: #1e40af !important; font-weight: 600 !important; margin-bottom: 0.2rem !important; }
+    h1, h2, h3 { color: #374151 !important; font-weight: 600 !important; margin-bottom: 0.2rem !important; }
     h1 { font-size: 1.2rem !important; }
     h2 { font-size: 1.0rem !important; }
     h3 { font-size: 0.9rem !important; }
-    .stSelectbox > div > div { background: linear-gradient(135deg, #1e3a8a, #1e40af) !important; }
+    .stSelectbox > div > div { background: linear-gradient(135deg, #374151, #4b5563) !important; }
     .stButton > button {
-        background: linear-gradient(135deg, #059669 0%, #10b981 100%) !important;
+        background: linear-gradient(135deg, #6b7280 0%, #9ca3af 100%) !important;
         color: white !important;
         border: none !important;
         border-radius: 4px !important;
@@ -85,7 +85,7 @@ st.markdown("""
         transition: all 0.2s ease !important;
     }
     .stButton > button:hover {
-        background: linear-gradient(135deg, #047857 0%, #059669 100%) !important;
+        background: linear-gradient(135deg, #4b5563 0%, #6b7280 100%) !important;
         transform: translateY(-1px) !important;
         box-shadow: 0 4px 8px rgba(0,0,0,0.1) !important;
     }
@@ -397,11 +397,10 @@ market_open = datetime.now().weekday() < 5 and 9 <= datetime.now().hour <= 16
 status_color = "#10b981" if market_open else "#dc2626"
 status_text = "LIVE TRADING" if market_open else "MARKET CLOSED"
 
-# Clean header with status indicator using native Streamlit
+# Clean institutional header
 header_cols = st.columns([3, 1])
 with header_cols[0]:
     st.title("🏛️ Institutional Options Flow")
-    st.caption(f"Real-time institutional-grade flow analysis • Live prediction signals • {len(symbols)} Premium Tickers")
 
 with header_cols[1]:
     if market_open:
@@ -409,16 +408,13 @@ with header_cols[1]:
     else:
         st.error(f"● {status_text}")
 
-# Value proposition using clean metrics
-value_cols = st.columns(4)
-with value_cols[0]:
-    st.metric("Data Quality", "100% REAL", "Live Market")
-with value_cols[1]: 
-    st.metric("Pricing", "EXACT", "No Delays")
-with value_cols[2]:
-    st.metric("Refresh Rate", "15-SEC", "Auto Update")
-with value_cols[3]:
-    st.metric("Signal Quality", "VERIFIED", "Risk Alerts")
+# Institutional refresh rate display
+refresh_cols = st.columns([2, 1])
+with refresh_cols[0]:
+    current_time = datetime.now().strftime("%H:%M:%S")
+    st.caption(f"Last Update: {current_time}")
+with refresh_cols[1]:
+    st.caption("Auto-refresh: 15s")
 
 # === SYMBOL SELECTOR ===
 selected_symbol = st.session_state.get('selected_symbol', 'SPY')
