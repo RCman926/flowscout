@@ -107,19 +107,26 @@ def main():
     st.markdown("---")
     symbol_rows = [symbols[i:i+7] for i in range(0, len(symbols), 7)]
     
-    # Ultra-fast batch loading for all symbols at once
-    all_symbols_data = speed_optimizer.get_all_symbols_data_batch(symbols)
-    
+    # Symbol selector with live data
     for row in symbol_rows:
         cols = st.columns(len(row))
         for i, symbol in enumerate(row):
-            # Get data from pre-loaded batch - instant access
-            symbol_info = speed_optimizer.get_symbol_data_fast(symbol, all_symbols_data)
+            # Use cached data for faster loading
+            cache_key = f"symbol_data_{symbol}"
+            if cache_key in st.session_state and time.time() - st.session_state.get(f"{cache_key}_time", 0) < 300:
+                symbol_data = st.session_state[cache_key]['data']
+                symbol_signal = st.session_state[cache_key]['signal']
+            else:
+                symbol_data = data_coordinator.get_market_data(symbol)
+                symbol_signal = data_coordinator.generate_trading_signal(symbol)
+                st.session_state[cache_key] = {'data': symbol_data, 'signal': symbol_signal}
+                st.session_state[f"{cache_key}_time"] = time.time()
             
-            price = symbol_info['price']
-            change_pct = symbol_info['change_pct']
-            signal = symbol_info['signal']
-            confidence = symbol_info['confidence']
+            price = symbol_data['price'] if symbol_data else 150.0
+            change_pct = symbol_data['change_pct'] if symbol_data else 0.0
+            signal = symbol_signal.get('signal', 'HOLD') if symbol_signal else 'HOLD'
+            confidence = symbol_signal.get('confidence', 75) if symbol_signal else 75
+
             
             with cols[i]:
                 is_selected = symbol == selected_symbol
