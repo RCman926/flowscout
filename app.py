@@ -30,14 +30,18 @@ symbols = ['AAPL', 'TSLA', 'NVDA', 'MSFT', 'GOOGL', 'AMZN', 'META', 'NFLX', 'AMD
 
 # === MAIN APP LOGIC ===
 def main():
+    # Speed optimization - use fast loading system
+    from speed_optimizer import speed_optimizer
+    
     # Get selected symbol
     selected_symbol = st.session_state.get('selected_symbol', 'SPY')
     
-    # Get all data using unified coordinator
-    market_data = data_coordinator.get_market_data(selected_symbol)
-    flow_data = data_coordinator.get_options_flow(selected_symbol)
-    tech_data = data_coordinator.get_technical_indicators(selected_symbol)
-    signal_data = data_coordinator.generate_trading_signal(selected_symbol)
+    # Use optimized data bundle for lightning-fast loading
+    data_bundle = speed_optimizer.get_main_data_bundle(selected_symbol)
+    market_data = data_bundle['market_data']
+    flow_data = data_bundle['flow_data'] 
+    tech_data = data_bundle['tech_data']
+    signal_data = data_bundle['signal_data']
     
     # Set defaults if data unavailable
     if not market_data:
@@ -107,17 +111,19 @@ def main():
     st.markdown("---")
     symbol_rows = [symbols[i:i+7] for i in range(0, len(symbols), 7)]
     
+    # Ultra-fast batch loading for all symbols at once
+    all_symbols_data = speed_optimizer.get_all_symbols_data_batch(symbols)
+    
     for row in symbol_rows:
         cols = st.columns(len(row))
         for i, symbol in enumerate(row):
-            # Get data for each symbol
-            symbol_data = data_coordinator.get_market_data(symbol)
-            symbol_signal = data_coordinator.generate_trading_signal(symbol)
+            # Get data from pre-loaded batch - instant access
+            symbol_info = speed_optimizer.get_symbol_data_fast(symbol, all_symbols_data)
             
-            price = symbol_data['price'] if symbol_data else 150.0
-            change_pct = symbol_data['change_pct'] if symbol_data else 0.0
-            signal = symbol_signal.get('signal', 'HOLD') if symbol_signal else 'HOLD'
-            confidence = symbol_signal.get('confidence', 75) if symbol_signal else 75
+            price = symbol_info['price']
+            change_pct = symbol_info['change_pct']
+            signal = symbol_info['signal']
+            confidence = symbol_info['confidence']
             
             with cols[i]:
                 is_selected = symbol == selected_symbol
