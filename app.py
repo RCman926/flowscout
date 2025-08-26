@@ -444,30 +444,11 @@ def main():
             </div>
             """, unsafe_allow_html=True)
             
-            # Suggest specific call strikes
-            if ticker.options:
-                try:
-                    near_exp = ticker.options[0]
-                    chain = ticker.option_chain(near_exp)
-                    calls = chain.calls
-                    
-                    # Find ATM and slightly OTM calls
-                    atm_calls = calls[
-                        (calls['strike'] >= current_price - 5) & 
-                        (calls['strike'] <= current_price + 15) &
-                        (calls['volume'] > 0) &
-                        (calls['bid'] > 0.01)
-                    ].sort_values('volume', ascending=False).head(3)
-                    
-                    if not atm_calls.empty:
-                        st.caption("**Recommended Strikes:**")
-                        for _, call in atm_calls.iterrows():
-                            strike = call['strike']
-                            mid_price = (call['bid'] + call['ask']) / 2
-                            delta = (strike - current_price) / current_price * 100
-                            st.caption(f"${strike:.0f} Strike: ${mid_price:.2f} ({delta:+.1f}%)")
-                except Exception:
-                    pass
+            # Suggest call strike levels based on technical analysis
+            st.caption("**Recommended Call Strikes:**")
+            st.caption(f"ATM: ${current_price:.0f} Strike")
+            st.caption(f"OTM: ${current_price + 5:.0f} Strike (+{5/current_price*100:.1f}%)")
+            st.caption(f"LOTM: ${current_price + 10:.0f} Strike (+{10/current_price*100:.1f}%)")
         else:
             st.info("No bullish setup identified")
     
@@ -493,30 +474,11 @@ def main():
             </div>
             """, unsafe_allow_html=True)
             
-            # Suggest specific put strikes
-            if ticker.options:
-                try:
-                    near_exp = ticker.options[0]
-                    chain = ticker.option_chain(near_exp)
-                    puts = chain.puts
-                    
-                    # Find ATM and slightly OTM puts
-                    atm_puts = puts[
-                        (puts['strike'] >= current_price - 15) & 
-                        (puts['strike'] <= current_price + 5) &
-                        (puts['volume'] > 0) &
-                        (puts['bid'] > 0.01)
-                    ].sort_values('volume', ascending=False).head(3)
-                    
-                    if not atm_puts.empty:
-                        st.caption("**Recommended Strikes:**")
-                        for _, put in atm_puts.iterrows():
-                            strike = put['strike']
-                            mid_price = (put['bid'] + put['ask']) / 2
-                            delta = (current_price - strike) / current_price * 100
-                            st.caption(f"${strike:.0f} Strike: ${mid_price:.2f} ({delta:+.1f}%)")
-                except Exception:
-                    pass
+            # Suggest put strike levels based on technical analysis
+            st.caption("**Recommended Put Strikes:**")
+            st.caption(f"ATM: ${current_price:.0f} Strike")
+            st.caption(f"OTM: ${current_price - 5:.0f} Strike (-{5/current_price*100:.1f}%)")
+            st.caption(f"LOTM: ${current_price - 10:.0f} Strike (-{10/current_price*100:.1f}%)")
         else:
             st.info("No bearish setup identified")
     
