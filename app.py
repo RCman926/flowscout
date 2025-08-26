@@ -548,14 +548,83 @@ def main():
         
         st.caption(f"AI Confidence: {combined_sentiment['confidence']:.0%}")
     
-    # === ENHANCED PREDICTION ENGINE ===
-    st.markdown("#### 🤖 Advanced ML Predictions")
+    # === PREDICTION TRACKER & RESULTS ===
+    st.markdown("#### 🎯 Prediction Tracker - Real Results")
     
+    from prediction_tracker import prediction_tracker
     from advanced_prediction_engine import prediction_engine
     
-    # Generate ML predictions
+    # Check for expired predictions and update results
+    expired_updates = prediction_tracker.check_expired_predictions()
+    
+    # Get prediction summary
+    summary = prediction_tracker.get_prediction_summary()
+    
+    # Display prediction accuracy
+    accuracy_cols = st.columns(4)
+    
+    with accuracy_cols[0]:
+        win_rate = summary['win_rate']
+        if win_rate >= 60:
+            st.success(f"🏆 Win Rate: {win_rate:.1f}%")
+        elif win_rate >= 40:
+            st.warning(f"📊 Win Rate: {win_rate:.1f}%")
+        else:
+            st.error(f"📉 Win Rate: {win_rate:.1f}%")
+        st.caption(f"{summary['wins']} wins, {summary['losses']} losses")
+    
+    with accuracy_cols[1]:
+        st.metric("Total Predictions", summary['total_predictions'])
+        st.caption("Completed trades")
+    
+    with accuracy_cols[2]:
+        # Show recent expired predictions results
+        if expired_updates:
+            st.success(f"🆕 {len(expired_updates)} New Results")
+            st.caption("Just expired")
+        else:
+            active_count = len(prediction_tracker.get_active_predictions())
+            st.info(f"⏳ {active_count} Active")
+            st.caption("Waiting for expiration")
+    
+    with accuracy_cols[3]:
+        # Show if we have any -1 DTE results
+        recent_expired = summary.get('recent_expired', [])
+        if recent_expired:
+            latest = recent_expired[-1]
+            if latest['result'] == 'WIN':
+                st.success(f"✅ Last: WIN")
+                st.caption(f"{latest['profit_loss']:.1f}% move")
+            else:
+                st.error(f"❌ Last: LOSS")
+                st.caption(f"{latest['profit_loss']:.1f}% move")
+        else:
+            st.info("🎯 No Results Yet")
+            st.caption("Make predictions to track")
+    
+    # Show recently expired predictions with real data
+    if recent_expired:
+        st.markdown("**📊 Recent Prediction Results (Real Data)**")
+        for pred in recent_expired[-3:]:  # Show last 3
+            symbol = pred['symbol']
+            pred_type = pred['prediction_type']
+            starting_price = pred['starting_price']
+            actual_price = pred['actual_price']
+            result = pred['result']
+            profit_loss = pred['profit_loss']
+            
+            result_color = "success" if result == 'WIN' else "error"
+            direction_emoji = "📈" if profit_loss > 0 else "📉" if profit_loss < 0 else "⚪"
+            
+            if result == 'WIN':
+                st.success(f"✅ {symbol} {pred_type}: {direction_emoji} ${starting_price:.2f} → ${actual_price:.2f} ({profit_loss:+.1f}%)")
+            else:
+                st.error(f"❌ {symbol} {pred_type}: {direction_emoji} ${starting_price:.2f} → ${actual_price:.2f} ({profit_loss:+.1f}%)")
+    
+    # Generate new ML predictions
     prediction_data = prediction_engine.generate_advanced_prediction(market_data, tech_data, flow_data)
     
+    st.markdown("**🤖 Current ML Prediction**")
     pred_cols = st.columns(4)
     
     with pred_cols[0]:
@@ -585,7 +654,7 @@ def main():
     with pred_cols[3]:
         time_horizon = prediction_data.get('time_horizon', '1-3 DTE')
         st.metric("Time Frame", time_horizon)
-        st.caption("Optimal holding period")
+        st.caption("For tracking accuracy")
     
     # === LIVE OPTIONS FLOW SYSTEM ===
     st.markdown("#### 🔥 LIVE Options Flow - Constant Updates")
@@ -2006,7 +2075,7 @@ def main():
     st.markdown("#### 📅 Financial Calendar & Market News")
     
     # Import financial calendar data
-    from enhanced_financial_calendar import get_earnings_calendar, get_economic_events, get_fed_events
+    from enhanced_financial_calendar import enhanced_calendar
     
     calendar_cols = st.columns(3)
     
@@ -2014,7 +2083,7 @@ def main():
         st.markdown("**📊 Earnings This Week**")
         
         try:
-            earnings_data = get_earnings_calendar()
+            earnings_data = enhanced_calendar.get_key_events_today()
             if earnings_data:
                 for earning in earnings_data[:5]:  # Show top 5
                     symbol = earning.get('symbol', 'N/A')
