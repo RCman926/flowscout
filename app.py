@@ -243,124 +243,80 @@ def main():
         vol_regime = "HIGH" if daily_range > 2 else "NORMAL" if daily_range > 0.5 else "LOW"
         st.metric("Vol Regime", vol_regime, f"{daily_range:.1f}% today")
     
-    # === INSTITUTIONAL OPTIONS CHAIN ANALYSIS ===
-    st.markdown("#### 📋 Live Options Chain - Institutional Grade")
+    # === CLEAN OPTIONS CHAIN ===
+    st.markdown("#### 📋 Top Options by Volume")
     
     try:
         ticker = yf.Ticker(selected_symbol)
         current_price = market_data.get('price', 0)
         
         if current_price > 0 and ticker.options:
-            exp_dates = ticker.options[:3]  # Top 3 expiries
+            # Focus on nearest expiry only for clarity
+            near_exp = ticker.options[0]
+            exp_dt = datetime.strptime(near_exp, '%Y-%m-%d').date()
+            dte = (exp_dt - datetime.now().date()).days
             
-            for exp_date in exp_dates:
-                exp_dt = datetime.strptime(exp_date, '%Y-%m-%d').date()
-                dte = (exp_dt - datetime.now().date()).days
+            st.markdown(f"**{selected_symbol} @ ${current_price:.2f} - {near_exp} ({dte}DTE)**")
+            
+            try:
+                options_chain = ticker.option_chain(near_exp)
+                calls_df = options_chain.calls
+                puts_df = options_chain.puts
                 
-                if dte >= 0:
-                    st.markdown(f"**{selected_symbol} @ ${current_price:.2f} - {exp_date} ({dte}DTE)**")
+                if not calls_df.empty and not puts_df.empty:
+                    # Filter for liquid options around current price - simpler view
+                    calls_top = calls_df[
+                        (calls_df['strike'] >= current_price - 10) & 
+                        (calls_df['strike'] <= current_price + 15) &
+                        (calls_df['volume'] > 10) &
+                        (calls_df['bid'] > 0.05)
+                    ].sort_values('volume', ascending=False).head(5)
                     
-                    try:
-                        options_chain = ticker.option_chain(exp_date)
-                        calls_df = options_chain.calls
-                        puts_df = options_chain.puts
-                        
-                        if not calls_df.empty and not puts_df.empty:
-                            # Filter for liquid options around current price
-                            calls_filtered = calls_df[
-                                (calls_df['strike'] >= current_price - 20) & 
-                                (calls_df['strike'] <= current_price + 30) &
-                                (calls_df['volume'] > 5) &
-                                (calls_df['bid'] > 0.01) &
-                                (calls_df['ask'] > calls_df['bid'])
-                            ].sort_values('volume', ascending=False).head(8)
+                    puts_top = puts_df[
+                        (puts_df['strike'] >= current_price - 15) & 
+                        (puts_df['strike'] <= current_price + 10) &
+                        (puts_df['volume'] > 10) &
+                        (puts_df['bid'] > 0.05)
+                    ].sort_values('volume', ascending=False).head(5)
+                    
+                    # Clean table display
+                    chain_cols = st.columns(2)
+                    
+                    with chain_cols[0]:
+                        st.markdown("**CALLS - High Volume**")
+                        if not calls_top.empty:
+                            call_data = []
+                            for _, call in calls_top.iterrows():
+                                strike = f"${call['strike']:.0f}"
+                                volume = f"{int(call['volume']):,}"
+                                mid = f"${(call['bid'] + call['ask']) / 2:.2f}"
+                                call_data.append({'Strike': strike, 'Volume': volume, 'Price': mid})
                             
-                            puts_filtered = puts_df[
-                                (puts_df['strike'] >= current_price - 30) & 
-                                (puts_df['strike'] <= current_price + 20) &
-                                (puts_df['volume'] > 5) &
-                                (puts_df['bid'] > 0.01) &
-                                (puts_df['ask'] > puts_df['bid'])
-                            ].sort_values('volume', ascending=False).head(8)
+                            df_calls = pd.DataFrame(call_data)
+                            st.dataframe(df_calls, use_container_width=True, hide_index=True)
+                        else:
+                            st.info("No active calls")
+                    
+                    with chain_cols[1]:
+                        st.markdown("**PUTS - High Volume**")
+                        if not puts_top.empty:
+                            put_data = []
+                            for _, put in puts_top.iterrows():
+                                strike = f"${put['strike']:.0f}"
+                                volume = f"{int(put['volume']):,}"
+                                mid = f"${(put['bid'] + put['ask']) / 2:.2f}"
+                                put_data.append({'Strike': strike, 'Volume': volume, 'Price': mid})
                             
-                            # Display calls and puts side by side
-                            chain_cols = st.columns(2)
-                            
-                            with chain_cols[0]:
-                                st.markdown("**🟢 CALLS - TOP VOLUME**")
-                                if not calls_filtered.empty:
-                                    for _, call in calls_filtered.iterrows():
-                                        strike = call['strike']
-                                        volume = int(call['volume'])
-                                        oi = int(call['openInterest'])
-                                        bid = call['bid']
-                                        ask = call['ask']
-                                        mid = (bid + ask) / 2
-                                        
-                                        # Calculate moneyness
-                                        moneyness = (strike - current_price) / current_price * 100
-                                        
-                                        # Color code by moneyness
-                                        if abs(moneyness) < 2:  # ATM
-                                            color = "🔥"
-                                        elif moneyness > 0:  # OTM
-                                            color = "📈"
-                                        else:  # ITM
-                                            color = "💰"
-                                        
-                                        premium_flow = volume * mid * 100
-                                        
-                                        st.markdown(f"""
-                                        <div style='background: rgba(34, 197, 94, 0.1); padding: 0.3rem; border-radius: 3px; margin: 0.2rem 0;'>
-                                        {color} **${strike:.0f}** | Vol: {volume:,} | OI: {oi:,}<br>
-                                        Bid: ${bid:.2f} | Ask: ${ask:.2f} | Mid: **${mid:.2f}**<br>
-                                        Premium Flow: **${premium_flow:,.0f}** | {moneyness:+.1f}%
-                                        </div>
-                                        """, unsafe_allow_html=True)
-                                else:
-                                    st.info("No liquid calls found")
-                            
-                            with chain_cols[1]:
-                                st.markdown("**🔴 PUTS - TOP VOLUME**")
-                                if not puts_filtered.empty:
-                                    for _, put in puts_filtered.iterrows():
-                                        strike = put['strike']
-                                        volume = int(put['volume'])
-                                        oi = int(put['openInterest'])
-                                        bid = put['bid']
-                                        ask = put['ask']
-                                        mid = (bid + ask) / 2
-                                        
-                                        # Calculate moneyness
-                                        moneyness = (current_price - strike) / current_price * 100
-                                        
-                                        # Color code by moneyness
-                                        if abs(moneyness) < 2:  # ATM
-                                            color = "🔥"
-                                        elif moneyness > 0:  # ITM
-                                            color = "💰"
-                                        else:  # OTM
-                                            color = "📉"
-                                        
-                                        premium_flow = volume * mid * 100
-                                        
-                                        st.markdown(f"""
-                                        <div style='background: rgba(239, 68, 68, 0.1); padding: 0.3rem; border-radius: 3px; margin: 0.2rem 0;'>
-                                        {color} **${strike:.0f}** | Vol: {volume:,} | OI: {oi:,}<br>
-                                        Bid: ${bid:.2f} | Ask: ${ask:.2f} | Mid: **${mid:.2f}**<br>
-                                        Premium Flow: **${premium_flow:,.0f}** | {moneyness:+.1f}%
-                                        </div>
-                                        """, unsafe_allow_html=True)
-                                else:
-                                    st.info("No liquid puts found")
-                            
-                            st.markdown("---")
-                    except Exception as e:
-                        st.warning(f"Chain data unavailable for {exp_date}")
+                            df_puts = pd.DataFrame(put_data)
+                            st.dataframe(df_puts, use_container_width=True, hide_index=True)
+                        else:
+                            st.info("No active puts")
+            except Exception:
+                st.warning("Chain data temporarily unavailable")
         else:
-            st.error("Options chain data unavailable")
-    except Exception as e:
-        st.error("Unable to load institutional options data")
+            st.info("Options data not available")
+    except Exception:
+        st.info("Options analysis temporarily unavailable")
     
     # === INSTITUTIONAL EXECUTION PLAN ===
     st.markdown("#### 🎯 Institutional Execution Plan")
@@ -518,6 +474,75 @@ def main():
         else:
             st.error(f"🏛️ Institutional Grade: {institutional_score}%")
     
+    # === MARKET NEWS & ALERTS ===
+    st.markdown("#### 📰 Market News & Analysis")
+    
+    news_cols = st.columns(2)
+    
+    with news_cols[0]:
+        st.markdown("**Live Market Alerts**")
+        
+        # Generate market alerts based on real data
+        alerts = []
+        
+        # Price movement alerts
+        price_change = market_data.get('change_pct', 0)
+        if abs(price_change) > 2:
+            alerts.append(f"📈 {selected_symbol} moved {price_change:+.1f}% today")
+        
+        # Volume alerts
+        volume = market_data.get('volume', 0)
+        avg_volume = market_data.get('avg_volume', 1)
+        volume_ratio = volume / avg_volume
+        if volume_ratio > 1.5:
+            alerts.append(f"📊 High volume: {volume_ratio:.1f}x average")
+        
+        # Options flow alerts
+        if total_volume > 100000:
+            alerts.append(f"⚡ Unusual options activity: {total_volume:,} contracts")
+        
+        # Technical alerts
+        rsi = tech_data.get('rsi', 50)
+        if rsi > 70:
+            alerts.append(f"📊 {selected_symbol} RSI overbought at {rsi:.1f}")
+        elif rsi < 30:
+            alerts.append(f"📊 {selected_symbol} RSI oversold at {rsi:.1f}")
+        
+        # Volatility alerts
+        daily_range = abs(market_data.get('change_pct', 0))
+        if daily_range > 3:
+            alerts.append(f"⚠️ High volatility: {daily_range:.1f}% daily range")
+        
+        # Display alerts
+        if alerts:
+            for alert in alerts[:4]:  # Show top 4 alerts
+                st.info(alert)
+        else:
+            st.success("📊 Normal market conditions")
+    
+    with news_cols[1]:
+        st.markdown("**Key Market Levels**")
+        
+        # Key price levels for trading
+        current_price = market_data['price']
+        bb_upper = tech_data.get('bb_upper', current_price * 1.02)
+        bb_lower = tech_data.get('bb_lower', current_price * 0.98)
+        sma_20 = tech_data.get('sma_20', current_price)
+        
+        # Calculate important levels
+        next_resistance = min(bb_upper, current_price * 1.02)
+        next_support = max(bb_lower, current_price * 0.98)
+        
+        st.info(f"📈 Next Resistance: ${next_resistance:.2f}")
+        st.info(f"📉 Next Support: ${next_support:.2f}")
+        st.info(f"📊 20-Day MA: ${sma_20:.2f}")
+        
+        # Market status based on levels
+        if current_price > sma_20:
+            st.success("🟢 Above 20-day trend")
+        else:
+            st.error("🔴 Below 20-day trend")
+    
     # === FINAL TRADING RECOMMENDATION ===
     st.markdown("#### 🏆 Final Recommendation")
     
@@ -526,9 +551,9 @@ def main():
     with recommendation_cols[0]:
         if confidence > 70 and institutional_score >= 75:
             if 'BUY CALLS' in signal:
-                st.success("🚀 STRONG BUY CALLS - Ken Griffin would approve this setup")
+                st.success("🚀 STRONG BUY CALLS - High conviction setup")
             elif 'BUY PUTS' in signal:
-                st.error("🚀 STRONG BUY PUTS - Ken Griffin would approve this setup")
+                st.error("🚀 STRONG BUY PUTS - High conviction setup")
             else:
                 st.info("⚪ HOLD - Wait for better setup")
         elif confidence > 60:
