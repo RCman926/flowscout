@@ -242,38 +242,181 @@ def main():
         pressure = "HIGH" if total_volume > 100000 else "MEDIUM" if total_volume > 50000 else "LOW"
         st.metric("MM Pressure", pressure, f"{total_volume/1000:.0f}K vol")
     
-    # === ENHANCED DASHBOARD WITH LIVE OPTIONS DATA ===
+    # === MAIN OPTIONS ANALYSIS ===
+    st.markdown("#### 🎯 Key Trading Levels")
     
-    # Import enhanced systems  
+    # Key levels in a clean 4-column layout
+    levels_cols = st.columns(4)
+    
+    with levels_cols[0]:
+        support = market_data['price'] * 0.95
+        st.metric("Support", f"${support:.2f}", f"{-5.0:.1f}%")
+    
+    with levels_cols[1]:
+        resistance = market_data['price'] * 1.05
+        st.metric("Resistance", f"${resistance:.2f}", f"{+5.0:.1f}%")
+    
+    with levels_cols[2]:
+        daily_range = abs(market_data['change_pct'])
+        st.metric("Daily Range", f"{daily_range:.1f}%", f"${daily_range * market_data['price'] / 100:.2f}")
+    
+    with levels_cols[3]:
+        vol_regime = "HIGH" if daily_range > 2 else "NORMAL" if daily_range > 0.5 else "LOW"
+        st.metric("Vol Regime", vol_regime, f"{daily_range:.1f}% today")
+    
+    # === FAST LIVE OPTIONS FLOW ===
+    st.markdown("#### 🔥 FAST Live Options Flow")
+    
+    from fast_live_options import fast_options
+    
+    # Get quick options data
+    quick_data = fast_options.get_quick_options_data(selected_symbol)
+    
+    # Quick flow overview
+    flow_cols = st.columns(4)
+    
+    with flow_cols[0]:
+        call_vol = quick_data['call_volume']
+        st.metric("🟢 CALL Volume", f"{call_vol:,}")
+        st.caption("Live from Yahoo Finance")
+    
+    with flow_cols[1]:
+        put_vol = quick_data['put_volume'] 
+        st.metric("🔴 PUT Volume", f"{put_vol:,}")
+        st.caption(f"Exp: {quick_data['expiration']}")
+    
+    with flow_cols[2]:
+        total_vol = quick_data['total_volume']
+        st.metric("Total Volume", f"{total_vol:,}")
+        st.caption(f"C/P Ratio: {quick_data['cp_ratio']:.2f}")
+    
+    with flow_cols[3]:
+        flow_bias = "📈 BULLISH" if quick_data['cp_ratio'] > 1.2 else "📉 BEARISH" if quick_data['cp_ratio'] < 0.8 else "⚪ NEUTRAL"
+        st.metric("Flow Bias", flow_bias)
+        st.caption(f"Updated: {quick_data['timestamp'].strftime('%H:%M:%S')}")
+    
+    # === EXCLUSIVE NEWS SOURCES ===
+    st.markdown("#### 📰 Exclusive News & Market Intelligence")
+    
+    # Real-time news section
+    from live_news_engine import live_news_engine
+    
+    news_cols = st.columns(2)
+    
+    with news_cols[0]:
+        st.markdown("**📈 Market Moving News**")
+        market_news = live_news_engine.get_market_moving_news(selected_symbol)
+        
+        for news in market_news[:3]:
+            with st.expander(f"🔥 {news['headline'][:60]}..."):
+                st.write(f"**Source:** {news['source']}")
+                st.write(f"**Time:** {news['time']}")
+                st.write(news['summary'])
+                if news['impact_score'] > 7:
+                    st.error(f"🚨 High Impact: {news['impact_score']}/10")
+                elif news['impact_score'] > 5:
+                    st.warning(f"⚠️ Medium Impact: {news['impact_score']}/10")
+                else:
+                    st.info(f"ℹ️ Low Impact: {news['impact_score']}/10")
+    
+    with news_cols[1]:
+        st.markdown("**🏛️ Institutional Intelligence**")
+        institutional_news = live_news_engine.get_institutional_activity(selected_symbol)
+        
+        for inst in institutional_news[:3]:
+            with st.expander(f"🏦 {inst['title'][:60]}..."):
+                st.write(f"**Institution:** {inst['institution']}")
+                st.write(f"**Action:** {inst['action']}")
+                st.write(f"**Size:** {inst['size']}")
+                st.write(inst['details'])
+    
+    # === SENTIMENT & SOCIAL INTELLIGENCE ===
+    st.markdown("#### 🧠 AI Sentiment & Social Intelligence")
+    
+    from ai_sentiment_engine import sentiment_engine
+    
+    sentiment_cols = st.columns(3)
+    
+    with sentiment_cols[0]:
+        news_sentiment = sentiment_engine.get_news_sentiment(selected_symbol)
+        sentiment_color = "success" if news_sentiment['score'] > 0.2 else "error" if news_sentiment['score'] < -0.2 else "info"
+        
+        if sentiment_color == "success":
+            st.success(f"📈 News Sentiment: {news_sentiment['label']}")
+        elif sentiment_color == "error":
+            st.error(f"📉 News Sentiment: {news_sentiment['label']}")
+        else:
+            st.info(f"⚪ News Sentiment: {news_sentiment['label']}")
+        
+        st.caption(f"Score: {news_sentiment['score']:.2f} | Confidence: {news_sentiment['confidence']:.0%}")
+    
+    with sentiment_cols[1]:
+        social_sentiment = sentiment_engine.get_social_sentiment(selected_symbol)
+        social_color = "success" if social_sentiment['score'] > 0.1 else "error" if social_sentiment['score'] < -0.1 else "info"
+        
+        if social_color == "success":
+            st.success(f"📱 Social Sentiment: {social_sentiment['label']}")
+        elif social_color == "error":
+            st.error(f"📱 Social Sentiment: {social_sentiment['label']}")
+        else:
+            st.info(f"📱 Social Sentiment: {social_sentiment['label']}")
+        
+        st.caption(f"Volume: {social_sentiment['volume']} mentions")
+    
+    with sentiment_cols[2]:
+        combined_sentiment = sentiment_engine.get_combined_sentiment_score(selected_symbol)
+        
+        if combined_sentiment['overall_score'] > 0.3:
+            st.success(f"🚀 Overall: VERY BULLISH")
+        elif combined_sentiment['overall_score'] > 0.1:
+            st.success(f"📈 Overall: BULLISH")
+        elif combined_sentiment['overall_score'] < -0.3:
+            st.error(f"💥 Overall: VERY BEARISH")
+        elif combined_sentiment['overall_score'] < -0.1:
+            st.error(f"📉 Overall: BEARISH")
+        else:
+            st.info(f"⚪ Overall: NEUTRAL")
+        
+        st.caption(f"AI Confidence: {combined_sentiment['confidence']:.0%}")
+    
+    # === ENHANCED PREDICTION ENGINE ===
+    st.markdown("#### 🤖 Advanced ML Predictions")
+    
     from advanced_prediction_engine import prediction_engine
-    from enhanced_visualization import enhanced_viz
-    from real_live_options_scraper import real_live_scraper
     
-    # Show live data status
-    st.markdown("### 📡 LIVE DATA STATUS")
-    live_flow_metrics = real_live_scraper.get_live_flow_metrics(selected_symbol)
-    
-    if live_flow_metrics['data_source'] == 'LIVE_YAHOO_FINANCE':
-        st.success(f"✅ LIVE OPTIONS DATA ACTIVE - Real volume from Yahoo Finance")
-        st.caption(f"Last updated: {live_flow_metrics['timestamp'].strftime('%H:%M:%S')} - Total volume: {live_flow_metrics['total_volume']:,}")
-    else:
-        st.error("❌ Live options data unavailable")
-    
-    # Generate advanced ML predictions
+    # Generate ML predictions
     prediction_data = prediction_engine.generate_advanced_prediction(market_data, tech_data, flow_data)
     
-    # Render enhanced compact dashboard with LIVE data
-    enhanced_viz.create_compact_dashboard(
-        symbol=selected_symbol,
-        market_data=market_data,
-        tech_data=tech_data,
-        flow_data=flow_data,
-        signal_data=signal_data,
-        prediction_data=prediction_data
-    )
+    pred_cols = st.columns(4)
     
-    # End enhanced dashboard
-    return
+    with pred_cols[0]:
+        enhanced_signal = prediction_data.get('enhanced_signal', 'HOLD')
+        if 'STRONG' in enhanced_signal and 'CALL' in enhanced_signal:
+            st.success(f"🚀 {enhanced_signal.replace('_', ' ')}")
+        elif 'CALL' in enhanced_signal:
+            st.success(f"📈 {enhanced_signal.replace('_', ' ')}")
+        elif 'STRONG' in enhanced_signal and 'PUT' in enhanced_signal:
+            st.error(f"💥 {enhanced_signal.replace('_', ' ')}")
+        elif 'PUT' in enhanced_signal:
+            st.error(f"📉 {enhanced_signal.replace('_', ' ')}")
+        else:
+            st.info(f"⚪ {enhanced_signal}")
+    
+    with pred_cols[1]:
+        ml_confidence = prediction_data.get('confidence', 50)
+        st.metric("ML Confidence", f"{ml_confidence}%")
+        st.caption(f"Score: {prediction_data.get('prediction_score', 0):.3f}")
+    
+    with pred_cols[2]:
+        pattern_strength = prediction_data.get('pattern_strength', 'MODERATE')
+        risk_level = prediction_data.get('risk_level', 'MEDIUM')
+        st.metric("Pattern", pattern_strength)
+        st.caption(f"Risk: {risk_level}")
+    
+    with pred_cols[3]:
+        time_horizon = prediction_data.get('time_horizon', '1-3 DTE')
+        st.metric("Time Frame", time_horizon)
+        st.caption("Optimal holding period")
     
     # === LIVE OPTIONS FLOW SYSTEM ===
     st.markdown("#### 🔥 LIVE Options Flow - Constant Updates")
