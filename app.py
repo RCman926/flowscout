@@ -264,45 +264,193 @@ def main():
         vol_regime = "HIGH" if daily_range > 2 else "NORMAL" if daily_range > 0.5 else "LOW"
         st.metric("Vol Regime", vol_regime, f"{daily_range:.1f}% today")
     
-    # === FAST LIVE OPTIONS FLOW ===
-    st.markdown("#### 🔥 FAST Live Options Flow")
+    # === LIVE ACTION OPTIONS BATTLE ===
+    st.markdown("### ⚔️ LIVE OPTIONS BATTLE - CALLS vs PUTS")
     
-    from fast_live_options import fast_options
+    # Import comprehensive scraper
+    from real_live_options_scraper import real_live_scraper
     
-    # Get quick options data
-    quick_data = fast_options.get_quick_options_data(selected_symbol)
+    # Get live flow metrics
+    live_flow_metrics = real_live_scraper.get_live_flow_metrics(selected_symbol)
     
-    # Quick flow overview
-    flow_cols = st.columns(4)
+    # Battle visualization at the top
+    battle_cols = st.columns([2, 1, 2])
     
-    with flow_cols[0]:
-        call_vol = quick_data['call_volume']
-        st.metric("🟢 CALL Volume", f"{call_vol:,}")
-        st.caption("Live from Yahoo Finance")
+    with battle_cols[0]:
+        call_volume = live_flow_metrics.get('call_volume', 0)
+        call_pressure = live_flow_metrics.get('call_pressure', 0)
+        st.markdown(f"""
+        <div style='background: linear-gradient(90deg, #00ff00 0%, #004400 100%); padding: 20px; border-radius: 10px; text-align: center;'>
+            <h2 style='color: white; margin: 0;'>🟢 CALLS ARMY</h2>
+            <h1 style='color: white; margin: 10px 0;'>{call_volume:,}</h1>
+            <p style='color: #ccffcc; margin: 0;'>Pressure: {call_pressure}%</p>
+        </div>
+        """, unsafe_allow_html=True)
     
-    with flow_cols[1]:
-        put_vol = quick_data['put_volume'] 
-        st.metric("🔴 PUT Volume", f"{put_vol:,}")
-        dte = quick_data.get('dte', 'N/A')
-        if isinstance(dte, int):
-            if dte == 0:
-                st.caption("⚡ 0DTE (Same Day Expiry)")
-            elif dte == 1:
-                st.caption("📅 1DTE (Tomorrow)")
-            else:
-                st.caption(f"📅 {dte}DTE ({dte} days)")
+    with battle_cols[1]:
+        total_volume = live_flow_metrics.get('total_volume', 1)
+        call_dominance = (call_volume / max(total_volume, 1)) * 100
+        put_dominance = 100 - call_dominance
+        
+        if call_dominance > 60:
+            winner = "🟢 CALLS WINNING"
+            color = "#00ff00"
+        elif put_dominance > 60:
+            winner = "🔴 PUTS WINNING"
+            color = "#ff0000"
         else:
-            st.caption(f"Exp: {quick_data['expiration']}")
+            winner = "⚔️ BATTLE RAGING"
+            color = "#ffff00"
+        
+        st.markdown(f"""
+        <div style='text-align: center; padding: 20px;'>
+            <h3 style='color: {color}; margin: 0;'>{winner}</h3>
+            <div style='background: #333; height: 20px; border-radius: 10px; margin: 10px 0; overflow: hidden;'>
+                <div style='background: #00ff00; height: 100%; width: {call_dominance}%; float: left;'></div>
+                <div style='background: #ff0000; height: 100%; width: {put_dominance}%; float: right;'></div>
+            </div>
+            <p style='margin: 0; font-size: 12px;'>🟢 {call_dominance:.1f}% vs {put_dominance:.1f}% 🔴</p>
+        </div>
+        """, unsafe_allow_html=True)
     
-    with flow_cols[2]:
-        total_vol = quick_data['total_volume']
-        st.metric("Total Volume", f"{total_vol:,}")
-        st.caption(f"C/P Ratio: {quick_data['cp_ratio']:.2f}")
+    with battle_cols[2]:
+        put_volume = live_flow_metrics.get('put_volume', 0)
+        put_pressure = live_flow_metrics.get('put_pressure', 0)
+        st.markdown(f"""
+        <div style='background: linear-gradient(90deg, #440000 0%, #ff0000 100%); padding: 20px; border-radius: 10px; text-align: center;'>
+            <h2 style='color: white; margin: 0;'>🔴 PUTS ARMY</h2>
+            <h1 style='color: white; margin: 10px 0;'>{put_volume:,}</h1>
+            <p style='color: #ffcccc; margin: 0;'>Pressure: {put_pressure}%</p>
+        </div>
+        """, unsafe_allow_html=True)
     
-    with flow_cols[3]:
-        flow_bias = "📈 BULLISH" if quick_data['cp_ratio'] > 1.2 else "📉 BEARISH" if quick_data['cp_ratio'] < 0.8 else "⚪ NEUTRAL"
-        st.metric("Flow Bias", flow_bias)
-        st.caption(f"Updated: {quick_data['timestamp'].strftime('%H:%M:%S')}")
+    # Live flow action bar
+    st.markdown("#### 📊 LIVE ACTION FLOW")
+    
+    # Show data source status
+    data_source = live_flow_metrics.get('data_source', 'UNKNOWN')
+    if data_source == 'LIVE_YAHOO_FINANCE':
+        st.success(f"✅ LIVE DATA ACTIVE - Direct from Yahoo Finance")
+    else:
+        st.warning(f"⚠️ Data Source: {data_source}")
+    
+    # Comprehensive flow metrics
+    flow_detail_cols = st.columns(4)
+    
+    with flow_detail_cols[0]:
+        st.metric("🔥 Total Action", f"{total_volume:,}", f"Live volume")
+        cp_ratio = live_flow_metrics.get('cp_ratio', 1.0)
+        st.caption(f"C/P Ratio: {cp_ratio:.2f}")
+    
+    with flow_detail_cols[1]:
+        momentum = live_flow_metrics.get('momentum', 'NEUTRAL')
+        if 'BULLISH' in momentum:
+            st.success(f"📈 {momentum}")
+        elif 'BEARISH' in momentum:
+            st.error(f"📉 {momentum}")
+        else:
+            st.info(f"⚪ {momentum}")
+        st.caption("Flow momentum")
+    
+    with flow_detail_cols[2]:
+        unusual_activity = live_flow_metrics.get('unusual_activity', False)
+        if unusual_activity:
+            st.warning("🚨 UNUSUAL ACTIVITY")
+        else:
+            st.info("📊 Normal Flow")
+        st.caption("Activity level")
+    
+    with flow_detail_cols[3]:
+        timestamp = live_flow_metrics.get('timestamp', 'N/A')
+        if hasattr(timestamp, 'strftime'):
+            time_str = timestamp.strftime('%H:%M:%S')
+        else:
+            time_str = str(timestamp)
+        st.metric("🕐 Last Update", time_str)
+        st.caption("Live refresh")
+    
+    # === LIVE STREAMING OPTIONS ACTION ===
+    st.markdown("#### ⚡ LIVE STREAMING OPTIONS ACTION")
+    
+    # Get comprehensive options data for streaming view
+    live_options_data = real_live_scraper.get_live_options_chain(selected_symbol)
+    
+    if live_options_data:
+        # Top strikes action
+        top_strikes = live_options_data.get('top_strikes', [])
+        if hasattr(real_live_scraper, '_get_top_strikes_by_volume'):
+            top_strikes = real_live_scraper._get_top_strikes_by_volume(live_options_data)
+        
+        if top_strikes:
+            st.markdown("**🔥 HOTTEST STRIKES - Live Action Feed**")
+            
+            # Create scrollable action feed
+            action_container = st.container()
+            with action_container:
+                # Show top 10 most active strikes
+                for i, strike in enumerate(top_strikes[:10]):
+                    strike_price = strike['strike']
+                    volume = strike['volume']
+                    option_type = strike['type']
+                    dte = strike.get('dte', 'N/A')
+                    
+                    # Color coding for calls vs puts
+                    if option_type == 'CALL':
+                        color = "#00ff00"  # Green for calls
+                        emoji = "🟢"
+                        direction = "BULLISH"
+                    else:
+                        color = "#ff0000"  # Red for puts
+                        emoji = "🔴"
+                        direction = "BEARISH"
+                    
+                    # Create action item
+                    col1, col2, col3, col4 = st.columns([1, 2, 1, 1])
+                    
+                    with col1:
+                        st.markdown(f"<div style='color: {color}; font-weight: bold;'>{emoji} {option_type}</div>", unsafe_allow_html=True)
+                    
+                    with col2:
+                        st.markdown(f"**${strike_price}** strike")
+                        st.caption(f"{dte}DTE - {direction}")
+                    
+                    with col3:
+                        st.metric("Volume", f"{volume:,}")
+                        
+                    with col4:
+                        # Volume intensity indicator
+                        if volume > 1000:
+                            intensity = "🔥 HOT"
+                            st.error(intensity)
+                        elif volume > 500:
+                            intensity = "⚡ ACTIVE"
+                            st.warning(intensity)
+                        else:
+                            intensity = "📊 NORMAL"
+                            st.info(intensity)
+                    
+                    # Add separator
+                    if i < len(top_strikes[:10]) - 1:
+                        st.markdown("---")
+        
+        # Unusual activity alerts
+        unusual_activity = live_options_data.get('unusual_activity', [])
+        if unusual_activity:
+            st.markdown("**🚨 UNUSUAL ACTIVITY ALERTS**")
+            
+            for alert in unusual_activity[:5]:  # Top 5 unusual activities
+                strike = alert['strike']
+                option_type = alert['type']
+                volume = alert['volume']
+                reason = alert.get('reason', 'High volume detected')
+                
+                if option_type == 'CALL':
+                    st.success(f"🟢 CALL ${strike} - {volume:,} contracts - {reason}")
+                else:
+                    st.error(f"🔴 PUT ${strike} - {volume:,} contracts - {reason}")
+    
+    else:
+        st.warning("⚠️ Live options data temporarily unavailable - refreshing...")
     
     # === EXCLUSIVE NEWS SOURCES ===
     st.markdown("#### 📰 Exclusive News & Market Intelligence")
