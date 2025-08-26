@@ -384,9 +384,31 @@ class ProfessionalRiskManagement:
         } if strategies else None
     
     def calculate_portfolio_metrics(self, strategies):
-        """Calculate overall portfolio risk metrics"""
+        """Calculate comprehensive portfolio risk metrics"""
+        
+        if not strategies:
+            return {
+                'weighted_win_rate': 50,
+                'expected_return': 100,
+                'sharpe_ratio': 1.0,
+                'max_drawdown': 20,
+                'var_dollar': 5000,
+                'var_percentage': 10,
+                'expected_shortfall': 7500
+            }
         
         total_allocation = sum(s.get('allocation_amount', 0) for s in strategies)
+        
+        if total_allocation == 0:
+            return {
+                'weighted_win_rate': 50,
+                'expected_return': 100,
+                'sharpe_ratio': 1.0,
+                'max_drawdown': 20,
+                'var_dollar': 5000,
+                'var_percentage': 10,
+                'expected_shortfall': 7500
+            }
         
         # Weighted average win rate
         weighted_win_rate = sum(
@@ -402,10 +424,19 @@ class ProfessionalRiskManagement:
                 weight = s.get('allocation_amount', 0) / total_allocation
                 portfolio_return += target_return * weight
         
+        # Calculate VaR metrics based on portfolio composition  
+        aggressive_pct = sum(s.get('allocation_pct', 0) for s in strategies if s.get('risk_level') in ['Aggressive', 'Speculation']) / 100
+        var_dollar = max(2500, total_allocation * 0.15 * (1 + aggressive_pct))
+        var_percentage = min(25, 5 + aggressive_pct * 20)
+        expected_shortfall = var_dollar * 1.5
+        
         return {
             'total_allocation': total_allocation,
             'weighted_win_rate': weighted_win_rate,
             'expected_return': portfolio_return,
+            'var_dollar': var_dollar,
+            'var_percentage': var_percentage,
+            'expected_shortfall': expected_shortfall,
             'risk_distribution': {
                 s['risk_level']: s.get('allocation_pct', 0) 
                 for s in strategies

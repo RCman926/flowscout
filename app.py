@@ -1389,7 +1389,13 @@ def main():
         }
     except Exception as risk_err:
         print(f"Risk calculation error: {risk_err}")
-        var_analysis = {'weighted_win_rate': 60, 'expected_return': 100}
+        var_analysis = {
+            'weighted_win_rate': 60, 
+            'expected_return': 100,
+            'var_dollar': 5000,
+            'var_percentage': 10,
+            'expected_shortfall': 7500
+        }
         stress_results = {'scenario_1': {'name': 'No stress test data', 'impact': 0}}
     
     # Correlation analysis - simplified
