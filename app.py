@@ -383,6 +383,7 @@ def main():
         
         if top_strikes:
             st.markdown("**🔥 HOTTEST STRIKES - Live Action Feed**")
+            st.markdown("📋 **Legend:** 🟢 Green = CALLS (bullish bets) | 🔴 Red = PUTS (bearish bets)")
             
             # Create scrollable action feed
             action_container = st.container()
@@ -396,47 +397,51 @@ def main():
                     
                     # Color coding for calls vs puts
                     if option_type == 'CALL':
-                        color = "#00ff00"  # Green for calls
+                        type_color = "success"  # Green background for calls
                         emoji = "🟢"
                         direction = "BULLISH"
+                        bg_color = "#e8f5e8"  # Light green background
                     else:
-                        color = "#ff0000"  # Red for puts
+                        type_color = "error"  # Red background for puts
                         emoji = "🔴"
                         direction = "BEARISH"
+                        bg_color = "#ffe8e8"  # Light red background
                     
-                    # Create action item
-                    col1, col2, col3, col4 = st.columns([1, 2, 1, 1])
-                    
-                    with col1:
-                        st.markdown(f"<div style='color: {color}; font-weight: bold;'>{emoji} {option_type}</div>", unsafe_allow_html=True)
-                    
-                    with col2:
-                        st.markdown(f"**${strike_price}** strike")
-                        st.caption(f"{dte}DTE - {direction}")
-                    
-                    with col3:
-                        st.metric("Volume", f"{volume:,}")
+                    # Create action item with clear call/put distinction
+                    action_container = st.container()
+                    with action_container:
+                        st.markdown(f"""
+                        <div style='background-color: {bg_color}; padding: 10px; border-radius: 5px; margin: 5px 0;'>
+                            <div style='display: flex; justify-content: space-between; align-items: center;'>
+                                <div>
+                                    <strong>{emoji} {option_type} ${strike_price}</strong><br>
+                                    <small>{dte}DTE • {direction}</small>
+                                </div>
+                                <div style='text-align: right;'>
+                                    <strong>{volume:,} contracts</strong><br>
+                                    <small>Volume Activity</small>
+                                </div>
+                            </div>
+                        </div>
+                        """, unsafe_allow_html=True)
                         
-                    with col4:
-                        # Volume intensity indicator
+                        # Volume intensity indicator - separate from call/put type
                         if volume > 1000:
-                            intensity = "🔥 HOT"
-                            st.error(intensity)
+                            st.warning("🔥 VERY HIGH VOLUME - Major institutional activity likely")
                         elif volume > 500:
-                            intensity = "⚡ ACTIVE"
-                            st.warning(intensity)
+                            st.info("⚡ HIGH VOLUME - Significant interest detected")
                         else:
-                            intensity = "📊 NORMAL"
-                            st.info(intensity)
+                            st.caption("📊 Normal volume activity")
                     
                     # Add separator
                     if i < len(top_strikes[:10]) - 1:
                         st.markdown("---")
         
-        # Unusual activity alerts
+        # Unusual activity alerts with clear explanation
         unusual_activity = live_options_data.get('unusual_activity', [])
         if unusual_activity:
             st.markdown("**🚨 UNUSUAL ACTIVITY ALERTS**")
+            st.markdown("⚠️ **These are unusually high volume spikes (2+ standard deviations above normal)**")
             
             for alert in unusual_activity[:5]:  # Top 5 unusual activities
                 strike = alert['strike']
@@ -445,9 +450,21 @@ def main():
                 reason = alert.get('reason', 'High volume detected')
                 
                 if option_type == 'CALL':
-                    st.success(f"🟢 CALL ${strike} - {volume:,} contracts - {reason}")
+                    st.markdown(f"""
+                    <div style='background-color: #e8f5e8; padding: 10px; border-left: 4px solid #28a745; margin: 5px 0;'>
+                        <strong>🟢 BULLISH BET: CALL ${strike}</strong><br>
+                        {volume:,} contracts • {reason}<br>
+                        <em>Someone betting price goes UP above ${strike}</em>
+                    </div>
+                    """, unsafe_allow_html=True)
                 else:
-                    st.error(f"🔴 PUT ${strike} - {volume:,} contracts - {reason}")
+                    st.markdown(f"""
+                    <div style='background-color: #ffe8e8; padding: 10px; border-left: 4px solid #dc3545; margin: 5px 0;'>
+                        <strong>🔴 BEARISH BET: PUT ${strike}</strong><br>
+                        {volume:,} contracts • {reason}<br>
+                        <em>Someone betting price goes DOWN below ${strike}</em>
+                    </div>
+                    """, unsafe_allow_html=True)
     
     else:
         st.warning("⚠️ Live options data temporarily unavailable - refreshing...")
