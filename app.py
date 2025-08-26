@@ -598,91 +598,59 @@ if dte_0_data:
 else:
     st.caption("⚠️ No 0DTE data available")
 
-# === REAL NEWS & EARNINGS ===
-st.markdown("#### 📰 Real Market News")
+# === MARKET ALERTS ===
+st.markdown("#### 📰 Market Updates")
 
-# Import and initialize real news engine
-from real_news_engine import RealNewsEngine
-news_engine = RealNewsEngine()
+# Get real market data for alerts instead of complex news system
+market_alerts = []
 
-# Get real news for selected symbol
-@st.cache_data(ttl=600)  # Cache for 10 minutes
-def get_symbol_news(symbol):
-    import asyncio
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    try:
-        return loop.run_until_complete(news_engine.get_real_market_news(symbol))
-    finally:
-        loop.close()
+# Price movement alerts
+price_change = market_data.get('change_pct', 0)
+if abs(price_change) > 2:
+    direction = "UP" if price_change > 0 else "DOWN"
+    market_alerts.append(f"🚨 {selected_symbol} moved {price_change:+.1f}% today")
 
-news_data = get_symbol_news(selected_symbol)
+# Volume alerts
+volume = market_data.get('volume', 0)
+if volume > 1000000:  # High volume threshold
+    market_alerts.append(f"📊 High volume: {volume/1e6:.1f}M shares traded")
 
-news_cols = st.columns([1, 1])
+# Options flow alerts
+if flow_data.get('total_volume', 0) > 50000:
+    market_alerts.append(f"⚡ Unusual options activity: {flow_data['total_volume']:,} contracts")
 
-with news_cols[0]:
-    st.markdown("**📈 Live News**")
-    
-    # Display top 3 real news items
-    for i, article in enumerate(news_data['news_items'][:3]):
-        news_type_icon = {
-            'earnings': '💰',
-            'analyst': '📊', 
-            'ma': '🤝',
-            'regulatory': '⚖️',
-            'management': '👔',
-            'general': '📰'
-        }.get(article['type'], '📰')
-        
-        st.info(f"{news_type_icon} {article['title'][:60]}...")
-        st.caption(f"{article['publisher']} • {article['publish_time'].strftime('%H:%M')}")
-
-with news_cols[1]:
-    st.markdown("**📊 Earnings & Ratings**")
-    
-    # Earnings information
-    earnings = news_data['earnings_info']
-    if earnings.get('next_earnings_date'):
-        next_earnings = datetime.strptime(earnings['next_earnings_date'], '%Y-%m-%d')
-        days_until = (next_earnings - datetime.now()).days
-        if days_until <= 7:
-            st.warning(f"📅 Earnings in {days_until} days")
-        else:
-            st.info(f"📅 Next earnings: {earnings['next_earnings_date']}")
-        
-        if earnings.get('eps_estimate'):
-            st.caption(f"EPS Est: ${earnings['eps_estimate']:.2f}")
-    
-    # Analyst ratings
-    analyst = news_data['analyst_info']
-    if analyst.get('upside_potential'):
-        upside = analyst['upside_potential']
-        if upside > 20:
-            st.success(f"🎯 {upside:.0f}% upside potential")
-        elif upside > 0:
-            st.info(f"🎯 {upside:.0f}% upside potential")
-        else:
-            st.error(f"🎯 {upside:.0f}% downside risk")
-    
-    # Recommendation summary
-    if analyst.get('recommendation_trend'):
-        trend_icons = {
-            'very_bullish': '🚀',
-            'bullish': '📈',
-            'neutral': '➡️',
-            'bearish': '📉',
-            'very_bearish': '💥'
-        }
-        icon = trend_icons.get(analyst['recommendation_trend'], '➡️')
-        st.caption(f"{icon} Analysts: {analyst['recommendation_trend'].replace('_', ' ').title()}")
-
-# Trading alerts based on real data
+# Signal alerts
 if confidence > 70:
-    alert_color = "success" if "BUY" in signal else "error"
-    if alert_color == "success":
-        st.success(f"🎯 {signal} {confidence:.0f}%")
+    signal_emoji = "📈" if "BUY" in signal else "📉"
+    market_alerts.append(f"{signal_emoji} {signal} signal at {confidence:.0f}% confidence")
+
+# Display alerts
+alert_cols = st.columns([1, 1])
+
+with alert_cols[0]:
+    st.markdown("**🔔 Live Alerts**")
+    if market_alerts:
+        for alert in market_alerts[:3]:
+            st.info(alert)
     else:
-        st.error(f"🎯 {signal} {confidence:.0f}%")
+        st.info("📊 Normal market conditions")
+
+with alert_cols[1]:
+    st.markdown("**📈 Key Stats**")
+    
+    # Key market stats
+    st.metric("Price", f"${market_data.get('price', 0):.2f}", 
+             f"{price_change:+.2f}%")
+    
+    # Volume comparison
+    if volume > 0:
+        st.caption(f"Volume: {volume/1e6:.1f}M shares")
+    
+    # Market status
+    now = datetime.now()
+    market_hours = 9 <= now.hour < 16 and now.weekday() < 5
+    status = "🟢 Market Open" if market_hours else "🔴 Market Closed"
+    st.caption(status)
 
 st.markdown("---")
 

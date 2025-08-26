@@ -2,6 +2,7 @@ import asyncio
 import aiohttp
 import yfinance as yf
 from datetime import datetime, timedelta
+import time
 import re
 import warnings
 warnings.filterwarnings('ignore')
@@ -30,17 +31,42 @@ class RealNewsEngine:
             news_items = []
             try:
                 news = ticker.news
-                for article in news[:10]:  # Get top 10 news items
-                    news_items.append({
-                        'title': article.get('title', 'No Title'),
-                        'publisher': article.get('publisher', 'Unknown'),
-                        'link': article.get('link', ''),
-                        'publish_time': datetime.fromtimestamp(article.get('providerPublishTime', 0)),
-                        'type': self._classify_news_type(article.get('title', '')),
-                        'summary': article.get('summary', '')[:200] + '...' if article.get('summary', '') else ''
-                    })
+                if news and len(news) > 0:
+                    for article in news[:5]:  # Get top 5 news items
+                        title = article.get('title', '')
+                        if title:  # Only add if title exists
+                            publish_time = datetime.fromtimestamp(article.get('providerPublishTime', time.time()))
+                            news_items.append({
+                                'title': title,
+                                'publisher': article.get('publisher', 'Yahoo Finance'),
+                                'link': article.get('link', ''),
+                                'publish_time': publish_time,
+                                'type': self._classify_news_type(title),
+                                'summary': article.get('summary', '')[:150] + '...' if article.get('summary', '') else ''
+                            })
+                
+                # If no news found, add fallback message
+                if not news_items:
+                    news_items = [{
+                        'title': f'No recent news available for {symbol}',
+                        'publisher': 'Yahoo Finance',
+                        'link': '',
+                        'publish_time': datetime.now(),
+                        'type': 'general',
+                        'summary': 'Check back later for market updates'
+                    }]
+                    
             except Exception as e:
                 print(f"Error fetching news for {symbol}: {e}")
+                # Add error fallback
+                news_items = [{
+                    'title': f'News temporarily unavailable for {symbol}',
+                    'publisher': 'System',
+                    'link': '',
+                    'publish_time': datetime.now(),
+                    'type': 'general', 
+                    'summary': 'News service temporarily down'
+                }]
                 
             # Get earnings calendar
             earnings_info = await self._get_earnings_info(symbol)
@@ -64,7 +90,14 @@ class RealNewsEngine:
             print(f"Real news error for {symbol}: {e}")
             return {
                 'symbol': symbol,
-                'news_items': [],
+                'news_items': [{
+                    'title': f'Unable to load news for {symbol}',
+                    'publisher': 'System',
+                    'link': '',
+                    'publish_time': datetime.now(),
+                    'type': 'general',
+                    'summary': 'Please try again later'
+                }],
                 'earnings_info': {},
                 'analyst_info': {},
                 'last_updated': datetime.now()
@@ -74,27 +107,45 @@ class RealNewsEngine:
         """Get real earnings information"""
         try:
             ticker = yf.Ticker(symbol)
-            
-            # Get earnings calendar
-            calendar = ticker.calendar
             earnings_data = {}
             
-            if calendar is not None and not calendar.empty:
-                earnings_data = {
-                    'next_earnings_date': calendar.index[0].strftime('%Y-%m-%d') if len(calendar) > 0 else None,
-                    'eps_estimate': float(calendar.iloc[0]['EPS Estimate']) if 'EPS Estimate' in calendar.columns and len(calendar) > 0 else None,
-                    'revenue_estimate': float(calendar.iloc[0]['Revenue Estimate']) if 'Revenue Estimate' in calendar.columns and len(calendar) > 0 else None
-                }
+            # Try to get earnings calendar
+            try:
+                calendar = ticker.calendar
+                if calendar is not None and hasattr(calendar, 'empty') and not calendar.empty:
+                    if len(calendar.index) > 0:
+                        earnings_data['next_earnings_date'] = calendar.index[0].strftime('%Y-%m-%d')
+                    if 'EPS Estimate' in calendar.columns and len(calendar) > 0:
+                        earnings_data['eps_estimate'] = float(calendar.iloc[0]['EPS Estimate'])
+                    if 'Revenue Estimate' in calendar.columns and len(calendar) > 0:
+                        earnings_data['revenue_estimate'] = float(calendar.iloc[0]['Revenue Estimate'])
+            except Exception:
+                pass
             
-            # Get recent earnings
-            earnings_history = ticker.quarterly_earnings
-            if earnings_history is not None and not earnings_history.empty:
-                latest_earnings = earnings_history.iloc[0]
-                earnings_data.update({
-                    'latest_earnings': latest_earnings['Earnings'].item() if 'Earnings' in latest_earnings else None,
-                    'latest_revenue': latest_earnings['Revenue'].item() if 'Revenue' in latest_earnings else None,
-                    'earnings_growth': self._calculate_earnings_growth(earnings_history)
-                })
+            # Try to get recent earnings
+            try:
+                earnings_history = ticker.quarterly_earnings
+                if earnings_history is not None and hasattr(earnings_history, 'empty') and not earnings_history.empty:
+                    latest_earnings = earnings_history.iloc[0]
+                    if 'Earnings' in latest_earnings:
+                        earnings_data['latest_earnings'] = latest_earnings['Earnings'].item()
+                    if 'Revenue' in latest_earnings:
+                        earnings_data['latest_revenue'] = latest_earnings['Revenue'].item()
+                    earnings_data['earnings_growth'] = self._calculate_earnings_growth(earnings_history)
+            except Exception:
+                pass
+            
+            # Fallback: try to get basic info from ticker info
+            if not earnings_data:
+                try:
+                    info = ticker.info
+                    if 'earningsDate' in info and info['earningsDate']:
+                        next_date = info['earningsDate'][0] if isinstance(info['earningsDate'], list) else info['earningsDate']
+                        earnings_data['next_earnings_date'] = datetime.fromtimestamp(next_date).strftime('%Y-%m-%d')
+                    if 'forwardEps' in info:
+                        earnings_data['eps_estimate'] = info['forwardEps']
+                except Exception:
+                    pass
             
             return earnings_data
             
