@@ -40,52 +40,54 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Professional institutional styling with improved colors
+# Compact professional styling - smaller boxes and text
 st.markdown("""
 <style>
-    .main > div { padding-top: 0.5rem; }
+    .main > div { padding-top: 0.2rem; }
     .stMetric { 
         background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%) !important; 
-        padding: 0.8rem !important; 
-        border-radius: 8px !important; 
-        margin: 0.3rem 0 !important; 
+        padding: 0.3rem !important; 
+        border-radius: 4px !important; 
+        margin: 0.1rem 0 !important; 
         border: 1px solid #3b82f6 !important; 
         color: white !important;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1) !important;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
     }
     .stMetric [data-testid="metric-container"] {
         background-color: transparent !important;
         color: white !important;
-        padding: 0.5rem !important;
-        font-size: 0.9rem !important;
+        padding: 0.2rem !important;
+        font-size: 0.7rem !important;
     }
     .stMetric [data-testid="metric-value"] {
-        font-size: 1.8rem !important;
-        font-weight: 700 !important;
+        font-size: 1.1rem !important;
+        font-weight: 600 !important;
         color: #60a5fa !important;
     }
     .stMetric [data-testid="metric-delta"] {
-        font-size: 1rem !important;
-        font-weight: 600 !important;
+        font-size: 0.7rem !important;
+        font-weight: 500 !important;
     }
-    .block-container { padding-top: 1rem !important; padding-bottom: 1rem !important; }
-    h1, h2, h3 { color: #1e40af !important; font-weight: 700 !important; margin-bottom: 0.5rem !important; }
-    h1 { font-size: 1.6rem !important; }
-    h2 { font-size: 1.3rem !important; }
-    h3 { font-size: 1.1rem !important; }
+    .block-container { padding-top: 0.5rem !important; padding-bottom: 0.5rem !important; }
+    h1, h2, h3 { color: #1e40af !important; font-weight: 600 !important; margin-bottom: 0.2rem !important; }
+    h1 { font-size: 1.2rem !important; }
+    h2 { font-size: 1.0rem !important; }
+    h3 { font-size: 0.9rem !important; }
     .stSelectbox > div > div { background: linear-gradient(135deg, #1e3a8a, #1e40af) !important; }
     .stButton > button {
         background: linear-gradient(135deg, #059669 0%, #10b981 100%) !important;
         color: white !important;
         border: none !important;
-        border-radius: 6px !important;
-        font-weight: 600 !important;
-        transition: all 0.3s ease !important;
+        border-radius: 4px !important;
+        font-weight: 500 !important;
+        font-size: 0.7rem !important;
+        padding: 0.2rem 0.4rem !important;
+        transition: all 0.2s ease !important;
     }
     .stButton > button:hover {
         background: linear-gradient(135deg, #047857 0%, #059669 100%) !important;
         transform: translateY(-1px) !important;
-        box-shadow: 0 6px 12px rgba(0,0,0,0.15) !important;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1) !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -472,57 +474,33 @@ if not flow_data or not market_data:
 # === MAIN TRADING DASHBOARD ===
 st.markdown("---")
 
-# Top metrics row with fear index
-col1, col2, col3, col4, col5, col6, fear_col = st.columns(7)
+# Compact top metrics row
+main_cols = st.columns([2, 1, 1, 1, 1])
 
-with col1:
+with main_cols[0]:
     price_color = "inverse" if market_data.get('change', 0) < 0 else "normal"
-    st.metric(f"{selected_symbol} PRICE", f"${market_data.get('price', 0):.2f}", 
-             f"{market_data.get('change', 0):+.2f} ({market_data.get('change_pct', 0):+.2f}%)",
-             delta_color=price_color)
+    st.metric(f"{selected_symbol}", f"${market_data.get('price', 0):.2f}", 
+             f"{market_data.get('change_pct', 0):+.2f}%", delta_color=price_color)
 
-with col2:
-    # Signal color based on signal type, not confidence
-    if "BUY" in signal:
-        signal_icon = "🟢"
-    elif "SELL" in signal:
-        signal_icon = "🔴"
-    else:  # NEUTRAL
-        signal_icon = "⚫"  # Gray circle for neutral
-    st.metric("SIGNAL", f"{signal_icon} {signal}", f"{confidence:.0f}% conf")
+with main_cols[1]:
+    signal_icon = "🟢" if "BUY" in signal else "🔴" if "SELL" in signal else "⚫"
+    st.metric("Signal", f"{signal_icon} {signal.split()[0]}", f"{confidence:.0f}%")
 
-with col3:
-    flow_color = "🟢" if "BULLISH" in flow_data.get('flow_signal', '') else "🔴" if "BEARISH" in flow_data.get('flow_signal', '') else "⚪"
-    st.metric("FLOW SIGNAL", f"{flow_color} {flow_data.get('flow_signal', 'NEUTRAL')}", f"{flow_data.get('flow_confidence', 50):.0f}% conf")
+with main_cols[2]:
+    flow_icon = "🟢" if "BULLISH" in flow_data.get('flow_signal', '') else "🔴" if "BEARISH" in flow_data.get('flow_signal', '') else "⚪"
+    st.metric("Flow", f"{flow_icon} {flow_data.get('flow_signal', 'NEUTRAL')[:4]}", f"{flow_data.get('flow_confidence', 50):.0f}%")
 
-with col4:
+with main_cols[3]:
     total_premium = flow_data.get('total_call_premium', 0) + flow_data.get('total_put_premium', 0)
-    st.metric("TOTAL PREMIUM", f"${total_premium/1e6:.1f}M", 
-             f"{flow_data.get('total_volume', 100):,} contracts")
+    st.metric("Premium", f"${total_premium/1e6:.1f}M", f"{flow_data.get('total_volume', 100)//1000}K vol")
 
-with col5:
-    premium_ratio = flow_data.get('total_call_premium', 0) / max(1, flow_data.get('total_put_premium', 1))
-    bias = "CALL" if premium_ratio > 1.2 else "PUT" if premium_ratio < 0.8 else "NEUTRAL"
-    st.metric("PREMIUM BIAS", bias, f"{premium_ratio:.2f} ratio")
-
-with col6:
-    # Market timing
-    now = datetime.now()
-    market_close = now.replace(hour=16, minute=0, second=0, microsecond=0)
-    time_left = market_close - now
-    hours_left = max(0, time_left.total_seconds() / 3600) if time_left.total_seconds() > 0 else 0
-    status = "🔥 ACTIVE" if hours_left > 1 else "⚠️ FINAL HOUR" if hours_left > 0 else "🔴 CLOSED"
-    st.metric("MARKET STATUS", status, f"{hours_left:.1f}h left")
-
-with fear_col:
-    # Get fear index from session state or calculate default
+with main_cols[4]:
     vix_level = st.session_state.get('fear_index', 19.2)
-    fear_level = "HIGH" if vix_level > 25 else "MED" if vix_level > 20 else "LOW"
     fear_icon = "😱" if vix_level > 25 else "😐" if vix_level > 20 else "😎"
-    st.metric("FEAR INDEX", f"{fear_icon} {vix_level:.1f}", fear_level)
+    st.metric("Fear", f"{fear_icon} {vix_level:.0f}", "VIX")
 
-# === 0DTE FLOW ANALYSIS ===
-st.markdown("### 🔥 0DTE LIVE FLOW")
+# === 0DTE SIGNAL BOXES ===
+st.markdown("#### 🔥 0DTE SIGNALS")
 
 # Find 0DTE data from flow analysis
 dte_0_data = None
@@ -535,167 +513,64 @@ if dte_0_data:
     # Extract 0DTE call and put data
     dte_call_volume = dte_0_data['call_volume']
     dte_put_volume = dte_0_data['put_volume']
+    call_put_ratio = dte_call_volume / max(1, dte_put_volume)
     
-    # Create simple left-right bar chart
-    fig = go.Figure()
+    # Create compact color-coded clickable boxes
+    signal_cols = st.columns([1, 1, 1])
     
-    # Calls on left (positive values)
-    fig.add_trace(go.Bar(
-        x=['CALLS'],
-        y=[dte_call_volume],
-        marker_color='#10b981',
-        text=f"{dte_call_volume:,} contracts",
-        textposition='auto',
-        name='Calls',
-        width=0.4
-    ))
+    with signal_cols[0]:
+        # Call signal box
+        call_strength = "STRONG" if call_put_ratio > 2.0 else "MODERATE" if call_put_ratio > 1.2 else "WEAK"
+        call_color = "#10b981" if call_strength == "STRONG" else "#059669" if call_strength == "MODERATE" else "#374151"
+        if st.button(f"📈 CALLS {call_strength}", key="call_signal", use_container_width=True):
+            st.session_state.selected_signal = "CALL"
+        st.caption(f"{dte_call_volume:,} vol")
     
-    # Puts on right (positive values)  
-    fig.add_trace(go.Bar(
-        x=['PUTS'],
-        y=[dte_put_volume],
-        marker_color='#dc2626',
-        text=f"{dte_put_volume:,} contracts",
-        textposition='auto',
-        name='Puts',
-        width=0.4
-    ))
+    with signal_cols[1]:
+        # Put signal box  
+        put_ratio = 1/call_put_ratio if call_put_ratio > 0 else 1
+        put_strength = "STRONG" if put_ratio > 2.0 else "MODERATE" if put_ratio > 1.2 else "WEAK"
+        put_color = "#dc2626" if put_strength == "STRONG" else "#991b1b" if put_strength == "MODERATE" else "#374151"
+        if st.button(f"📉 PUTS {put_strength}", key="put_signal", use_container_width=True):
+            st.session_state.selected_signal = "PUT"
+        st.caption(f"{dte_put_volume:,} vol")
     
-    fig.update_layout(
-        height=200,
-        title=f"{selected_symbol} 0DTE Flow - {dte_call_volume:,} Calls vs {dte_put_volume:,} Puts",
-        showlegend=False,
-        paper_bgcolor='rgba(0,0,0,0)',
-        plot_bgcolor='rgba(0,0,0,0)',
-        margin=dict(t=60, b=20, l=20, r=20),
-        font=dict(color='white', size=12)
-    )
-    
-    fig.update_yaxes(title_text="Volume (Contracts)")
-    fig.update_xaxes(categoryorder='array', categoryarray=['CALLS', 'PUTS'])
-    
-    st.plotly_chart(fig, use_container_width=True)
-    
-    # Show call/put ratio below chart
-    if dte_put_volume > 0:
-        call_put_ratio = dte_call_volume / dte_put_volume
-        ratio_color = "#10b981" if call_put_ratio > 1 else "#dc2626"
-        bias_text = "CALL HEAVY" if call_put_ratio > 1.2 else "PUT HEAVY" if call_put_ratio < 0.8 else "BALANCED"
+    with signal_cols[2]:
+        # Combined signal
+        overall_bias = "CALLS" if call_put_ratio > 1.5 else "PUTS" if call_put_ratio < 0.67 else "NEUTRAL"
+        overall_color = "#10b981" if overall_bias == "CALLS" else "#dc2626" if overall_bias == "PUTS" else "#6b7280"
+        if st.button(f"⚖️ {overall_bias}", key="overall_signal", use_container_width=True):
+            st.session_state.selected_signal = overall_bias
+        st.caption(f"{call_put_ratio:.1f} ratio")
         
-        st.markdown(f"""
-        <div style="text-align: center; background: #1e293b; padding: 0.5rem; border-radius: 4px; margin: 0.5rem 0;">
-            <span style="color: {ratio_color}; font-weight: bold; font-size: 1rem;">
-                {bias_text} • {call_put_ratio:.2f} Call/Put Ratio
-            </span>
-        </div>
-        """, unsafe_allow_html=True)
 else:
-    st.warning("⚠️ No 0DTE options flow data available for this symbol")
+    st.caption("⚠️ No 0DTE data available")
 
-# === MARKET CATALYST WATCH ===
-st.markdown("### 📰 MARKET CATALYSTS")
+# === COMPACT ALERTS ===
+st.markdown("#### 📰 Alerts")
 
-catalyst_col1, catalyst_col2 = st.columns([3, 2])
+alert_cols = st.columns([2, 2])
 
-with catalyst_col1:
-    # Accurate upcoming events based on real economic calendar
-    upcoming_events = [
-        {
-            'date': 'Sep 16-17',
-            'event': 'FOMC Meeting',
-            'impact': 'HIGH',
-            'color': '#dc2626'
-        },
-        {
-            'date': 'Sep 6',
-            'event': 'Jobs Report (NFP)',
-            'impact': 'HIGH',
-            'color': '#dc2626'
-        },
-        {
-            'date': 'Next Week',
-            'event': 'CPI Data Release',
-            'impact': 'MEDIUM',
-            'color': '#f59e0b'
-        },
-        {
-            'date': 'This Week',
-            'event': 'PMI Flash Data',
-            'impact': 'MEDIUM',
-            'color': '#f59e0b'
-        }
-    ]
-    
-    st.markdown('<div style="display: flex; gap: 0.4rem; flex-wrap: wrap;">', unsafe_allow_html=True)
-    for event in upcoming_events:
-        st.markdown(f"""
-        <div style="background: #1e293b; padding: 0.3rem; border-left: 2px solid {event['color']}; border-radius: 3px; flex: 1; min-width: 120px;">
-            <div style="color: white; font-size: 0.65rem;">
-                <div style="font-weight: bold; color: {event['color']}; margin-bottom: 0.1rem;">{event['date']}</div>
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <span>{event['event']}</span>
-                    <span style="background: {event['color']}; padding: 0.05rem 0.2rem; border-radius: 2px; font-size: 0.55rem; margin-left: 0.2rem;">{event['impact']}</span>
-                </div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-    st.markdown('</div>', unsafe_allow_html=True)
+with alert_cols[0]:
+    # Key upcoming events - compact
+    st.info("📅 FOMC Sep 16-17")
+    st.caption("Jobs Report Sep 6")
 
-with catalyst_col2:
-    st.markdown("**⚡ LIVE ALERTS**")
-    
-    # Generate real trading alerts based on current data
-    live_alerts = []
-    
-    # Volume alert
-    if flow_data.get('total_volume', 0) > 50000:
-        live_alerts.append({
-            'text': f'{selected_symbol} volume spike: {flow_data.get("total_volume", 0):,}', 
-            'color': '#dc2626'
-        })
-    
-    # High confidence signal alert
+with alert_cols[1]:
+    # Live trading alerts - compact
     if confidence > 70:
-        live_alerts.append({
-            'text': f'{signal} signal: {confidence:.0f}% confidence', 
-            'color': '#10b981' if 'BUY' in signal else '#dc2626'
-        })
-    
-    # Flow imbalance alert
-    total_calls = sum([exp.get('call_volume', 0) for exp in flow_data.get('analysis', [])]) if flow_data.get('analysis') else 0
-    total_puts = sum([exp.get('put_volume', 0) for exp in flow_data.get('analysis', [])]) if flow_data.get('analysis') else 0
-    if total_calls > 0 and total_puts > 0:
-        call_put_ratio = total_calls / total_puts
-        if call_put_ratio > 2.0:
-            live_alerts.append({
-                'text': f'Heavy call bias: {call_put_ratio:.1f}x calls/puts', 
-                'color': '#10b981'
-            })
-        elif call_put_ratio < 0.5:
-            live_alerts.append({
-                'text': f'Heavy put bias: {1/call_put_ratio:.1f}x puts/calls', 
-                'color': '#dc2626'
-            })
-    
-    # If no significant alerts, show neutral status
-    if not live_alerts:
-        live_alerts = [
-            {'text': 'Normal trading conditions', 'color': '#6b7280'},
-            {'text': f'{selected_symbol} flow within range', 'color': '#6b7280'}
-        ]
-    
-    # Show only top 3 most important alerts
-    for alert in live_alerts[:3]:
-        st.markdown(f"""
-        <div style="background: #374151; padding: 0.3rem; margin: 0.2rem 0; border-radius: 3px;">
-            <div style="color: {alert['color']}; font-size: 0.7rem;">● {alert['text']}</div>
-        </div>
-        """, unsafe_allow_html=True)
+        alert_color = "success" if "BUY" in signal else "error"
+        if alert_color == "success":
+            st.success(f"{signal} {confidence:.0f}%")
+        else:
+            st.error(f"{signal} {confidence:.0f}%")
+    else:
+        st.info("Normal conditions")
 
 st.markdown("---")
 
-# === INSTITUTIONAL PRICE TARGETS ===
-st.markdown("### 🎯 BUY/SELL PRICE TARGETS")
+# === PRICE TARGETS ===
+st.markdown("#### 🎯 Price Targets")
 
 # Calculate key technical levels
 current_price = market_data.get('price', 587.45)
@@ -720,34 +595,14 @@ except (TypeError, KeyError, AttributeError):
 target_col1, target_col2, target_col3, target_col4 = st.columns(4)
 
 with target_col1:
-    st.markdown(f"""
-    <div style="background: #dc2626; padding: 0.6rem; border-radius: 6px; color: white; border: 2px solid #fbbf24;">
-        <h5 style="margin: 0; color: white; font-size: 0.9rem; text-align: center;">🔻 SELL TARGETS</h5>
-        <div style="margin: 0.3rem 0; font-size: 0.8rem;">
-            <div><strong>R2:</strong> ${resistance_2:.2f} (+2.5%)</div>
-            <div><strong>R1:</strong> ${resistance_1:.2f} (+1.5%)</div>
-            <div><strong>Day High:</strong> ${day_high:.2f}</div>
-        </div>
-        <div style="background: rgba(255,255,255,0.1); padding: 0.2rem; border-radius: 3px; margin-top: 0.3rem;">
-            <div style="font-size: 0.7rem; text-align: center;">Exit above ${resistance_1:.2f}</div>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+    st.error("🔻 SELL TARGETS")
+    st.metric("R1", f"${resistance_1:.2f}", "+1.5%")
+    st.caption(f"R2: ${resistance_2:.2f}")
 
 with target_col2:
-    st.markdown(f"""
-    <div style="background: #10b981; padding: 0.6rem; border-radius: 6px; color: white; border: 2px solid #fbbf24;">
-        <h5 style="margin: 0; color: white; font-size: 0.9rem; text-align: center;">🔺 BUY TARGETS</h5>
-        <div style="margin: 0.3rem 0; font-size: 0.8rem;">
-            <div><strong>Day Low:</strong> ${day_low:.2f}</div>
-            <div><strong>S1:</strong> ${support_1:.2f} (-1.5%)</div>
-            <div><strong>S2:</strong> ${support_2:.2f} (-2.5%)</div>
-        </div>
-        <div style="background: rgba(255,255,255,0.1); padding: 0.2rem; border-radius: 3px; margin-top: 0.3rem;">
-            <div style="font-size: 0.7rem; text-align: center;">Enter below ${support_1:.2f}</div>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+    st.success("🔺 BUY TARGETS") 
+    st.metric("S1", f"${support_1:.2f}", "-1.5%")
+    st.caption(f"S2: ${support_2:.2f}")
 
 with target_col3:
     # Calculate detailed call execution plan with error handling
@@ -783,38 +638,37 @@ with target_col3:
         target_2 = current_price + (current_price * 0.010)  # 1.0% move for 100% premium profit  
         target_3 = current_price + (current_price * 0.020)  # 2.0% move for 200% premium profit
         
-        st.markdown(f"""
-        <div style="background: #059669; padding: 0.6rem; border-radius: 6px; color: white;">
-            <h5 style="margin: 0; color: white; font-size: 0.8rem; text-align: center;">📞 CALL EXECUTION PLAN</h5>
-            
-            <div style="background: rgba(255,255,255,0.1); padding: 0.3rem; border-radius: 3px; margin: 0.3rem 0; font-size: 0.7rem;">
-                <div style="display: flex; justify-content: space-between;"><span>Strike:</span><span>${call_strike:.0f}</span></div>
-                <div style="display: flex; justify-content: space-between;"><span>Premium:</span><span>${call_premium:.2f}</span></div>
-                <div style="display: flex; justify-content: space-between;"><span>Volume:</span><span>{call_volume:,}</span></div>
-            </div>
-            
-            <div style="background: rgba(16,185,129,0.2); padding: 0.3rem; border-radius: 3px; margin: 0.3rem 0; font-size: 0.7rem;">
-                <div style="font-weight: bold; margin-bottom: 0.2rem;">ENTRY STRATEGY:</div>
-                <div style="display: flex; justify-content: space-between;"><span>Bid @ $</span><span>{bid_price:.2f}</span></div>
-                <div style="display: flex; justify-content: space-between;"><span>Ask @ $</span><span>{ask_price:.2f}</span></div>
-                <div style="display: flex; justify-content: space-between;"><span>Stop @ $</span><span>{stop_loss:.2f}</span></div>
-            </div>
-            
-            <div style="background: rgba(16,185,129,0.3); padding: 0.3rem; border-radius: 3px; margin: 0.3rem 0; font-size: 0.7rem;">
-                <div style="font-weight: bold; margin-bottom: 0.2rem;">PROFIT TARGETS:</div>
-                <div style="display: flex; justify-content: space-between;"><span>T1 (25%):</span><span>${target_1:.2f}</span></div>
-                <div style="display: flex; justify-content: space-between;"><span>T2 (50%):</span><span>${target_2:.2f}</span></div>
-                <div style="display: flex; justify-content: space-between;"><span>T3 (25%):</span><span>${target_3:.2f}</span></div>
-                <div style="text-align: center; margin-top: 0.3rem; font-weight: bold;">Breakeven: ${call_breakeven:.2f}</div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
+        # Display using native Streamlit components
+        st.success("📞 CALL EXECUTION PLAN")
+        
+        # Basic metrics
+        col_a, col_b = st.columns(2)
+        with col_a:
+            st.metric("Strike", f"${call_strike:.0f}", f"{call_volume:,} vol")
+        with col_b:
+            st.metric("Premium", f"${call_premium:.2f}", f"${call_breakeven:.2f} BE")
+        
+        # Entry strategy
+        st.info("Entry Strategy")
+        entry_cols = st.columns(3)
+        with entry_cols[0]:
+            st.caption(f"Bid: ${bid_price:.2f}")
+        with entry_cols[1]:
+            st.caption(f"Ask: ${ask_price:.2f}")
+        with entry_cols[2]:
+            st.caption(f"Stop: ${stop_loss:.2f}")
+        
+        # Profit targets
+        st.warning("Profit Targets")
+        target_cols = st.columns(3)
+        with target_cols[0]:
+            st.caption(f"T1: ${target_1:.2f}")
+        with target_cols[1]:
+            st.caption(f"T2: ${target_2:.2f}")
+        with target_cols[2]:
+            st.caption(f"T3: ${target_3:.2f}")
     else:
-        st.markdown("""
-        <div style="background: #374151; padding: 0.6rem; border-radius: 6px; color: white;">
-            <div style="text-align: center; font-size: 0.8rem;">No call flow data</div>
-        </div>
-        """, unsafe_allow_html=True)
+        st.error("No call flow data")
 
 with target_col4:
     # Calculate detailed put execution plan
@@ -841,104 +695,67 @@ with target_col4:
         target_2 = current_price - (current_price * 0.010)  # 1.0% move for 100% premium profit
         target_3 = current_price - (current_price * 0.020)  # 2.0% move for 200% premium profit
         
-        st.markdown(f"""
-        <div style="background: #991b1b; padding: 0.6rem; border-radius: 6px; color: white;">
-            <h5 style="margin: 0; color: white; font-size: 0.8rem; text-align: center;">📉 PUT EXECUTION PLAN</h5>
-            
-            <div style="background: rgba(255,255,255,0.1); padding: 0.3rem; border-radius: 3px; margin: 0.3rem 0; font-size: 0.7rem;">
-                <div style="display: flex; justify-content: space-between;"><span>Strike:</span><span>${put_strike:.0f}</span></div>
-                <div style="display: flex; justify-content: space-between;"><span>Premium:</span><span>${put_premium:.2f}</span></div>
-                <div style="display: flex; justify-content: space-between;"><span>Volume:</span><span>{put_volume:,}</span></div>
-            </div>
-            
-            <div style="background: rgba(220,38,38,0.2); padding: 0.3rem; border-radius: 3px; margin: 0.3rem 0; font-size: 0.7rem;">
-                <div style="font-weight: bold; margin-bottom: 0.2rem;">ENTRY STRATEGY:</div>
-                <div style="display: flex; justify-content: space-between;"><span>Bid @ $</span><span>{bid_price:.2f}</span></div>
-                <div style="display: flex; justify-content: space-between;"><span>Ask @ $</span><span>{ask_price:.2f}</span></div>
-                <div style="display: flex; justify-content: space-between;"><span>Stop @ $</span><span>{stop_loss:.2f}</span></div>
-            </div>
-            
-            <div style="background: rgba(220,38,38,0.3); padding: 0.3rem; border-radius: 3px; margin: 0.3rem 0; font-size: 0.7rem;">
-                <div style="font-weight: bold; margin-bottom: 0.2rem;">PROFIT TARGETS:</div>
-                <div style="display: flex; justify-content: space-between;"><span>T1 (25%):</span><span>${target_1:.2f}</span></div>
-                <div style="display: flex; justify-content: space-between;"><span>T2 (50%):</span><span>${target_2:.2f}</span></div>
-                <div style="display: flex; justify-content: space-between;"><span>T3 (25%):</span><span>${target_3:.2f}</span></div>
-                <div style="text-align: center; margin-top: 0.3rem; font-weight: bold;">Breakeven: ${put_breakeven:.2f}</div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
+        # Display using native Streamlit components
+        st.error("📉 PUT EXECUTION PLAN")
+        
+        # Basic metrics
+        col_a, col_b = st.columns(2)
+        with col_a:
+            st.metric("Strike", f"${put_strike:.0f}", f"{put_volume:,} vol")
+        with col_b:
+            st.metric("Premium", f"${put_premium:.2f}", f"${put_breakeven:.2f} BE")
+        
+        # Entry strategy
+        st.info("Entry Strategy")
+        entry_cols = st.columns(3)
+        with entry_cols[0]:
+            st.caption(f"Bid: ${bid_price:.2f}")
+        with entry_cols[1]:
+            st.caption(f"Ask: ${ask_price:.2f}")
+        with entry_cols[2]:
+            st.caption(f"Stop: ${stop_loss:.2f}")
+        
+        # Profit targets
+        st.warning("Profit Targets")
+        target_cols = st.columns(3)
+        with target_cols[0]:
+            st.caption(f"T1: ${target_1:.2f}")
+        with target_cols[1]:
+            st.caption(f"T2: ${target_2:.2f}")
+        with target_cols[2]:
+            st.caption(f"T3: ${target_3:.2f}")
     else:
-        st.markdown("""
-        <div style="background: #374151; padding: 0.6rem; border-radius: 6px; color: white;">
-            <div style="text-align: center; font-size: 0.8rem;">No put flow data</div>
-        </div>
-        """, unsafe_allow_html=True)
+        st.error("No put flow data")
 
-# Add detailed execution parameters
-st.markdown("---")
-st.markdown("### ⚡ EXECUTION PARAMETERS")
+# Compact execution parameters
+st.markdown("#### ⚡ Execution")
 
-exec_col1, exec_col2, exec_col3 = st.columns(3)
+exec_cols = st.columns(3)
 
-with exec_col1:
+with exec_cols[0]:
     volume_multiplier = volume / max(1, avg_volume) if avg_volume > 0 else 1
     volume_status = "HIGH" if volume_multiplier > 1.5 else "NORMAL" if volume_multiplier > 0.7 else "LOW"
-    volume_color = "#10b981" if volume_status == "HIGH" else "#f59e0b" if volume_status == "NORMAL" else "#dc2626"
-    
-    st.markdown(f"""
-    <div style="background: #1e293b; padding: 0.5rem; border-radius: 4px; color: white; text-align: center;">
-        <h6 style="margin: 0; color: {volume_color}; font-size: 0.8rem;">📊 VOLUME</h6>
-        <div style="font-size: 1rem; font-weight: bold; margin: 0.2rem 0; color: {volume_color};">{volume_status}</div>
-        <div style="font-size: 0.7rem;">{volume_multiplier:.1f}x avg • {volume:,.0f}</div>
-    </div>
-    """, unsafe_allow_html=True)
+    st.metric("Volume", volume_status, f"{volume_multiplier:.1f}x")
 
-with exec_col2:
-    # Calculate optimal position size based on volatility
+with exec_cols[1]:
     volatility = abs(market_data['change_pct']) if market_data['change_pct'] else 1.0
-    if volatility > 3:
-        pos_size = "SMALL"
-        risk_level = "HIGH"
-        size_color = "#dc2626"
-    elif volatility > 1.5:
-        pos_size = "MEDIUM" 
-        risk_level = "MODERATE"
-        size_color = "#f59e0b"
-    else:
-        pos_size = "LARGE"
-        risk_level = "LOW"
-        size_color = "#10b981"
-    
-    st.markdown(f"""
-    <div style="background: #1e293b; padding: 0.5rem; border-radius: 4px; color: white; text-align: center;">
-        <h6 style="margin: 0; color: {size_color}; font-size: 0.8rem;">💰 POSITION</h6>
-        <div style="font-size: 1rem; font-weight: bold; margin: 0.2rem 0; color: {size_color};">{pos_size}</div>
-        <div style="font-size: 0.7rem;">{risk_level} Risk • {volatility:.1f}% vol</div>
-    </div>
-    """, unsafe_allow_html=True)
+    pos_size = "SMALL" if volatility > 3 else "MEDIUM" if volatility > 1.5 else "LARGE"
+    st.metric("Position", pos_size, f"{volatility:.1f}% vol")
 
-with exec_col3:
-    # Time decay urgency for options
+with exec_cols[2]:
     time_urgency = "URGENT" if best_flow and best_flow['dte'] <= 1 else "NORMAL" if best_flow and best_flow['dte'] <= 7 else "LOW"
-    time_color = "#dc2626" if time_urgency == "URGENT" else "#f59e0b" if time_urgency == "NORMAL" else "#10b981"
-    
-    st.markdown(f"""
-    <div style="background: #1e293b; padding: 0.5rem; border-radius: 4px; color: white; text-align: center;">
-        <h6 style="margin: 0; color: {time_color}; font-size: 0.8rem;">⏰ THETA</h6>
-        <div style="font-size: 1rem; font-weight: bold; margin: 0.2rem 0; color: {time_color};">{time_urgency}</div>
-        <div style="font-size: 0.7rem;">{'0DTE decay' if best_flow and best_flow['dte'] == 0 else f'{best_flow["dte"]}DTE' if best_flow else 'N/A'}</div>
-    </div>
-    """, unsafe_allow_html=True)
+    dte_text = f"{best_flow['dte']}DTE" if best_flow else "N/A"
+    st.metric("Theta", time_urgency, dte_text)
 
-# === LIVE OPTIONS CHAIN - BUY/SELL PRICES ===
-st.markdown("### 💰 OPTIONS CHAIN - BUY/SELL PRICES")
+# === COMPACT OPTIONS CHAIN ===
+st.markdown("#### 💰 Options Chain")
 
-# Add live refresh indicator using native components
+# Compact refresh indicator
 refresh_time = datetime.now().strftime("%H:%M:%S")
-st.success(f"🔴 LIVE • {refresh_time} • 5s refresh")
+st.caption(f"🔴 LIVE • {refresh_time}")
 
-# === INSTITUTIONAL SPY OPTIONS FLOW TRACKER ===
-st.markdown("### 🎯 SPY INSTITUTIONAL OPTIONS FLOW")
+# === INSTITUTIONAL FLOW ===
+st.markdown("#### 🎯 Institutional Flow")
 
 try:
     ticker = yf.Ticker(selected_symbol)
