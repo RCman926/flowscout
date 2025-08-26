@@ -333,73 +333,156 @@ def main():
     
     options_cols = st.columns(2)
     
-    # LIVE CALLS
+    # LIVE CALLS GRAPH
     with options_cols[0]:
-        st.markdown("### 📈 LIVE CALLS")
-        for call in calls_data:
-            # Color coding based on flow direction
-            if call['flow_direction'] == 'BULLISH':
-                container_color = "success"
-            elif call['flow_direction'] == 'BEARISH':
-                container_color = "error"
-            else:
-                container_color = "info"
-            
-            with st.container():
-                if call['unusual']:
-                    st.markdown(f"🔥 **${call['strike']} CALL** - UNUSUAL ACTIVITY")
-                else:
-                    st.markdown(f"**${call['strike']} CALL**")
-                
-                col1, col2, col3 = st.columns(3)
-                with col1:
-                    st.metric("Volume", f"{call['volume']:,}")
-                with col2:
-                    st.metric("Price", f"${call['price']}")
-                with col3:
-                    if container_color == "success":
-                        st.success(f"Δ {call['delta']}")
-                    elif container_color == "error":
-                        st.error(f"Δ {call['delta']}")
-                    else:
-                        st.info(f"Δ {call['delta']}")
-                
-                st.caption(f"Bid: ${call['bid']} | Ask: ${call['ask']} | IV: {call['iv']*100:.0f}% | OI: {call['open_interest']:,}")
-                st.markdown("---")
+        st.markdown("### 📈 LIVE CALLS VOLUME")
+        
+        # Create live calls volume chart
+        calls_df = pd.DataFrame(calls_data)
+        calls_chart_data = calls_df[['strike', 'volume', 'flow_direction', 'unusual']].copy()
+        calls_chart_data['color'] = calls_chart_data['flow_direction'].map({
+            'BULLISH': '#22c55e',
+            'BEARISH': '#ef4444', 
+            'NEUTRAL': '#64748b'
+        })
+        calls_chart_data['size'] = calls_chart_data['unusual'].map({True: 20, False: 12})
+        
+        fig_calls = go.Figure()
+        
+        # Add volume bars
+        fig_calls.add_trace(go.Bar(
+            x=calls_chart_data['strike'],
+            y=calls_chart_data['volume'],
+            marker_color=calls_chart_data['color'],
+            name='Call Volume',
+            text=calls_chart_data['volume'].apply(lambda x: f"{x:,}"),
+            textposition='outside',
+            hovertemplate='<b>$%{x} CALL</b><br>Volume: %{y:,}<br>Flow: %{customdata}<extra></extra>',
+            customdata=calls_chart_data['flow_direction']
+        ))
+        
+        # Highlight unusual activity
+        unusual_calls = calls_chart_data[calls_chart_data['unusual']]
+        if not unusual_calls.empty:
+            fig_calls.add_trace(go.Scatter(
+                x=unusual_calls['strike'],
+                y=unusual_calls['volume'],
+                mode='markers',
+                marker=dict(
+                    size=25,
+                    color='gold',
+                    symbol='star',
+                    line=dict(width=2, color='orange')
+                ),
+                name='Unusual Activity',
+                hovertemplate='<b>UNUSUAL ACTIVITY</b><br>$%{x} CALL<br>Volume: %{y:,}<extra></extra>'
+            ))
+        
+        fig_calls.update_layout(
+            title=f"Live Call Volume - {selected_symbol} - Updated: {datetime.now().strftime('%H:%M:%S')}",
+            xaxis_title="Strike Price",
+            yaxis_title="Volume",
+            height=400,
+            showlegend=True,
+            plot_bgcolor='rgba(0,0,0,0)',
+            paper_bgcolor='rgba(0,0,0,0)',
+            xaxis=dict(
+                showgrid=True,
+                gridcolor='rgba(128,128,128,0.2)',
+                tickformat='$,.0f'
+            ),
+            yaxis=dict(
+                showgrid=True,
+                gridcolor='rgba(128,128,128,0.2)',
+                tickformat=',.'
+            )
+        )
+        
+        st.plotly_chart(fig_calls, use_container_width=True)
+        
+        # Live calls summary table
+        st.markdown("**Top Calls by Volume:**")
+        calls_summary = calls_df[['strike', 'volume', 'price', 'flow_direction']].head(5)
+        calls_summary['strike'] = calls_summary['strike'].apply(lambda x: f"${x:.0f}")
+        calls_summary['volume'] = calls_summary['volume'].apply(lambda x: f"{x:,}")
+        calls_summary['price'] = calls_summary['price'].apply(lambda x: f"${x:.2f}")
+        calls_summary.columns = ['Strike', 'Volume', 'Price', 'Flow']
+        st.dataframe(calls_summary, use_container_width=True, hide_index=True)
     
-    # LIVE PUTS
+    # LIVE PUTS GRAPH
     with options_cols[1]:
-        st.markdown("### 📉 LIVE PUTS")
-        for put in puts_data:
-            # Color coding based on flow direction
-            if put['flow_direction'] == 'BEARISH':
-                container_color = "success"  # Good for puts
-            elif put['flow_direction'] == 'BULLISH':
-                container_color = "error"   # Bad for puts
-            else:
-                container_color = "info"
-            
-            with st.container():
-                if put['unusual']:
-                    st.markdown(f"🔥 **${put['strike']} PUT** - UNUSUAL ACTIVITY")
-                else:
-                    st.markdown(f"**${put['strike']} PUT**")
-                
-                col1, col2, col3 = st.columns(3)
-                with col1:
-                    st.metric("Volume", f"{put['volume']:,}")
-                with col2:
-                    st.metric("Price", f"${put['price']}")
-                with col3:
-                    if container_color == "success":
-                        st.success(f"Δ {put['delta']}")
-                    elif container_color == "error":
-                        st.error(f"Δ {put['delta']}")
-                    else:
-                        st.info(f"Δ {put['delta']}")
-                
-                st.caption(f"Bid: ${put['bid']} | Ask: ${put['ask']} | IV: {put['iv']*100:.0f}% | OI: {put['open_interest']:,}")
-                st.markdown("---")
+        st.markdown("### 📉 LIVE PUTS VOLUME")
+        
+        # Create live puts volume chart
+        puts_df = pd.DataFrame(puts_data)
+        puts_chart_data = puts_df[['strike', 'volume', 'flow_direction', 'unusual']].copy()
+        puts_chart_data['color'] = puts_chart_data['flow_direction'].map({
+            'BEARISH': '#22c55e',  # Green for bearish puts (good)
+            'BULLISH': '#ef4444',  # Red for bullish puts (bad)
+            'NEUTRAL': '#64748b'
+        })
+        
+        fig_puts = go.Figure()
+        
+        # Add volume bars
+        fig_puts.add_trace(go.Bar(
+            x=puts_chart_data['strike'],
+            y=puts_chart_data['volume'],
+            marker_color=puts_chart_data['color'],
+            name='Put Volume',
+            text=puts_chart_data['volume'].apply(lambda x: f"{x:,}"),
+            textposition='outside',
+            hovertemplate='<b>$%{x} PUT</b><br>Volume: %{y:,}<br>Flow: %{customdata}<extra></extra>',
+            customdata=puts_chart_data['flow_direction']
+        ))
+        
+        # Highlight unusual activity
+        unusual_puts = puts_chart_data[puts_chart_data['unusual']]
+        if not unusual_puts.empty:
+            fig_puts.add_trace(go.Scatter(
+                x=unusual_puts['strike'],
+                y=unusual_puts['volume'],
+                mode='markers',
+                marker=dict(
+                    size=25,
+                    color='gold',
+                    symbol='star',
+                    line=dict(width=2, color='orange')
+                ),
+                name='Unusual Activity',
+                hovertemplate='<b>UNUSUAL ACTIVITY</b><br>$%{x} PUT<br>Volume: %{y:,}<extra></extra>'
+            ))
+        
+        fig_puts.update_layout(
+            title=f"Live Put Volume - {selected_symbol} - Updated: {datetime.now().strftime('%H:%M:%S')}",
+            xaxis_title="Strike Price",
+            yaxis_title="Volume", 
+            height=400,
+            showlegend=True,
+            plot_bgcolor='rgba(0,0,0,0)',
+            paper_bgcolor='rgba(0,0,0,0)',
+            xaxis=dict(
+                showgrid=True,
+                gridcolor='rgba(128,128,128,0.2)',
+                tickformat='$,.0f'
+            ),
+            yaxis=dict(
+                showgrid=True,
+                gridcolor='rgba(128,128,128,0.2)',
+                tickformat=',.'
+            )
+        )
+        
+        st.plotly_chart(fig_puts, use_container_width=True)
+        
+        # Live puts summary table
+        st.markdown("**Top Puts by Volume:**")
+        puts_summary = puts_df[['strike', 'volume', 'price', 'flow_direction']].head(5)
+        puts_summary['strike'] = puts_summary['strike'].apply(lambda x: f"${x:.0f}")
+        puts_summary['volume'] = puts_summary['volume'].apply(lambda x: f"{x:,}")
+        puts_summary['price'] = puts_summary['price'].apply(lambda x: f"${x:.2f}")
+        puts_summary.columns = ['Strike', 'Volume', 'Price', 'Flow']
+        st.dataframe(puts_summary, use_container_width=True, hide_index=True)
     
     # End of live options flow section
     
