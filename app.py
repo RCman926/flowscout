@@ -89,6 +89,18 @@ st.markdown("""
         transform: translateY(-1px) !important;
         box-shadow: 0 4px 8px rgba(0,0,0,0.1) !important;
     }
+    .buy-button > button {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+        color: white !important;
+    }
+    .sell-button > button {
+        background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%) !important;
+        color: white !important;
+    }
+    .selected-button > button {
+        border: 2px solid #fbbf24 !important;
+        box-shadow: 0 0 8px rgba(251, 191, 36, 0.5) !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -416,11 +428,11 @@ with refresh_cols[0]:
 with refresh_cols[1]:
     st.caption("Auto-refresh: 15s")
 
-# === SYMBOL SELECTOR ===
+# === COMPACT SYMBOL SELECTOR ===
 selected_symbol = st.session_state.get('selected_symbol', 'SPY')
 
-# Clean compact symbol grid - 4 rows of symbols
-symbol_rows = [symbols[i:i+4] for i in range(0, len(symbols), 4)]
+# Ultra compact symbol grid - all symbols in fewer rows
+symbol_rows = [symbols[i:i+7] for i in range(0, len(symbols), 7)]
 
 for row in symbol_rows:
     cols = st.columns(len(row))
@@ -432,26 +444,30 @@ for row in symbol_rows:
         
         with cols[i]:
             is_selected = symbol == selected_symbol
-            border = "2px solid #fbbf24" if is_selected else "1px solid #374151"
-            signal_icon = signal.replace("STRONG ", "").replace("BUY", "📈").replace("SELL", "📉").replace("NEUTRAL", "➖")
             
-            # Use native Streamlit styling with container selection
-            container_style = "border: 3px solid #fbbf24; border-radius: 8px; padding: 0.5rem;" if is_selected else ""
+            # Single compact clickable box with color coding
+            button_label = f"{symbol} ${price:.0f} {change_pct:+.1f}%"
+            if is_selected:
+                button_label = f"✓ {button_label}"
             
-            # Clean symbol selection with metrics
-            with st.container():
-                if is_selected:
-                    st.info(f"**{symbol}** - SELECTED")
+            # Apply CSS class based on signal
+            if "BUY" in signal:
+                st.markdown('<div class="buy-button">', unsafe_allow_html=True)
+            elif "SELL" in signal:
+                st.markdown('<div class="sell-button">', unsafe_allow_html=True)
+            else:
+                st.markdown('<div>', unsafe_allow_html=True)
                 
-                col1, col2 = st.columns(2)
-                with col1:
-                    st.metric(symbol, f"${price:.1f}", f"{change_pct:+.1f}%")
-                with col2:
-                    st.metric("Signal", signal_icon, f"{confidence:.0f}%")
-                
-                if st.button(f"Select {symbol}", key=f"select_{symbol}", use_container_width=True, type="primary" if is_selected else "secondary"):
-                    st.session_state.selected_symbol = symbol
-                    st.rerun()
+            if is_selected:
+                st.markdown('<div class="selected-button">', unsafe_allow_html=True)
+            
+            if st.button(button_label, key=f"select_{symbol}", use_container_width=True):
+                st.session_state.selected_symbol = symbol
+                st.rerun()
+            
+            if is_selected:
+                st.markdown('</div>', unsafe_allow_html=True)
+            st.markdown('</div>', unsafe_allow_html=True)
 
 # === LIVE FLOW ANALYSIS ===
 flow_data = get_institutional_flow_data(selected_symbol) or {
