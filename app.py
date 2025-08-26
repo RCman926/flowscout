@@ -242,6 +242,22 @@ def main():
         pressure = "HIGH" if total_volume > 100000 else "MEDIUM" if total_volume > 50000 else "LOW"
         st.metric("MM Pressure", pressure, f"{total_volume/1000:.0f}K vol")
     
+    # === EARNINGS CALENDAR (TOP PRIORITY) ===
+    st.markdown("### 📊 Earnings This Week")
+    
+    from enhanced_financial_calendar import enhanced_calendar
+    earnings_data = enhanced_calendar.get_key_events_today()
+    
+    earnings_cols = st.columns(5)
+    for i, event in enumerate(earnings_data[:5]):
+        with earnings_cols[i]:
+            impact = event.get('impact', 'medium')
+            if impact == 'high':
+                st.error(f"🔴 {event.get('time', 'TBD')}")
+            else:
+                st.info(f"🔵 {event.get('time', 'TBD')}")
+            st.caption(event.get('event', 'Event')[:25] + "...")
+    
     # === MAIN OPTIONS ANALYSIS ===
     st.markdown("#### 🎯 Key Trading Levels")
     
@@ -382,8 +398,7 @@ def main():
             top_strikes = real_live_scraper._get_top_strikes_by_volume(live_options_data)
         
         if top_strikes:
-            st.markdown("**🔥 HOTTEST STRIKES - Live Action Feed**")
-            st.markdown("📋 **Legend:** 🟢 Green = CALLS (bullish bets) | 🔴 Red = PUTS (bearish bets)")
+            st.markdown("**🔥 HOTTEST STRIKES**")
             
             # Create scrollable action feed
             action_container = st.container()
@@ -395,76 +410,47 @@ def main():
                     option_type = strike['type']
                     dte = strike.get('dte', 'N/A')
                     
-                    # Color coding for calls vs puts
-                    if option_type == 'CALL':
-                        type_color = "success"  # Green background for calls
-                        emoji = "🟢"
-                        direction = "BULLISH"
-                        bg_color = "#e8f5e8"  # Light green background
-                    else:
-                        type_color = "error"  # Red background for puts
-                        emoji = "🔴"
-                        direction = "BEARISH"
-                        bg_color = "#ffe8e8"  # Light red background
+                    # Simple compact display like before
+                    col1, col2, col3, col4 = st.columns([1, 2, 1, 1])
                     
-                    # Create action item with clear call/put distinction
-                    action_container = st.container()
-                    with action_container:
-                        st.markdown(f"""
-                        <div style='background-color: {bg_color}; padding: 10px; border-radius: 5px; margin: 5px 0;'>
-                            <div style='display: flex; justify-content: space-between; align-items: center;'>
-                                <div>
-                                    <strong>{emoji} {option_type} ${strike_price}</strong><br>
-                                    <small>{dte}DTE • {direction}</small>
-                                </div>
-                                <div style='text-align: right;'>
-                                    <strong>{volume:,} contracts</strong><br>
-                                    <small>Volume Activity</small>
-                                </div>
-                            </div>
-                        </div>
-                        """, unsafe_allow_html=True)
-                        
-                        # Volume intensity indicator - separate from call/put type
-                        if volume > 1000:
-                            st.warning("🔥 VERY HIGH VOLUME - Major institutional activity likely")
-                        elif volume > 500:
-                            st.info("⚡ HIGH VOLUME - Significant interest detected")
+                    with col1:
+                        if option_type == 'CALL':
+                            st.success(f"🟢 {option_type}")
                         else:
-                            st.caption("📊 Normal volume activity")
+                            st.error(f"🔴 {option_type}")
+                    
+                    with col2:
+                        st.write(f"**${strike_price}**")
+                        st.caption(f"{dte}DTE")
+                    
+                    with col3:
+                        st.metric("", f"{volume:,}")
+                        
+                    with col4:
+                        if volume > 1000:
+                            st.error("🔥 HOT")
+                        elif volume > 500:
+                            st.warning("⚡ ACTIVE")
+                        else:
+                            st.info("📊 NORMAL")
                     
                     # Add separator
                     if i < len(top_strikes[:10]) - 1:
                         st.markdown("---")
         
-        # Unusual activity alerts with clear explanation
+        # Compact unusual activity
         unusual_activity = live_options_data.get('unusual_activity', [])
         if unusual_activity:
-            st.markdown("**🚨 UNUSUAL ACTIVITY ALERTS**")
-            st.markdown("⚠️ **These are unusually high volume spikes (2+ standard deviations above normal)**")
-            
-            for alert in unusual_activity[:5]:  # Top 5 unusual activities
+            st.markdown("**🚨 UNUSUAL ACTIVITY**")
+            for alert in unusual_activity[:3]:
                 strike = alert['strike']
                 option_type = alert['type']
                 volume = alert['volume']
-                reason = alert.get('reason', 'High volume detected')
                 
                 if option_type == 'CALL':
-                    st.markdown(f"""
-                    <div style='background-color: #e8f5e8; padding: 10px; border-left: 4px solid #28a745; margin: 5px 0;'>
-                        <strong>🟢 BULLISH BET: CALL ${strike}</strong><br>
-                        {volume:,} contracts • {reason}<br>
-                        <em>Someone betting price goes UP above ${strike}</em>
-                    </div>
-                    """, unsafe_allow_html=True)
+                    st.success(f"🟢 CALL ${strike} - {volume:,} vol")
                 else:
-                    st.markdown(f"""
-                    <div style='background-color: #ffe8e8; padding: 10px; border-left: 4px solid #dc3545; margin: 5px 0;'>
-                        <strong>🔴 BEARISH BET: PUT ${strike}</strong><br>
-                        {volume:,} contracts • {reason}<br>
-                        <em>Someone betting price goes DOWN below ${strike}</em>
-                    </div>
-                    """, unsafe_allow_html=True)
+                    st.error(f"🔴 PUT ${strike} - {volume:,} vol")
     
     else:
         st.warning("⚠️ Live options data temporarily unavailable - refreshing...")
@@ -619,24 +605,19 @@ def main():
             st.info("🎯 No Results Yet")
             st.caption("Make predictions to track")
     
-    # Show recently expired predictions with real data
+    # Only show results if we actually have real expired predictions
     if recent_expired:
-        st.markdown("**📊 Recent Prediction Results (Real Data)**")
-        for pred in recent_expired[-3:]:  # Show last 3
-            symbol = pred['symbol']
-            pred_type = pred['prediction_type']
-            starting_price = pred['starting_price']
-            actual_price = pred['actual_price']
+        st.markdown("**📊 Verified Results**")
+        for pred in recent_expired[-2:]:  # Show last 2 only
             result = pred['result']
             profit_loss = pred['profit_loss']
             
-            result_color = "success" if result == 'WIN' else "error"
-            direction_emoji = "📈" if profit_loss > 0 else "📉" if profit_loss < 0 else "⚪"
-            
             if result == 'WIN':
-                st.success(f"✅ {symbol} {pred_type}: {direction_emoji} ${starting_price:.2f} → ${actual_price:.2f} ({profit_loss:+.1f}%)")
+                st.success(f"✅ WIN: {profit_loss:+.1f}%")
             else:
-                st.error(f"❌ {symbol} {pred_type}: {direction_emoji} ${starting_price:.2f} → ${actual_price:.2f} ({profit_loss:+.1f}%)")
+                st.error(f"❌ LOSS: {profit_loss:+.1f}%")
+    else:
+        st.info("🎯 No verified results yet - predictions need time to expire")
     
     # Generate new ML predictions
     prediction_data = prediction_engine.generate_advanced_prediction(market_data, tech_data, flow_data)
@@ -2088,310 +2069,7 @@ def main():
         for rec in recommendations[:2]:
             st.caption(f"• {rec}")
     
-    # === FINANCIAL CALENDAR & NEWS ===
-    st.markdown("#### 📅 Financial Calendar & Market News")
-    
-    # Import financial calendar data
-    from enhanced_financial_calendar import enhanced_calendar
-    
-    calendar_cols = st.columns(3)
-    
-    with calendar_cols[0]:
-        st.markdown("**📊 Earnings This Week**")
-        
-        try:
-            earnings_data = enhanced_calendar.get_key_events_today()
-            if earnings_data:
-                for earning in earnings_data[:5]:  # Show top 5
-                    symbol = earning.get('symbol', 'N/A')
-                    date = earning.get('date', 'N/A')
-                    time = earning.get('time', 'N/A')
-                    estimate = earning.get('estimate', 'N/A')
-                    
-                    # Calculate days until earnings
-                    try:
-                        earn_date = datetime.strptime(date, '%Y-%m-%d').date()
-                        days_until = (earn_date - datetime.now().date()).days
-                        
-                        if days_until == 0:
-                            countdown = "TODAY"
-                        elif days_until == 1:
-                            countdown = "TOMORROW"
-                        else:
-                            countdown = f"{days_until}d"
-                    except:
-                        countdown = "TBD"
-                    
-                    # Color code by urgency
-                    if countdown in ["TODAY", "TOMORROW"]:
-                        st.error(f"🔥 **{symbol}** - {countdown}")
-                        st.caption(f"Est: {estimate} | {time}")
-                    elif countdown.endswith('d') and int(countdown[:-1]) <= 3:
-                        st.warning(f"📈 **{symbol}** - {countdown}")
-                        st.caption(f"Est: {estimate} | {time}")
-                    else:
-                        st.info(f"📊 **{symbol}** - {countdown}")
-                        st.caption(f"Est: {estimate}")
-            else:
-                # Fallback with real upcoming earnings
-                st.info("📊 **NVDA** - 2d")
-                st.caption("Est: $0.75 | After Market")
-                st.info("📊 **GOOGL** - 3d")
-                st.caption("Est: $1.85 | After Market")
-                st.info("📊 **AMZN** - 4d")
-                st.caption("Est: $1.43 | After Market")
-        except Exception as e:
-            # Show real upcoming earnings as fallback
-            st.info("📊 **NVDA** - Wed 8/28")
-            st.caption("Est: $0.75 | After Market")
-            st.info("📊 **GOOGL** - Thu 8/29") 
-            st.caption("Est: $1.85 | After Market")
-            st.info("📊 **META** - Thu 8/29")
-            st.caption("Est: $5.23 | After Market")
-    
-    with calendar_cols[1]:
-        st.markdown("**📈 Economic Events**")
-        
-        try:
-            econ_events = get_economic_events()
-            if econ_events:
-                for event in econ_events[:5]:
-                    name = event.get('name', 'Economic Event')
-                    date = event.get('date', 'TBD')
-                    impact = event.get('impact', 'Medium')
-                    previous = event.get('previous', 'N/A')
-                    
-                    # Calculate countdown
-                    try:
-                        event_date = datetime.strptime(date, '%Y-%m-%d').date()
-                        days_until = (event_date - datetime.now().date()).days
-                        
-                        if days_until == 0:
-                            countdown = "TODAY"
-                        elif days_until == 1:
-                            countdown = "TOMORROW"
-                        else:
-                            countdown = f"{days_until}d"
-                    except:
-                        countdown = "TBD"
-                    
-                    # Color by impact
-                    if impact == 'High':
-                        st.error(f"🚨 {name}")
-                        st.caption(f"{countdown} | Prev: {previous}")
-                    elif impact == 'Medium':
-                        st.warning(f"⚠️ {name}")
-                        st.caption(f"{countdown} | Prev: {previous}")
-                    else:
-                        st.info(f"📊 {name}")
-                        st.caption(f"{countdown}")
-            else:
-                # Real economic events this week
-                st.warning("⚠️ Consumer Confidence")
-                st.caption("Tue 8/27 | Prev: 100.3")
-                st.error("🚨 GDP (Q2 Final)")
-                st.caption("Wed 8/28 | Prev: 2.8%")
-                st.warning("⚠️ PCE Price Index")
-                st.caption("Thu 8/29 | Prev: 0.2%")
-        except Exception:
-            # Show real economic events
-            st.warning("⚠️ Consumer Confidence")
-            st.caption("Tue 8/27 | 10:00 AM EST")
-            st.error("🚨 GDP (Q2 Final)")
-            st.caption("Wed 8/28 | 8:30 AM EST")
-            st.warning("⚠️ Core PCE")
-            st.caption("Thu 8/29 | 8:30 AM EST")
-    
-    with calendar_cols[2]:
-        st.markdown("**🔥 Market Moving News**")
-        
-        # Enhanced market news with MSN Money integration
-        try:
-            import requests
-            from bs4 import BeautifulSoup
-            
-            # Try to get real news from MSN Money
-            try:
-                headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
-                url = f"https://www.msn.com/en-us/money/markets/search?q={selected_symbol}"
-                
-                # Since direct scraping may not work, use curated real news
-                real_market_news = [
-                    {
-                        'headline': 'Fed officials signal potential September rate cut',
-                        'time': '1 hour ago',
-                        'impact': 'bullish',
-                        'source': 'MSN Money'
-                    },
-                    {
-                        'headline': f'{selected_symbol} options volume spikes 200% above average',
-                        'time': '2 hours ago', 
-                        'impact': 'volatile',
-                        'source': 'Options Flow'
-                    },
-                    {
-                        'headline': 'Institutional money flowing into tech ahead of earnings',
-                        'time': '3 hours ago',
-                        'impact': 'bullish',
-                        'source': 'MSN Money'
-                    },
-                    {
-                        'headline': 'VIX drops as market consolidates in tight range',
-                        'time': '4 hours ago',
-                        'impact': 'neutral',
-                        'source': 'Volatility'
-                    }
-                ]
-                
-                for news in real_market_news:
-                    headline = news['headline']
-                    time_ago = news['time']
-                    impact = news['impact']
-                    source = news['source']
-                    
-                    if 'bullish' in impact:
-                        st.success(f"📈 {headline}")
-                        st.caption(f"{time_ago} - {source}")
-                    elif 'bearish' in impact:
-                        st.error(f"📉 {headline}")
-                        st.caption(f"{time_ago} - {source}")
-                    elif 'volatile' in impact:
-                        st.warning(f"⚡ {headline}")
-                        st.caption(f"{time_ago} - {source}")
-                    else:
-                        st.info(f"📰 {headline}")
-                        st.caption(f"{time_ago} - {source}")
-                        
-            except Exception:
-                # Fallback to curated news
-                current_hour = datetime.now().hour
-                
-                if current_hour < 12:  # Morning news
-                    st.success("📈 Premarket futures point higher on Fed optimism")
-                    st.caption("30 min ago - MSN Money")
-                    st.warning("⚡ Unusual options activity detected in mega-caps")
-                    st.caption("1 hour ago - Options Insider")
-                    st.info("📰 Earnings season kicks into high gear this week")
-                    st.caption("2 hours ago - MarketWatch")
-                    st.success("📈 Consumer confidence beats expectations")
-                    st.caption("3 hours ago - MSN Money")
-                else:  # Afternoon/evening news
-                    st.warning("📉 After-hours volatility spikes on earnings misses")
-                    st.caption("45 min ago - MSN Money")
-                    st.info("📰 Institutional flows favor defensive positioning")
-                    st.caption("1.5 hours ago - Flow Traders")
-                    st.success("📈 Strong economic data supports bull case")
-                    st.caption("2.5 hours ago - MSN Money")
-                    st.error("📉 Global tensions weigh on risk sentiment")
-                    st.caption("4 hours ago - Reuters")
-                    
-        except Exception:
-            # Simple fallback
-            st.info("📰 Market consolidating ahead of key events")
-            st.caption("Recent - MSN Money")
-            st.success("📈 Strong economic fundamentals support equities")
-            st.caption("2 hours ago - Financial News")
-            st.warning("⚡ Options markets pricing increased volatility")
-            st.caption("3 hours ago - Volatility Report")
-    
-    # === MARKET ALERTS ===
-    st.markdown("#### ⚡ Live Market Alerts")
-    
-    alert_cols = st.columns(2)
-    
-    with alert_cols[0]:
-        st.markdown("**Watch For These Signals:**")
-        
-        # Generate actionable alerts
-        watch_signals = []
-        
-        if rsi < 70 and rsi > 65:
-            watch_signals.append(f"🔶 RSI at {rsi:.1f} - Watch for 70+ (put signal)")
-        elif rsi > 30 and rsi < 35:
-            watch_signals.append(f"🔶 RSI at {rsi:.1f} - Watch for 30- (call signal)")
-        
-        if current_price < bb_upper * 1.005:
-            distance_to_resistance = ((bb_upper - current_price) / current_price) * 100
-            watch_signals.append(f"🔶 {distance_to_resistance:.1f}% to resistance at ${bb_upper:.2f}")
-        
-        if current_price > bb_lower * 0.995:
-            distance_to_support = ((current_price - bb_lower) / current_price) * 100
-            watch_signals.append(f"🔶 {distance_to_support:.1f}% above support at ${bb_lower:.2f}")
-        
-        # Options activity
-        if total_volume > 50000:
-            watch_signals.append(f"⚡ Active options: {total_volume:,} contracts")
-        
-        # Display watch signals
-        if watch_signals:
-            for signal in watch_signals[:4]:
-                st.info(signal)
-        else:
-            st.success("📊 No immediate signals")
-    
-    with alert_cols[1]:
-        st.markdown("**Next Moves:**")
-        
-        # Actionable next steps
-        next_moves = []
-        
-        if rsi > 65:
-            next_moves.append(f"📉 If SPY hits ${bb_upper:.2f} → Buy puts")
-        if rsi < 35:
-            next_moves.append(f"📈 If SPY hits ${bb_lower:.2f} → Buy calls")
-        
-        if current_price > sma_20:
-            pullback_level = sma_20 * 1.005
-            next_moves.append(f"📈 Pullback to ${pullback_level:.2f} = Call opportunity")
-        else:
-            bounce_level = sma_20 * 0.995
-            next_moves.append(f"📉 Rally to ${bounce_level:.2f} = Put opportunity")
-        
-        # Volume confirmation
-        volume_ratio = market_data.get('volume', 1) / market_data.get('avg_volume', 1)
-        if volume_ratio < 1.2:
-            next_moves.append("⏳ Wait for volume confirmation")
-        else:
-            next_moves.append("✓ Volume confirms moves")
-        
-        # Display next moves
-        if next_moves:
-            for move in next_moves:
-                st.info(move)
-        else:
-            st.info("⏳ Wait for clearer setup")
-    
-    # === FINAL TRADING RECOMMENDATION ===
-    st.markdown("#### 🏆 Final Recommendation")
-    
-    recommendation_cols = st.columns([2, 1])
-    
-    with recommendation_cols[0]:
-        if confidence > 70 and institutional_score >= 75:
-            if 'BUY CALLS' in signal:
-                st.success("🚀 STRONG BUY CALLS - High conviction setup")
-            elif 'BUY PUTS' in signal:
-                st.error("🚀 STRONG BUY PUTS - High conviction setup")
-            else:
-                st.info("⚪ HOLD - Wait for better setup")
-        elif confidence > 60:
-            if 'BUY CALLS' in signal:
-                st.warning("📈 MODERATE BUY CALLS - Proceed with caution")
-            elif 'BUY PUTS' in signal:
-                st.warning("📉 MODERATE BUY PUTS - Proceed with caution")
-            else:
-                st.info("⚪ HOLD - Insufficient conviction")
-        else:
-            st.info("⚪ NO TRADE - Market conditions unclear")
-        
-        st.caption(f"Conviction: {confidence}% | Reasons: {', '.join(reasons)}")
-    
-    with recommendation_cols[1]:
-        # Key metrics for decision
-        st.metric("Conviction", f"{confidence}%", 
-                 "High" if confidence > 70 else "Medium" if confidence > 50 else "Low")
-        st.metric("Institutional Score", f"{institutional_score}%",
-                 "Elite" if institutional_score >= 75 else "Good" if institutional_score >= 50 else "Poor")
+    # === END OF MAIN PLATFORM ===
 
 # Run the app
 if __name__ == "__main__":
