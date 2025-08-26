@@ -828,6 +828,176 @@ def main():
     except Exception as e:
         st.error("Options chain temporarily unavailable - Contact broker for live data access")
     
+    # === INSTITUTIONAL ANALYTICS DASHBOARD ===
+    st.markdown("#### 🏛️ Institutional Analytics Dashboard")
+    
+    # Import advanced engines
+    from gamma_exposure_engine import gamma_engine
+    from institutional_flow_tracker import flow_tracker  
+    from advanced_greeks_engine import greeks_engine
+    
+    # Get live institutional data
+    gex_data = gamma_engine.calculate_gamma_exposure(selected_symbol)
+    flow_data = flow_tracker.detect_unusual_activity(selected_symbol)
+    greeks_data = greeks_engine.calculate_greeks(selected_symbol)
+    
+    # === GAMMA EXPOSURE LEVELS ===
+    st.markdown("**⚡ Live Gamma Exposure (GEX) Levels**")
+    
+    gex_cols = st.columns(4)
+    
+    with gex_cols[0]:
+        net_gex = gex_data['net_gex']
+        if net_gex > 0:
+            st.success(f"Net GEX: +${net_gex/1000:.0f}K")
+            st.caption("Dealers Long Gamma - Stabilizing")
+        else:
+            st.error(f"Net GEX: -${abs(net_gex)/1000:.0f}K")
+            st.caption("Dealers Short Gamma - Amplifying")
+    
+    with gex_cols[1]:
+        flip_point = gex_data['gamma_flip_point']
+        current_vs_flip = ((current_price - flip_point) / flip_point) * 100
+        st.metric("Gamma Flip", f"${flip_point:.2f}", f"{current_vs_flip:+.1f}%")
+    
+    with gex_cols[2]:
+        positioning = gex_data['dealer_positioning']
+        if positioning == 'Short Gamma':
+            st.error("🔻 Short Gamma")
+            st.caption("Explosive moves possible")
+        else:
+            st.success("🔺 Long Gamma") 
+            st.caption("Moves dampened")
+    
+    with gex_cols[3]:
+        total_vol = flow_data['total_unusual_volume']
+        st.metric("Unusual Volume", f"{total_vol:,}", "contracts")
+    
+    # GEX Support/Resistance Levels
+    levels_cols = st.columns(2)
+    
+    with levels_cols[0]:
+        st.markdown("**🟢 GEX Support Levels**")
+        for level in gex_data['support_levels']:
+            distance = ((level['strike'] - current_price) / current_price) * 100
+            st.info(f"${level['strike']:.0f} ({distance:+.1f}%) - ${level['gex']/1000:.0f}K GEX")
+    
+    with levels_cols[1]:
+        st.markdown("**🔴 GEX Resistance Levels**") 
+        for level in gex_data['resistance_levels']:
+            distance = ((level['strike'] - current_price) / current_price) * 100
+            st.warning(f"${level['strike']:.0f} ({distance:+.1f}%) - ${level['gex']/1000:.0f}K GEX")
+    
+    # === INSTITUTIONAL FLOW ANALYSIS ===
+    st.markdown("**🏢 Live Institutional Flow**")
+    
+    flow_cols = st.columns(3)
+    
+    with flow_cols[0]:
+        st.markdown("**Block Trades (>100 contracts)**")
+        for i, block in enumerate(flow_data['block_trades'][:3]):
+            time_ago = (datetime.now() - block['timestamp']).seconds // 60
+            premium_k = block['total_premium'] / 1000
+            
+            if block['option_type'] == 'CALL':
+                st.success(f"🟢 ${block['strike']} CALLS - {block['size']} contracts")
+            else:
+                st.error(f"🔴 ${block['strike']} PUTS - {block['size']} contracts")
+            st.caption(f"${premium_k:.0f}K premium • {time_ago}m ago")
+    
+    with flow_cols[1]:
+        st.markdown("**Sweep Orders (Multi-Exchange)**")
+        for sweep in flow_data['sweep_trades'][:3]:
+            time_ago = (datetime.now() - sweep['timestamp']).seconds // 60
+            premium_k = sweep['total_premium'] / 1000
+            
+            if sweep['option_type'] == 'CALL':
+                st.success(f"⚡ ${sweep['strike']} CALLS - {sweep['size']} contracts")
+            else:
+                st.error(f"⚡ ${sweep['strike']} PUTS - {sweep['size']} contracts") 
+            st.caption(f"${premium_k:.0f}K • AGGRESSIVE • {time_ago}m ago")
+    
+    with flow_cols[2]:
+        st.markdown("**Dark Pool Prints**")
+        for dark in flow_data['dark_pool_prints'][:3]:
+            time_ago = (datetime.now() - dark['timestamp']).seconds // 60
+            premium_k = dark['total_premium'] / 1000
+            
+            st.info(f"🔘 ${dark['strike']} {dark['option_type']}S - {dark['size']} contracts")
+            st.caption(f"${premium_k:.0f}K • INSTITUTIONAL • {time_ago}m ago")
+    
+    # Flow sentiment
+    sentiment = flow_data['sentiment']
+    call_put_ratio = flow_data['call_put_ratio']
+    
+    sentiment_cols = st.columns(3)
+    with sentiment_cols[0]:
+        if sentiment == 'BULLISH':
+            st.success(f"📈 {sentiment} SENTIMENT")
+        elif sentiment == 'BEARISH':
+            st.error(f"📉 {sentiment} SENTIMENT")
+        else:
+            st.info(f"⚪ {sentiment} SENTIMENT")
+    
+    with sentiment_cols[1]:
+        st.metric("Call/Put Ratio", f"{call_put_ratio:.1f}")
+        if call_put_ratio > 2:
+            st.caption("Heavy call buying")
+        elif call_put_ratio < 0.5:
+            st.caption("Heavy put buying")
+        else:
+            st.caption("Balanced flow")
+    
+    with sentiment_cols[2]:
+        st.metric("Smart Money", "ACTIVE" if total_vol > 1000 else "QUIET")
+        st.caption("Institutional positioning")
+    
+    # === ADVANCED GREEKS MONITORING ===
+    st.markdown("**📊 Portfolio Greeks Analysis**")
+    
+    portfolio_greeks = greeks_data['portfolio_summary']
+    
+    greeks_cols = st.columns(5)
+    
+    with greeks_cols[0]:
+        delta = portfolio_greeks['net_delta']
+        st.metric("Net Delta", f"{delta:,.0f}")
+        bias = portfolio_greeks['directional_bias']
+        if bias == 'BULLISH':
+            st.success("📈 Bullish Bias")
+        elif bias == 'BEARISH':
+            st.error("📉 Bearish Bias")
+        else:
+            st.info("⚪ Neutral")
+    
+    with greeks_cols[1]:
+        gamma = portfolio_greeks['net_gamma']
+        st.metric("Net Gamma", f"{gamma:.3f}")
+        gamma_risk = portfolio_greeks['gamma_risk']
+        if gamma_risk == 'HIGH':
+            st.error("🔥 High Risk")
+        else:
+            st.success("✓ Manageable")
+    
+    with greeks_cols[2]:
+        theta = portfolio_greeks['daily_theta_decay']
+        st.metric("Daily Theta", f"${theta:,.0f}")
+        st.caption("Time decay per day")
+    
+    with greeks_cols[3]:
+        vega = portfolio_greeks['vol_risk']
+        st.metric("Vega Risk", f"{vega:,.0f}")
+        st.caption("1% vol change impact")
+    
+    with greeks_cols[4]:
+        decay_risk = portfolio_greeks['time_decay_risk']
+        if decay_risk == 'HIGH':
+            st.error("⏰ High Decay")
+        elif decay_risk == 'MODERATE':
+            st.warning("⏰ Mod Decay")
+        else:
+            st.success("⏰ Low Decay")
+    
     # === FINANCIAL CALENDAR & NEWS ===
     st.markdown("#### 📅 Financial Calendar & Market News")
     
