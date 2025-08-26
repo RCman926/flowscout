@@ -557,26 +557,91 @@ if dte_0_data:
 else:
     st.caption("⚠️ No 0DTE data available")
 
-# === COMPACT ALERTS ===
-st.markdown("#### 📰 Alerts")
+# === REAL NEWS & EARNINGS ===
+st.markdown("#### 📰 Real Market News")
 
-alert_cols = st.columns([2, 2])
+# Import and initialize real news engine
+from real_news_engine import RealNewsEngine
+news_engine = RealNewsEngine()
 
-with alert_cols[0]:
-    # Key upcoming events - compact
-    st.info("📅 FOMC Sep 16-17")
-    st.caption("Jobs Report Sep 6")
+# Get real news for selected symbol
+@st.cache_data(ttl=600)  # Cache for 10 minutes
+def get_symbol_news(symbol):
+    import asyncio
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    try:
+        return loop.run_until_complete(news_engine.get_real_market_news(symbol))
+    finally:
+        loop.close()
 
-with alert_cols[1]:
-    # Live trading alerts - compact
-    if confidence > 70:
-        alert_color = "success" if "BUY" in signal else "error"
-        if alert_color == "success":
-            st.success(f"{signal} {confidence:.0f}%")
+news_data = get_symbol_news(selected_symbol)
+
+news_cols = st.columns([1, 1])
+
+with news_cols[0]:
+    st.markdown("**📈 Live News**")
+    
+    # Display top 3 real news items
+    for i, article in enumerate(news_data['news_items'][:3]):
+        news_type_icon = {
+            'earnings': '💰',
+            'analyst': '📊', 
+            'ma': '🤝',
+            'regulatory': '⚖️',
+            'management': '👔',
+            'general': '📰'
+        }.get(article['type'], '📰')
+        
+        st.info(f"{news_type_icon} {article['title'][:60]}...")
+        st.caption(f"{article['publisher']} • {article['publish_time'].strftime('%H:%M')}")
+
+with news_cols[1]:
+    st.markdown("**📊 Earnings & Ratings**")
+    
+    # Earnings information
+    earnings = news_data['earnings_info']
+    if earnings.get('next_earnings_date'):
+        next_earnings = datetime.strptime(earnings['next_earnings_date'], '%Y-%m-%d')
+        days_until = (next_earnings - datetime.now()).days
+        if days_until <= 7:
+            st.warning(f"📅 Earnings in {days_until} days")
         else:
-            st.error(f"{signal} {confidence:.0f}%")
+            st.info(f"📅 Next earnings: {earnings['next_earnings_date']}")
+        
+        if earnings.get('eps_estimate'):
+            st.caption(f"EPS Est: ${earnings['eps_estimate']:.2f}")
+    
+    # Analyst ratings
+    analyst = news_data['analyst_info']
+    if analyst.get('upside_potential'):
+        upside = analyst['upside_potential']
+        if upside > 20:
+            st.success(f"🎯 {upside:.0f}% upside potential")
+        elif upside > 0:
+            st.info(f"🎯 {upside:.0f}% upside potential")
+        else:
+            st.error(f"🎯 {upside:.0f}% downside risk")
+    
+    # Recommendation summary
+    if analyst.get('recommendation_trend'):
+        trend_icons = {
+            'very_bullish': '🚀',
+            'bullish': '📈',
+            'neutral': '➡️',
+            'bearish': '📉',
+            'very_bearish': '💥'
+        }
+        icon = trend_icons.get(analyst['recommendation_trend'], '➡️')
+        st.caption(f"{icon} Analysts: {analyst['recommendation_trend'].replace('_', ' ').title()}")
+
+# Trading alerts based on real data
+if confidence > 70:
+    alert_color = "success" if "BUY" in signal else "error"
+    if alert_color == "success":
+        st.success(f"🎯 {signal} {confidence:.0f}%")
     else:
-        st.info("Normal conditions")
+        st.error(f"🎯 {signal} {confidence:.0f}%")
 
 st.markdown("---")
 
