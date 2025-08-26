@@ -23,11 +23,43 @@ class DashboardDataCoordinator:
         return (datetime.now() - self.cache[key]['timestamp']).seconds < self.cache_duration
     
     def get_market_data(self, symbol):
-        """Get verified real market data"""
+        """Get live market data using multiple bypass methods"""
         cache_key = f"market_{symbol}"
         if self._is_cache_valid(cache_key):
             return self.cache[cache_key]['data']
         
+        try:
+            # Import real-time data infrastructure
+            from real_time_data_infrastructure import real_time_data
+            
+            # Get live data using web scraping bypasses
+            live_data = real_time_data.get_live_stock_data(symbol)
+            
+            if live_data and live_data.get('price', 0) > 0:
+                data = {
+                    'symbol': symbol,
+                    'price': live_data['price'],
+                    'change': live_data.get('change', 0),
+                    'change_pct': live_data.get('change_pct', 0),
+                    'volume': live_data.get('volume', 0),
+                    'bid': live_data.get('bid', live_data['price']),
+                    'ask': live_data.get('ask', live_data['price']),
+                    'high': live_data.get('high', live_data['price']),
+                    'low': live_data.get('low', live_data['price']),
+                    'timestamp': live_data['timestamp'],
+                    'market_status': 'LIVE' if live_data.get('is_real_time') else 'DELAYED',
+                    'data_freshness': 'LIVE_SCRAPED' if live_data.get('is_real_time') else 'API_FALLBACK',
+                    'data_source': live_data.get('data_source', 'Live Data Infrastructure'),
+                    'data_quality': live_data.get('data_quality', 'HIGH')
+                }
+                
+                self.cache[cache_key] = {'data': data, 'timestamp': datetime.now()}
+                return data
+        
+        except Exception as e:
+            print(f"Live data infrastructure failed for {symbol}: {e}")
+        
+        # Fallback to Yahoo Finance API (still better than simulated)
         try:
             ticker = yf.Ticker(symbol)
             # Get extended hours data for after-market updates
@@ -74,14 +106,15 @@ class DashboardDataCoordinator:
                 'market_cap': info.get('marketCap', 0),
                 'timestamp': latest_timestamp,
                 'market_status': market_status,
-                'data_freshness': 'REAL-TIME' if is_market_hours or is_after_hours else 'DELAYED'
+                'data_freshness': 'YAHOO_API_FALLBACK',
+                'data_source': 'Yahoo Finance API (Fallback)'
             }
             
             self.cache[cache_key] = {'data': data, 'timestamp': datetime.now()}
             return data
             
         except Exception as e:
-            print(f"Market data error for {symbol}: {e}")
+            print(f"Market data fallback error for {symbol}: {e}")
             return None
     
     def get_options_flow(self, symbol):
