@@ -308,7 +308,7 @@ def main():
     st.markdown("#### 📰 Exclusive News & Market Intelligence")
     
     # Real-time news section
-    from live_news_engine import live_news_engine
+    from live_news_engine_fixed import live_news_engine
     
     news_cols = st.columns(2)
     
@@ -342,7 +342,7 @@ def main():
     # === SENTIMENT & SOCIAL INTELLIGENCE ===
     st.markdown("#### 🧠 AI Sentiment & Social Intelligence")
     
-    from ai_sentiment_engine import sentiment_engine
+    from ai_sentiment_engine_fixed import sentiment_engine
     
     sentiment_cols = st.columns(3)
     

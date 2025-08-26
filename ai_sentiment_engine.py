@@ -120,7 +120,6 @@ class AIMarketSentimentEngine:
 
 # Global instance
 sentiment_engine = AIMarketSentimentEngine()
-                    'social': social_sentiment,
                     'market_structure': market_structure
                 }
             })

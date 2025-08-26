@@ -145,9 +145,6 @@ class LiveNewsEngine:
 
 # Global instance  
 live_news_engine = LiveNewsEngine()
-                'key_themes': sentiment_analysis['key_themes'],
-                'timestamp': datetime.now().isoformat(),
-                'market_impact': sentiment_analysis['market_impact']
             }
             
             # Cache result
