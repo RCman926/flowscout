@@ -431,6 +431,8 @@ def main():
             target_2 = current_price * 1.035    # 3.5% target
             target_3 = min(bb_upper, current_price * 1.05)  # 5% or BB upper
             
+            risk_reward = ((target_1 - entry_price) / max(0.01, entry_price - stop_loss))
+            
             st.markdown(f"""
             <div style='background: rgba(34, 197, 94, 0.1); padding: 0.5rem; border-radius: 5px;'>
             <strong>🟢 BULLISH SETUP</strong><br>
@@ -438,7 +440,7 @@ def main():
             Stop: ${stop_loss:.2f}<br>
             T1: ${target_1:.2f} | T2: ${target_2:.2f}<br>
             T3: ${target_3:.2f} (Max Target)<br>
-            Risk/Reward: 1:{((target_1 - entry_price) / (entry_price - stop_loss)):.1f}
+            Risk/Reward: 1:{risk_reward:.1f}
             </div>
             """, unsafe_allow_html=True)
             
