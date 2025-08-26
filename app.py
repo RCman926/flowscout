@@ -425,8 +425,28 @@ with header_cols[1]:
 # Institutional refresh rate display
 refresh_cols = st.columns([2, 1])
 with refresh_cols[0]:
-    current_time = datetime.now().strftime("%H:%M:%S")
-    st.caption(f"Last Update: {current_time}")
+    # Show actual data timestamp with market status
+    if market_data and market_data.get('timestamp'):
+        data_time = market_data['timestamp']
+        if isinstance(data_time, datetime):
+            formatted_time = data_time.strftime("%H:%M:%S")
+            market_status = market_data.get('market_status', 'UNKNOWN')
+            data_freshness = market_data.get('data_freshness', 'DELAYED')
+            
+            # Calculate how long ago the data was
+            minutes_ago = (datetime.now() - data_time).total_seconds() / 60
+            if minutes_ago < 60:
+                time_ago = f"{int(minutes_ago)}m ago"
+            else:
+                time_ago = f"{int(minutes_ago/60)}h ago"
+            
+            st.caption(f"Last Update: {formatted_time} ({market_status}) - {time_ago}")
+        else:
+            current_time = datetime.now().strftime("%H:%M:%S")
+            st.caption(f"Last Update: {current_time}")
+    else:
+        current_time = datetime.now().strftime("%H:%M:%S") 
+        st.caption(f"Last Update: {current_time}")
 with refresh_cols[1]:
     st.caption("Auto-refresh: 15s")
 
@@ -946,6 +966,7 @@ daily_range = abs(market_data.get('change_pct', 0))
 volume_profile = market_data.get('volume', 0) / market_data.get('avg_volume', 1)
 
 # Technical levels from actual data
+from dashboard_data_coordinator import data_coordinator
 tech_data = data_coordinator.get_technical_indicators(selected_symbol)
 bb_upper = tech_data.get('bb_upper', current_price * 1.02)
 bb_lower = tech_data.get('bb_lower', current_price * 0.98)

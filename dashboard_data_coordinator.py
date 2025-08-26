@@ -30,16 +30,39 @@ class DashboardDataCoordinator:
         
         try:
             ticker = yf.Ticker(symbol)
-            hist = ticker.history(period='2d')
+            # Get extended hours data for after-market updates
+            hist = ticker.history(period='2d', interval='5m', prepost=True)
             info = ticker.info
             
             if hist.empty:
                 return None
             
+            # Use the most recent data available (including after-hours)
             current_price = float(hist['Close'].iloc[-1])
             prev_close = float(hist['Close'].iloc[-2]) if len(hist) > 1 else current_price
             volume = int(hist['Volume'].iloc[-1])
+            
+            # Get the actual timestamp of the latest data
+            latest_timestamp = hist.index[-1].to_pydatetime()
             avg_volume = int(info.get('averageVolume', volume))
+            
+            # Determine market status
+            import pytz
+            est = pytz.timezone('US/Eastern')
+            data_time = latest_timestamp.astimezone(est)
+            market_open = data_time.replace(hour=9, minute=30, second=0, microsecond=0)
+            market_close = data_time.replace(hour=16, minute=0, second=0, microsecond=0)
+            after_hours_close = data_time.replace(hour=20, minute=0, second=0, microsecond=0)
+            
+            is_market_hours = (market_open <= data_time <= market_close and data_time.weekday() < 5)
+            is_after_hours = (market_close < data_time <= after_hours_close and data_time.weekday() < 5)
+            
+            if is_market_hours:
+                market_status = "LIVE"
+            elif is_after_hours:
+                market_status = "AFTER-HRS"
+            else:
+                market_status = "CLOSED"
             
             data = {
                 'symbol': symbol,
@@ -49,7 +72,9 @@ class DashboardDataCoordinator:
                 'volume': volume,
                 'avg_volume': avg_volume,
                 'market_cap': info.get('marketCap', 0),
-                'timestamp': datetime.now()
+                'timestamp': latest_timestamp,
+                'market_status': market_status,
+                'data_freshness': 'REAL-TIME' if is_market_hours or is_after_hours else 'DELAYED'
             }
             
             self.cache[cache_key] = {'data': data, 'timestamp': datetime.now()}
