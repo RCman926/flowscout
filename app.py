@@ -998,6 +998,206 @@ def main():
         else:
             st.success("⏰ Low Decay")
     
+    # === AI-POWERED TRADING ASSISTANT ===
+    st.markdown("#### 🤖 AI Trading Assistant")
+    
+    # Import AI and advanced modules
+    from ai_trading_assistant import ai_assistant
+    from advanced_strategy_builder import strategy_builder
+    from algorithmic_trading_engine import algo_engine
+    from professional_risk_management import risk_manager
+    
+    # Get AI-generated trade ideas
+    trade_ideas = ai_assistant.generate_trade_ideas(selected_symbol, current_price, market_data, tech_data)
+    volatility_prediction = ai_assistant.predict_volatility(selected_symbol)
+    patterns = ai_assistant.detect_patterns(selected_symbol, market_data)
+    
+    ai_cols = st.columns(3)
+    
+    with ai_cols[0]:
+        st.markdown("**🎯 AI Trade Ideas**")
+        
+        for i, idea in enumerate(trade_ideas[:2]):  # Show top 2 ideas
+            confidence_color = "success" if idea['ai_confidence'] > 80 else "warning" if idea['ai_confidence'] > 70 else "info"
+            
+            if confidence_color == "success":
+                st.success(f"🟢 {idea['strategy']}")
+            elif confidence_color == "warning":
+                st.warning(f"🟡 {idea['strategy']}")
+            else:
+                st.info(f"🔵 {idea['strategy']}")
+                
+            st.caption(f"AI Confidence: {idea['ai_confidence']}% | Win Rate: {idea['probability']}%")
+            st.caption(f"Max Profit: ${idea['max_profit']} | Risk: ${idea['max_risk']}")
+            st.write(f"💡 {idea['rationale']}")
+            
+            if i < len(trade_ideas) - 1:
+                st.divider()
+    
+    with ai_cols[1]:
+        st.markdown("**📈 Volatility Prediction**")
+        
+        vol_pred = volatility_prediction
+        trend_color = "success" if vol_pred['vol_trend'] == 'INCREASING' else "info"
+        
+        if trend_color == "success":
+            st.success(f"📈 Volatility: {vol_pred['vol_trend']}")
+        else:
+            st.info(f"📉 Volatility: {vol_pred['vol_trend']}")
+            
+        st.metric("Current Vol", f"{vol_pred['current_realized_vol']}%")
+        st.metric("Predicted Vol", f"{vol_pred['predicted_vol']}%", 
+                 f"{vol_pred['predicted_vol'] - vol_pred['current_realized_vol']:+.1f}%")
+        st.caption(f"AI Confidence: {vol_pred['confidence']}%")
+        
+        for factor in vol_pred['factors'][:2]:
+            st.caption(f"• {factor}")
+    
+    with ai_cols[2]:
+        st.markdown("**🔍 Pattern Recognition**")
+        
+        if patterns:
+            for pattern in patterns[:2]:
+                prob_color = "success" if pattern['probability'] > 75 else "warning" if pattern['probability'] > 65 else "info"
+                
+                if prob_color == "success":
+                    st.success(f"🎯 {pattern['pattern'].replace('_', ' ')}")
+                elif prob_color == "warning":  
+                    st.warning(f"⚡ {pattern['pattern'].replace('_', ' ')}")
+                else:
+                    st.info(f"👁 {pattern['pattern'].replace('_', ' ')}")
+                    
+                st.caption(f"Probability: {pattern['probability']}%")
+                st.write(f"🔮 {pattern['description']}")
+                st.caption(f"⏱ Timeframe: {pattern['timeframe']}")
+        else:
+            st.info("🔍 No significant patterns detected")
+            st.caption("AI is monitoring for new opportunities")
+    
+    # === ALGORITHMIC TRADING ENGINE STATUS ===
+    st.markdown("**🤖 Live Algorithm Status**")
+    
+    algo_performance = algo_engine.get_algorithm_performance_summary()
+    
+    algo_status_cols = st.columns(4)
+    
+    with algo_status_cols[0]:
+        hedging_status = "🟢 ACTIVE" if algo_performance['delta_gamma_hedging']['status'] == 'ACTIVE' else "🔴 INACTIVE"
+        st.success(f"Delta-Gamma Hedging")
+        st.caption(f"Status: {hedging_status}")
+        st.metric("Daily P&L", f"${algo_performance['delta_gamma_hedging']['daily_pnl']}")
+        st.caption(f"Effectiveness: {algo_performance['delta_gamma_hedging']['hedge_effectiveness']}%")
+    
+    with algo_status_cols[1]:
+        scalping_status = "🟢 ACTIVE" if algo_performance['gamma_scalping']['status'] == 'ACTIVE' else "🔴 INACTIVE"
+        st.success(f"Gamma Scalping")
+        st.caption(f"Status: {scalping_status}")
+        st.metric("Daily P&L", f"${algo_performance['gamma_scalping']['daily_pnl']}")
+        st.caption(f"Success Rate: {algo_performance['gamma_scalping']['success_rate']}%")
+    
+    with algo_status_cols[2]:
+        arb_status = "🟢 ACTIVE" if algo_performance['statistical_arbitrage']['status'] == 'ACTIVE' else "🔴 INACTIVE"
+        st.success(f"Statistical Arbitrage")
+        st.caption(f"Status: {arb_status}")
+        st.metric("Daily P&L", f"${algo_performance['statistical_arbitrage']['daily_pnl']}")
+        st.caption(f"Positions: {algo_performance['statistical_arbitrage']['positions_open']}")
+    
+    with algo_status_cols[3]:
+        mm_status = "🟢 ACTIVE" if algo_performance['market_making']['status'] == 'ACTIVE' else "🔴 INACTIVE"
+        st.success(f"Market Making")
+        st.caption(f"Status: {mm_status}")
+        st.metric("Daily P&L", f"${algo_performance['market_making']['daily_pnl']}")
+        st.caption(f"Fill Rate: {algo_performance['market_making']['fill_rate']}")
+    
+    # Total algorithm performance
+    st.markdown("**📊 Total Algorithm Performance**")
+    perf_cols = st.columns(3)
+    
+    with perf_cols[0]:
+        st.metric("Total Algo P&L", f"${algo_performance['total_algo_pnl']:,}", "Today")
+    with perf_cols[1]:
+        st.metric("Active Algorithms", algo_performance['algorithm_count'], "Running")
+    with perf_cols[2]:
+        performance_color = "success" if algo_performance['overall_performance'] == 'STRONG' else "warning"
+        if performance_color == "success":
+            st.success(f"Performance: {algo_performance['overall_performance']}")
+        else:
+            st.warning(f"Performance: {algo_performance['overall_performance']}")
+    
+    # === PROFESSIONAL RISK MANAGEMENT ===
+    st.markdown("#### ⚠️ Professional Risk Management")
+    
+    # Sample portfolio for risk analysis
+    sample_positions = [
+        {'symbol': selected_symbol, 'market_value': 25000, 'delta': 125, 'gamma': 0.15, 'theta': -45, 'vega': 85},
+        {'symbol': 'QQQ', 'market_value': 15000, 'delta': -85, 'gamma': 0.08, 'theta': -25, 'vega': 45},
+        {'symbol': 'AAPL', 'market_value': 12000, 'delta': 65, 'gamma': 0.12, 'theta': -35, 'vega': 55}
+    ]
+    
+    # Calculate VaR
+    var_analysis = risk_manager.calculate_portfolio_var(sample_positions)
+    
+    # Stress testing
+    stress_results = risk_manager.stress_test_portfolio(sample_positions)
+    
+    # Correlation analysis
+    correlation_analysis = risk_manager.analyze_correlation_risk(sample_positions)
+    
+    risk_cols = st.columns(3)
+    
+    with risk_cols[0]:
+        st.markdown("**📉 Value at Risk (VaR)**")
+        
+        var_color = "success" if var_analysis['risk_grade'] == 'LOW' else "warning" if var_analysis['risk_grade'] == 'MODERATE' else "error"
+        
+        if var_color == "success":
+            st.success(f"Risk Grade: {var_analysis['risk_grade']}")
+        elif var_color == "warning":
+            st.warning(f"Risk Grade: {var_analysis['risk_grade']}")
+        else:
+            st.error(f"Risk Grade: {var_analysis['risk_grade']}")
+            
+        st.metric("95% VaR", f"${var_analysis['var_dollar']:,.0f}", f"{var_analysis['var_percentage']:.1f}% of portfolio")
+        st.metric("Expected Shortfall", f"${var_analysis['expected_shortfall']:,.0f}")
+        
+        for rec in var_analysis['recommendations'][:2]:
+            st.caption(f"• {rec}")
+    
+    with risk_cols[1]:
+        st.markdown("**⚡ Stress Testing**")
+        
+        stress_grade_color = "success" if stress_results['stress_test_grade'] in ['EXCELLENT', 'GOOD'] else "warning"
+        
+        if stress_grade_color == "success":
+            st.success(f"Stress Grade: {stress_results['stress_test_grade']}")
+        else:
+            st.warning(f"Stress Grade: {stress_results['stress_test_grade']}")
+            
+        st.metric("Worst Case Loss", f"${stress_results['worst_case_loss']:,.0f}")
+        st.metric("Scenarios Profitable", f"{stress_results['scenarios_profitable']}/6")
+        
+        st.caption(f"📋 {stress_results['hedging_requirements']}")
+    
+    with risk_cols[2]:
+        st.markdown("**🔗 Correlation Analysis**")
+        
+        diversification_score = correlation_analysis['diversification_score']
+        div_color = "success" if diversification_score > 70 else "warning" if diversification_score > 40 else "error"
+        
+        if div_color == "success":
+            st.success(f"Diversification: {diversification_score}%")
+        elif div_color == "warning":
+            st.warning(f"Diversification: {diversification_score}%") 
+        else:
+            st.error(f"Diversification: {diversification_score}%")
+            
+        concentration = correlation_analysis['concentration_risk']
+        st.metric("Largest Position", f"{concentration['largest_position']}%")
+        st.metric("Effective Positions", f"{concentration['effective_positions']:.1f}")
+        
+        for rec in correlation_analysis['diversification_recommendations'][:2]:
+            st.caption(f"• {rec}")
+    
     # === FINANCIAL CALENDAR & NEWS ===
     st.markdown("#### 📅 Financial Calendar & Market News")
     
