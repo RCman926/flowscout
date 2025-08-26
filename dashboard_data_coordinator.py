@@ -15,7 +15,7 @@ class DashboardDataCoordinator:
     
     def __init__(self):
         self.cache = {}
-        self.cache_duration = 30  # 30 seconds for real-time trading
+        self.cache_duration = 120  # Extended to 2 minutes for faster loading
         
     def _is_cache_valid(self, key):
         if key not in self.cache:

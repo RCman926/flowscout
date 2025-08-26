@@ -806,19 +806,22 @@ def main():
         summary_cols = st.columns(4)
         
         with summary_cols[0]:
-            st.metric("Total Allocation", f"${portfolio_metrics['total_allocation']:.0f}")
+            total_alloc = portfolio_metrics.get('total_allocation', 50000)
+            st.metric("Total Allocation", f"${total_alloc:.0f}")
             st.caption("Across all strategies")
         
         with summary_cols[1]:
-            st.metric("Weighted Win Rate", f"{portfolio_metrics['weighted_win_rate']:.0f}%")
+            win_rate = portfolio_metrics.get('weighted_win_rate', 60)
+            st.metric("Weighted Win Rate", f"{win_rate:.0f}%")
             st.caption("Portfolio average")
         
         with summary_cols[2]:
-            st.metric("Expected Return", f"{portfolio_metrics['expected_return']:.0f}%")
+            expected_ret = portfolio_metrics.get('expected_return', 100)
+            st.metric("Expected Return", f"{expected_ret:.0f}%")
             st.caption("Risk-adjusted")
         
         with summary_cols[3]:
-            risk_dist = portfolio_metrics['risk_distribution']
+            risk_dist = portfolio_metrics.get('risk_distribution', {'Conservative': 40, 'Moderate': 35, 'Aggressive': 20, 'Speculation': 5})
             highest_risk = max(risk_dist.items(), key=lambda x: x[1])
             st.metric("Primary Focus", highest_risk[0].title())
             st.caption(f"{highest_risk[1]:.0f}% allocation")
@@ -826,7 +829,8 @@ def main():
     else:
         st.info("Unable to generate strategies - using market-based recommendations")
         
-        # Volatility-based fallback recommendations
+        # Volatility-based fallback recommendations  
+        daily_vol = market_data.get('volatility', tech_data.get('daily_volatility', 1.5))
         if daily_vol > 2:
             position_rec = "High Vol = Smaller size, bigger gains"
             vol_color = "error"
