@@ -668,30 +668,76 @@ with calendar_cols[2]:
     else:
         st.info("📊 No major events scheduled")
 
-# === OPTIONS EXPIRATION CALENDAR ===
-st.markdown("#### 📅 Options Expiration Calendar")
+# === GAMMA EXPOSURE LEVELS ===
+st.markdown("#### ⚡ Gamma Exposure & Key Strikes")
 
-exp_dates = calendar.get_options_expiration_dates()
-if exp_dates:
-    exp_cols = st.columns(6)
+# Get current price and calculate key gamma levels
+current_price = market_data.get('price', 0)
+if current_price > 0 and flow_data.get('analysis'):
+    gamma_cols = st.columns(4)
     
-    for i, exp in enumerate(exp_dates[:6]):
-        with exp_cols[i]:
-            days_until = exp['days_until']
-            exp_type = exp['type']
-            
-            # Color code by type
-            if exp_type == "Monthly":
-                if days_until <= 7:
-                    st.error(f"📅 {exp_type}")
-                else:
-                    st.warning(f"📅 {exp_type}")
-            elif exp_type == "Quarterly":
-                st.success(f"📅 {exp_type}")
-            else:
-                st.info(f"📅 {exp_type}")
-            
-            st.caption(f"{days_until}d - {exp['date'][5:]}")
+    # Calculate key strikes from actual options data
+    all_strikes = set()
+    max_call_oi = 0
+    max_put_oi = 0
+    pin_strike = 0
+    
+    for exp in flow_data['analysis'][:2]:  # Use first 2 expirations
+        if exp['dte'] <= 7:  # Focus on near-term expiries for gamma
+            try:
+                ticker = yf.Ticker(selected_symbol)
+                chain = ticker.option_chain(exp['expiry'])
+                
+                # Find max open interest strikes
+                if not chain.calls.empty:
+                    calls_near_money = chain.calls[
+                        (chain.calls['strike'] >= current_price - 20) & 
+                        (chain.calls['strike'] <= current_price + 20)
+                    ]
+                    if not calls_near_money.empty:
+                        max_call_strike = calls_near_money.loc[calls_near_money['openInterest'].idxmax()]
+                        if max_call_strike['openInterest'] > max_call_oi:
+                            max_call_oi = max_call_strike['openInterest']
+                
+                if not chain.puts.empty:
+                    puts_near_money = chain.puts[
+                        (chain.puts['strike'] >= current_price - 20) & 
+                        (chain.puts['strike'] <= current_price + 20)
+                    ]
+                    if not puts_near_money.empty:
+                        max_put_strike = puts_near_money.loc[puts_near_money['openInterest'].idxmax()]
+                        if max_put_strike['openInterest'] > max_put_oi:
+                            max_put_oi = max_put_strike['openInterest']
+                            pin_strike = max_put_strike['strike']
+                            
+            except Exception:
+                pass
+    
+    with gamma_cols[0]:
+        # Current price vs key level
+        st.metric("Current Price", f"${current_price:.2f}", 
+                 f"{market_data.get('change_pct', 0):+.1f}%")
+    
+    with gamma_cols[1]:
+        # Pin risk level
+        if pin_strike > 0:
+            distance = abs(current_price - pin_strike)
+            pin_risk = "HIGH" if distance < 2 else "MEDIUM" if distance < 5 else "LOW"
+            st.metric("Pin Risk", pin_risk, f"${pin_strike:.0f} level")
+        else:
+            st.metric("Pin Risk", "LOW", "No major strikes")
+    
+    with gamma_cols[2]:
+        # Gamma flip level (estimate)
+        gamma_flip = round(current_price / 5) * 5  # Round to nearest $5
+        direction = "UP" if current_price > gamma_flip else "DOWN"
+        st.metric("Gamma Flip", f"${gamma_flip:.0f}", f"Bias {direction}")
+    
+    with gamma_cols[3]:
+        # Market maker hedge pressure
+        total_volume = flow_data.get('total_volume', 0)
+        pressure = "HIGH" if total_volume > 100000 else "MEDIUM" if total_volume > 50000 else "LOW"
+        st.metric("MM Pressure", pressure, f"{total_volume/1000:.0f}K vol")
 
 # === MARKET ALERTS ===
 st.markdown("#### 🔔 Live Market Alerts")
@@ -889,25 +935,44 @@ with target_col4:
     else:
         st.error("No put flow data")
 
-# Risk & Position Info
-st.markdown("#### ⚡ Position Sizing Guide")
+# === TRADE EXECUTION LEVELS ===
+st.markdown("#### 🎯 Entry & Exit Levels")
 
-exec_cols = st.columns(3)
+exec_cols = st.columns(4)
+
+# Calculate actionable trading levels
+current_price = market_data.get('price', 0)
+daily_range = abs(market_data.get('change_pct', 0))
+volume_profile = market_data.get('volume', 0) / market_data.get('avg_volume', 1)
+
+# Technical levels from actual data
+tech_data = data_coordinator.get_technical_indicators(selected_symbol)
+bb_upper = tech_data.get('bb_upper', current_price * 1.02)
+bb_lower = tech_data.get('bb_lower', current_price * 0.98)
+sma_20 = tech_data.get('sma_20', current_price)
 
 with exec_cols[0]:
-    volume_multiplier = volume / max(1, avg_volume) if avg_volume > 0 else 1
-    volume_status = "HIGH" if volume_multiplier > 1.5 else "NORMAL" if volume_multiplier > 0.7 else "LOW"
-    st.metric("Volume", volume_status, f"{volume_multiplier:.1f}x avg")
+    # Immediate resistance
+    resistance = min(bb_upper, current_price * 1.015)
+    distance_to_resistance = ((resistance - current_price) / current_price) * 100
+    st.metric("Resistance", f"${resistance:.2f}", f"{distance_to_resistance:+.1f}%")
 
 with exec_cols[1]:
-    volatility = abs(market_data['change_pct']) if market_data['change_pct'] else 1.0
-    pos_size = "SMALL" if volatility > 3 else "MEDIUM" if volatility > 1.5 else "LARGE"
-    st.metric("Suggested Size", pos_size, f"{volatility:.1f}% vol")
+    # Immediate support
+    support = max(bb_lower, current_price * 0.985)
+    distance_to_support = ((support - current_price) / current_price) * 100
+    st.metric("Support", f"${support:.2f}", f"{distance_to_support:+.1f}%")
 
 with exec_cols[2]:
-    time_urgency = "URGENT" if best_flow and best_flow['dte'] <= 1 else "NORMAL" if best_flow and best_flow['dte'] <= 7 else "LOW"
-    dte_text = f"{best_flow['dte']}DTE" if best_flow else "N/A"
-    st.metric("Time Decay", time_urgency, dte_text)
+    # Trend line (SMA 20)
+    trend_bias = "BULLISH" if current_price > sma_20 else "BEARISH"
+    trend_distance = ((current_price - sma_20) / sma_20) * 100
+    st.metric("Trend", trend_bias, f"{trend_distance:+.1f}%")
+
+with exec_cols[3]:
+    # Volatility regime
+    vol_regime = "HIGH" if daily_range > 2 else "NORMAL" if daily_range > 0.5 else "LOW"
+    st.metric("Vol Regime", vol_regime, f"{daily_range:.1f}% today")
 
 # === COMPACT OPTIONS CHAIN ===
 st.markdown("#### 💰 Live Options Chain")
