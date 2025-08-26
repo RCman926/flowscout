@@ -242,16 +242,27 @@ def main():
         pressure = "HIGH" if total_volume > 100000 else "MEDIUM" if total_volume > 50000 else "LOW"
         st.metric("MM Pressure", pressure, f"{total_volume/1000:.0f}K vol")
     
-    # === ENHANCED DASHBOARD WITH ADVANCED ML PREDICTIONS ===
+    # === ENHANCED DASHBOARD WITH LIVE OPTIONS DATA ===
     
-    # Import enhanced systems
+    # Import enhanced systems  
     from advanced_prediction_engine import prediction_engine
     from enhanced_visualization import enhanced_viz
+    from real_live_options_scraper import real_live_scraper
+    
+    # Show live data status
+    st.markdown("### 📡 LIVE DATA STATUS")
+    live_flow_metrics = real_live_scraper.get_live_flow_metrics(selected_symbol)
+    
+    if live_flow_metrics['data_source'] == 'LIVE_YAHOO_FINANCE':
+        st.success(f"✅ LIVE OPTIONS DATA ACTIVE - Real volume from Yahoo Finance")
+        st.caption(f"Last updated: {live_flow_metrics['timestamp'].strftime('%H:%M:%S')} - Total volume: {live_flow_metrics['total_volume']:,}")
+    else:
+        st.error("❌ Live options data unavailable")
     
     # Generate advanced ML predictions
     prediction_data = prediction_engine.generate_advanced_prediction(market_data, tech_data, flow_data)
     
-    # Render enhanced compact dashboard (tabbed interface to reduce information overload)
+    # Render enhanced compact dashboard with LIVE data
     enhanced_viz.create_compact_dashboard(
         symbol=selected_symbol,
         market_data=market_data,

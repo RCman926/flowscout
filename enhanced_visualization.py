@@ -93,27 +93,44 @@ class EnhancedVisualization:
             st.caption(f"Updated: {datetime.now().strftime('%H:%M:%S')}")
     
     def _render_flow_dashboard(self, symbol, flow_data, market_data):
-        """Enhanced options flow visualization"""
+        """Enhanced options flow visualization with REAL LIVE DATA"""
+        
+        # Import real live scraper
+        from real_live_options_scraper import real_live_scraper
+        
+        # Get actual live options data
+        live_flow_metrics = real_live_scraper.get_live_flow_metrics(symbol)
+        
+        # Data source indicator
+        data_source = live_flow_metrics.get('data_source', 'UNKNOWN')
+        if data_source == 'LIVE_YAHOO_FINANCE':
+            st.success(f"📡 LIVE DATA SOURCE: Yahoo Finance Options Chain - Updated: {live_flow_metrics['timestamp'].strftime('%H:%M:%S')}")
+        else:
+            st.warning("⚠️ Live data unavailable - using fallback")
+        
         col1, col2 = st.columns(2)
         
         with col1:
-            self._create_flow_gauge_chart(flow_data)
+            self._create_live_flow_gauge_chart(live_flow_metrics)
         
         with col2:
-            self._create_volume_heatmap(flow_data)
+            self._create_live_volume_breakdown(live_flow_metrics)
         
-        # Flow timeline
-        st.markdown("#### 📊 Real-Time Flow Analysis")
-        self._create_flow_timeline(flow_data)
+        # Real-time strikes table
+        st.markdown("#### 📊 LIVE Options Volume by Strike")
+        self._create_live_strikes_table(live_flow_metrics)
+        
+        # Unusual activity alerts
+        if live_flow_metrics.get('unusual_activity'):
+            st.markdown("#### 🚨 Unusual Activity Detected")
+            self._show_unusual_activity(live_flow_metrics['unusual_activity'])
     
-    def _create_flow_gauge_chart(self, flow_data):
-        """Create gauge chart for call/put ratio"""
+    def _create_live_flow_gauge_chart(self, live_flow_metrics):
+        """Create gauge chart for LIVE call/put ratio"""
         try:
-            analysis = flow_data.get('analysis', [])
-            total_calls = sum([exp.get('call_volume', 0) for exp in analysis])
-            total_puts = sum([exp.get('put_volume', 0) for exp in analysis])
-            
-            cp_ratio = total_calls / max(1, total_puts)
+            cp_ratio = live_flow_metrics.get('call_put_ratio', 1.0)
+            call_volume = live_flow_metrics.get('call_volume', 0)
+            put_volume = live_flow_metrics.get('put_volume', 0)
             
             fig = go.Figure(go.Indicator(
                 mode="gauge+number+delta",
@@ -146,56 +163,99 @@ class EnhancedVisualization:
             
             st.plotly_chart(fig, use_container_width=True)
             
+            # Show actual volumes
+            st.metric("Call Volume", f"{call_volume:,}")
+            st.metric("Put Volume", f"{put_volume:,}")
+            
         except Exception as e:
-            st.error(f"Flow gauge error: {e}")
+            st.error(f"Live flow gauge error: {e}")
     
-    def _create_volume_heatmap(self, flow_data):
-        """Create volume heatmap by expiration"""
+    def _create_live_volume_breakdown(self, live_flow_metrics):
+        """Create live volume breakdown display"""
         try:
-            analysis = flow_data.get('analysis', [])
-            if not analysis:
-                st.info("No flow data available")
+            # Flow metrics
+            total_volume = live_flow_metrics.get('total_volume', 0)
+            net_flow = live_flow_metrics.get('net_flow', 0)
+            flow_bias = live_flow_metrics.get('flow_bias', 'NEUTRAL')
+            
+            st.markdown("**Live Flow Metrics**")
+            
+            # Total volume
+            st.metric("Total Options Volume", f"{total_volume:,}")
+            
+            # Net flow
+            if net_flow > 0:
+                st.success(f"Net Flow: +{net_flow:,} (Bullish)")
+            elif net_flow < 0:
+                st.error(f"Net Flow: {net_flow:,} (Bearish)")
+            else:
+                st.info(f"Net Flow: {net_flow:,} (Neutral)")
+            
+            # Flow bias
+            if flow_bias == 'BULLISH':
+                st.success(f"Flow Bias: {flow_bias}")
+            elif flow_bias == 'BEARISH':
+                st.error(f"Flow Bias: {flow_bias}")
+            else:
+                st.info(f"Flow Bias: {flow_bias}")
+            
+            # Data freshness
+            timestamp = live_flow_metrics.get('timestamp', datetime.now())
+            seconds_ago = (datetime.now() - timestamp).total_seconds()
+            st.caption(f"Data age: {seconds_ago:.0f} seconds")
+            
+        except Exception as e:
+            st.error(f"Volume breakdown error: {e}")
+    
+    def _create_live_strikes_table(self, live_flow_metrics):
+        """Create table of live strikes by volume"""
+        try:
+            top_strikes = live_flow_metrics.get('top_strikes', [])
+            
+            if not top_strikes:
+                st.info("No live strike data available")
                 return
             
-            # Prepare data for heatmap
-            expirations = []
-            call_volumes = []
-            put_volumes = []
+            # Convert to DataFrame
+            df = pd.DataFrame(top_strikes)
+            df = df.head(10)  # Top 10 strikes
             
-            for exp in analysis[:8]:  # Show top 8 expirations
-                expirations.append(f"{exp.get('dte', 0)}DTE")
-                call_volumes.append(exp.get('call_volume', 0))
-                put_volumes.append(exp.get('put_volume', 0))
+            # Format for display
+            display_df = df.copy()
+            display_df['Strike'] = display_df['strike'].apply(lambda x: f"${x:.0f}")
+            display_df['Volume'] = display_df['volume'].apply(lambda x: f"{x:,}")
+            display_df['Type'] = display_df['type']
+            display_df['DTE'] = display_df['dte']
+            display_df['Price'] = display_df['last_price'].apply(lambda x: f"${x:.2f}")
+            display_df['OI'] = display_df['open_interest'].apply(lambda x: f"{x:,}")
             
-            # Create heatmap data
-            heatmap_data = [call_volumes, put_volumes]
+            # Select columns for display
+            display_df = display_df[['Strike', 'Type', 'Volume', 'DTE', 'Price', 'OI']]
             
-            fig = go.Figure(data=go.Heatmap(
-                z=heatmap_data,
-                x=expirations,
-                y=['Calls', 'Puts'],
-                colorscale='RdYlGn',
-                showscale=True,
-                text=[[f"{val:,.0f}" for val in call_volumes],
-                      [f"{val:,.0f}" for val in put_volumes]],
-                texttemplate="%{text}",
-                textfont={"size": 10}
-            ))
-            
-            fig.update_layout(
-                title="Volume by Expiration",
-                height=200,
-                margin=dict(l=20, r=20, t=40, b=20),
-                paper_bgcolor=self.color_scheme['background'],
-                plot_bgcolor=self.color_scheme['background']
-            )
-            
-            st.plotly_chart(fig, use_container_width=True)
+            st.dataframe(display_df, use_container_width=True, hide_index=True)
             
         except Exception as e:
-            st.error(f"Heatmap error: {e}")
+            st.error(f"Strikes table error: {e}")
     
-    def _create_flow_timeline(self, flow_data):
+    def _show_unusual_activity(self, unusual_activity):
+        """Show unusual options activity"""
+        try:
+            for activity in unusual_activity[:5]:  # Top 5
+                col1, col2, col3 = st.columns([2, 1, 1])
+                
+                with col1:
+                    st.write(f"**${activity['strike']:.0f} {activity['type']}** - {activity['reason']}")
+                
+                with col2:
+                    st.metric("Volume", f"{activity['volume']:,}")
+                
+                with col3:
+                    st.metric("DTE", f"{activity['dte']}")
+                    
+        except Exception as e:
+            st.error(f"Unusual activity display error: {e}")
+    
+    def _create_flow_timeline_deprecated(self, flow_data):
         """Create timeline chart of flow changes"""
         try:
             # Generate sample timeline data (in real app, this would be historical)
