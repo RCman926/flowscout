@@ -598,59 +598,136 @@ if dte_0_data:
 else:
     st.caption("⚠️ No 0DTE data available")
 
-# === MARKET ALERTS ===
-st.markdown("#### 📰 Market Updates")
+# === FINANCIAL CALENDAR ===
+st.markdown("#### 📅 Financial Calendar")
 
-# Get real market data for alerts instead of complex news system
+# Import financial calendar
+from financial_calendar import FinancialCalendar
+calendar = FinancialCalendar()
+
+calendar_cols = st.columns([1, 1, 1])
+
+with calendar_cols[0]:
+    st.markdown("**📊 Earnings**")
+    
+    # Get earnings for selected symbol
+    earnings = calendar.get_earnings_calendar(selected_symbol)
+    if earnings.get('next_earnings'):
+        days_until = earnings['days_until']
+        if days_until <= 7:
+            st.error(f"📅 {selected_symbol} earnings in {days_until} days")
+        elif days_until <= 14:
+            st.warning(f"📅 {selected_symbol} earnings in {days_until} days")
+        else:
+            st.info(f"📅 {selected_symbol} earnings in {days_until} days")
+        
+        if earnings.get('eps_estimate'):
+            st.caption(f"EPS Est: ${earnings['eps_estimate']:.2f}")
+    else:
+        st.info("📅 No earnings scheduled")
+
+with calendar_cols[1]:
+    st.markdown("**🏛️ FOMC**")
+    
+    # Get FOMC dates
+    fomc_dates = calendar.get_fomc_dates()
+    if fomc_dates:
+        next_fomc = fomc_dates[0]
+        days_until = next_fomc['days_until']
+        
+        if days_until <= 7:
+            st.error(f"🏛️ FOMC in {days_until} days")
+        elif days_until <= 14:
+            st.warning(f"🏛️ FOMC in {days_until} days")
+        else:
+            st.info(f"🏛️ FOMC in {days_until} days")
+        
+        st.caption(f"Date: {next_fomc['date']}")
+    else:
+        st.info("🏛️ No FOMC meetings scheduled")
+
+with calendar_cols[2]:
+    st.markdown("**📈 Economic Data**")
+    
+    # Get economic events
+    econ_events = calendar.get_economic_events()
+    if econ_events:
+        next_event = econ_events[0]
+        days_until = next_event['days_until']
+        
+        if days_until <= 3:
+            st.error(f"📊 {next_event['event']} in {days_until} days")
+        elif days_until <= 7:
+            st.warning(f"📊 {next_event['event']} in {days_until} days")
+        else:
+            st.info(f"📊 {next_event['event']} in {days_until} days")
+        
+        # Show next 2 events
+        for event in econ_events[1:3]:
+            st.caption(f"{event['event']}: {event['days_until']}d")
+    else:
+        st.info("📊 No major events scheduled")
+
+# === OPTIONS EXPIRATION CALENDAR ===
+st.markdown("#### 📅 Options Expiration Calendar")
+
+exp_dates = calendar.get_options_expiration_dates()
+if exp_dates:
+    exp_cols = st.columns(6)
+    
+    for i, exp in enumerate(exp_dates[:6]):
+        with exp_cols[i]:
+            days_until = exp['days_until']
+            exp_type = exp['type']
+            
+            # Color code by type
+            if exp_type == "Monthly":
+                if days_until <= 7:
+                    st.error(f"📅 {exp_type}")
+                else:
+                    st.warning(f"📅 {exp_type}")
+            elif exp_type == "Quarterly":
+                st.success(f"📅 {exp_type}")
+            else:
+                st.info(f"📅 {exp_type}")
+            
+            st.caption(f"{days_until}d - {exp['date'][5:]}")
+
+# === MARKET ALERTS ===
+st.markdown("#### 🔔 Live Market Alerts")
+
+# Get real market data for alerts
 market_alerts = []
 
 # Price movement alerts
 price_change = market_data.get('change_pct', 0)
 if abs(price_change) > 2:
-    direction = "UP" if price_change > 0 else "DOWN"
     market_alerts.append(f"🚨 {selected_symbol} moved {price_change:+.1f}% today")
 
 # Volume alerts
 volume = market_data.get('volume', 0)
-if volume > 1000000:  # High volume threshold
-    market_alerts.append(f"📊 High volume: {volume/1e6:.1f}M shares traded")
+if volume > 1000000:
+    market_alerts.append(f"📊 High volume: {volume/1e6:.1f}M shares")
 
 # Options flow alerts
 if flow_data.get('total_volume', 0) > 50000:
     market_alerts.append(f"⚡ Unusual options activity: {flow_data['total_volume']:,} contracts")
+
+# Calendar-based alerts
+if earnings.get('days_until', 999) <= 7:
+    market_alerts.append(f"📊 {selected_symbol} earnings within 7 days")
 
 # Signal alerts
 if confidence > 70:
     signal_emoji = "📈" if "BUY" in signal else "📉"
     market_alerts.append(f"{signal_emoji} {signal} signal at {confidence:.0f}% confidence")
 
-# Display alerts
-alert_cols = st.columns([1, 1])
-
-with alert_cols[0]:
-    st.markdown("**🔔 Live Alerts**")
-    if market_alerts:
-        for alert in market_alerts[:3]:
-            st.info(alert)
-    else:
-        st.info("📊 Normal market conditions")
-
-with alert_cols[1]:
-    st.markdown("**📈 Key Stats**")
-    
-    # Key market stats
-    st.metric("Price", f"${market_data.get('price', 0):.2f}", 
-             f"{price_change:+.2f}%")
-    
-    # Volume comparison
-    if volume > 0:
-        st.caption(f"Volume: {volume/1e6:.1f}M shares")
-    
-    # Market status
-    now = datetime.now()
-    market_hours = 9 <= now.hour < 16 and now.weekday() < 5
-    status = "🟢 Market Open" if market_hours else "🔴 Market Closed"
-    st.caption(status)
+# Display alerts in compact format
+if market_alerts:
+    for alert in market_alerts[:3]:
+        st.info(alert)
+else:
+    st.info("📊 Normal market conditions")
 
 st.markdown("---")
 
