@@ -485,8 +485,49 @@ if not flow_data or not market_data:
     st.error("⚠️ Unable to fetch real market data for analysis")
     st.stop()
 
+# === INSTITUTIONAL FLOW VISUALIZATION ===
+st.markdown("#### 📊 Live Options Flow")
+
+# Create flow visualization
+flow_viz_cols = st.columns([2, 2, 1])
+
+with flow_viz_cols[0]:
+    # Call flow visualization
+    call_volume = sum([exp.get('call_volume', 0) for exp in flow_data.get('analysis', [])])
+    call_premium = sum([exp.get('call_premium', 0) for exp in flow_data.get('analysis', [])])
+    
+    if call_volume > 0:
+        st.success(f"📈 CALLS: {call_volume:,} contracts")
+        st.caption(f"${call_premium/1e6:.1f}M premium")
+    else:
+        st.info("📈 No significant call flow")
+
+with flow_viz_cols[1]:
+    # Put flow visualization  
+    put_volume = sum([exp.get('put_volume', 0) for exp in flow_data.get('analysis', [])])
+    put_premium = sum([exp.get('put_premium', 0) for exp in flow_data.get('analysis', [])])
+    
+    if put_volume > 0:
+        st.error(f"📉 PUTS: {put_volume:,} contracts")
+        st.caption(f"${put_premium/1e6:.1f}M premium")
+    else:
+        st.info("📉 No significant put flow")
+
+with flow_viz_cols[2]:
+    # Flow direction indicator
+    total_call_volume = call_volume
+    total_put_volume = put_volume
+    
+    if total_call_volume > total_put_volume * 1.5:
+        st.success("🟢 BULLISH FLOW")
+    elif total_put_volume > total_call_volume * 1.5:
+        st.error("🔴 BEARISH FLOW")
+    else:
+        st.info("⚪ NEUTRAL FLOW")
+
 # === TRADING DECISION ===
-# Simple buy/sell recommendation based on real data
+st.markdown("#### 🎯 Trading Signal")
+
 decision_cols = st.columns([1, 1, 1])
 
 with decision_cols[0]:
@@ -803,35 +844,84 @@ with target_col4:
     else:
         st.error("No put flow data")
 
-# Compact execution parameters
-st.markdown("#### ⚡ Execution")
+# Risk & Position Info
+st.markdown("#### ⚡ Position Sizing Guide")
 
 exec_cols = st.columns(3)
 
 with exec_cols[0]:
     volume_multiplier = volume / max(1, avg_volume) if avg_volume > 0 else 1
     volume_status = "HIGH" if volume_multiplier > 1.5 else "NORMAL" if volume_multiplier > 0.7 else "LOW"
-    st.metric("Volume", volume_status, f"{volume_multiplier:.1f}x")
+    st.metric("Volume", volume_status, f"{volume_multiplier:.1f}x avg")
 
 with exec_cols[1]:
     volatility = abs(market_data['change_pct']) if market_data['change_pct'] else 1.0
     pos_size = "SMALL" if volatility > 3 else "MEDIUM" if volatility > 1.5 else "LARGE"
-    st.metric("Position", pos_size, f"{volatility:.1f}% vol")
+    st.metric("Suggested Size", pos_size, f"{volatility:.1f}% vol")
 
 with exec_cols[2]:
     time_urgency = "URGENT" if best_flow and best_flow['dte'] <= 1 else "NORMAL" if best_flow and best_flow['dte'] <= 7 else "LOW"
     dte_text = f"{best_flow['dte']}DTE" if best_flow else "N/A"
-    st.metric("Theta", time_urgency, dte_text)
+    st.metric("Time Decay", time_urgency, dte_text)
 
 # === COMPACT OPTIONS CHAIN ===
-st.markdown("#### 💰 Options Chain")
+st.markdown("#### 💰 Live Options Chain")
 
-# Compact refresh indicator
-refresh_time = datetime.now().strftime("%H:%M:%S")
-st.caption(f"🔴 LIVE • {refresh_time}")
+# Show actual options data from Yahoo Finance
+try:
+    ticker = yf.Ticker(selected_symbol)
+    current_price = market_data.get('price', 0)
+    
+    if ticker.options and current_price > 0:
+        # Get nearest expiry
+        exp_date = ticker.options[0]
+        chain = ticker.option_chain(exp_date)
+        
+        # Filter for relevant strikes near the money
+        calls = chain.calls[(chain.calls['strike'] >= current_price - 10) & 
+                           (chain.calls['strike'] <= current_price + 10) &
+                           (chain.calls['volume'] > 0)].head(5)
+        
+        puts = chain.puts[(chain.puts['strike'] >= current_price - 10) & 
+                         (chain.puts['strike'] <= current_price + 10) &
+                         (chain.puts['volume'] > 0)].head(5)
+        
+        if not calls.empty or not puts.empty:
+            chain_cols = st.columns([1, 1])
+            
+            with chain_cols[0]:
+                st.markdown("**📈 CALLS**")
+                for _, call in calls.iterrows():
+                    vol = int(call['volume']) if call['volume'] > 0 else 0
+                    bid = call['bid']
+                    ask = call['ask']
+                    strike = call['strike']
+                    
+                    if vol > 0:
+                        st.info(f"${strike:.0f} - ${bid:.2f}x${ask:.2f} - {vol:,} vol")
+            
+            with chain_cols[1]:
+                st.markdown("**📉 PUTS**")
+                for _, put in puts.iterrows():
+                    vol = int(put['volume']) if put['volume'] > 0 else 0
+                    bid = put['bid']
+                    ask = put['ask']
+                    strike = put['strike']
+                    
+                    if vol > 0:
+                        st.info(f"${strike:.0f} - ${bid:.2f}x${ask:.2f} - {vol:,} vol")
+        else:
+            st.info("No active options with volume found")
+    else:
+        st.info("Options data loading...")
+        
+except Exception as e:
+    st.warning("Options chain temporarily unavailable")
 
-# === INSTITUTIONAL FLOW ===
-st.markdown("#### 🎯 Institutional Flow")
+st.markdown("---")
+
+# === FLOW SUMMARY ===
+st.markdown("#### 🎯 Flow Summary")
 
 try:
     ticker = yf.Ticker(selected_symbol)
