@@ -109,20 +109,13 @@ def main():
     st.markdown("---")
     symbol_rows = [symbols[i:i+7] for i in range(0, len(symbols), 7)]
     
-    # Symbol selector with live data
+    # Symbol selector with live data  
     for row in symbol_rows:
         cols = st.columns(len(row))
         for i, symbol in enumerate(row):
-            # Use cached data for faster loading
-            cache_key = f"symbol_data_{symbol}"
-            if cache_key in st.session_state and time.time() - st.session_state.get(f"{cache_key}_time", 0) < 300:
-                symbol_data = st.session_state[cache_key]['data']
-                symbol_signal = st.session_state[cache_key]['signal']
-            else:
-                symbol_data = data_coordinator.get_market_data(symbol)
-                symbol_signal = data_coordinator.generate_trading_signal(symbol)
-                st.session_state[cache_key] = {'data': symbol_data, 'signal': symbol_signal}
-                st.session_state[f"{cache_key}_time"] = time.time()
+            # Get live data for each symbol
+            symbol_data = data_coordinator.get_market_data(symbol)
+            symbol_signal = data_coordinator.generate_trading_signal(symbol)
             
             price = symbol_data['price'] if symbol_data else 150.0
             change_pct = symbol_data['change_pct'] if symbol_data else 0.0
