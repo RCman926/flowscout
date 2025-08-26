@@ -272,11 +272,16 @@ class DashboardDataCoordinator:
                 signals.append(-1)
                 reasons.append("RSI overbought")
             
-            # Volume signal
-            volume_ratio = market_data['volume'] / market_data['avg_volume']
-            if volume_ratio > 1.5:
-                signals.append(1 if market_data['change_pct'] > 0 else -1)
-                reasons.append(f"High volume ({volume_ratio:.1f}x average)")
+            # Volume signal - handle missing avg_volume
+            try:
+                avg_vol = market_data.get('avg_volume', market_data['volume'])
+                volume_ratio = market_data['volume'] / avg_vol if avg_vol > 0 else 1.0
+                if volume_ratio > 1.5:
+                    signals.append(1 if market_data['change_pct'] > 0 else -1)
+                    reasons.append(f"High volume ({volume_ratio:.1f}x average)")
+            except Exception as vol_err:
+                print(f"Volume ratio calculation error: {vol_err}")
+                # Skip volume signal if calculation fails
             
             # Options flow signal
             total_flow = flow_data.get('total_volume', 0)
