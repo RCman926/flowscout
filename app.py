@@ -242,33 +242,27 @@ def main():
         pressure = "HIGH" if total_volume > 100000 else "MEDIUM" if total_volume > 50000 else "LOW"
         st.metric("MM Pressure", pressure, f"{total_volume/1000:.0f}K vol")
     
-    # === ENTRY & EXIT LEVELS ===
-    st.markdown("#### 🎯 Entry & Exit Levels")
+    # === ENHANCED DASHBOARD WITH ADVANCED ML PREDICTIONS ===
     
-    levels_cols = st.columns(4)
+    # Import enhanced systems
+    from advanced_prediction_engine import prediction_engine
+    from enhanced_visualization import enhanced_viz
     
-    # Calculate levels
-    resistance = min(tech_data['bb_upper'], current_price * 1.015)
-    support = max(tech_data['bb_lower'], current_price * 0.985)
-    sma_20 = tech_data['sma_20']
-    daily_range = abs(market_data['change_pct'])
+    # Generate advanced ML predictions
+    prediction_data = prediction_engine.generate_advanced_prediction(market_data, tech_data, flow_data)
     
-    with levels_cols[0]:
-        distance_resistance = ((resistance - current_price) / current_price) * 100
-        st.metric("Resistance", f"${resistance:.2f}", f"{distance_resistance:+.1f}%")
+    # Render enhanced compact dashboard (tabbed interface to reduce information overload)
+    enhanced_viz.create_compact_dashboard(
+        symbol=selected_symbol,
+        market_data=market_data,
+        tech_data=tech_data,
+        flow_data=flow_data,
+        signal_data=signal_data,
+        prediction_data=prediction_data
+    )
     
-    with levels_cols[1]:
-        distance_support = ((support - current_price) / current_price) * 100
-        st.metric("Support", f"${support:.2f}", f"{distance_support:+.1f}%")
-    
-    with levels_cols[2]:
-        trend_bias = "BULLISH" if current_price > sma_20 else "BEARISH"
-        trend_distance = ((current_price - sma_20) / sma_20) * 100
-        st.metric("Trend", trend_bias, f"{trend_distance:+.1f}%")
-    
-    with levels_cols[3]:
-        vol_regime = "HIGH" if daily_range > 2 else "NORMAL" if daily_range > 0.5 else "LOW"
-        st.metric("Vol Regime", vol_regime, f"{daily_range:.1f}% today")
+    # End enhanced dashboard
+    return
     
     # === LIVE OPTIONS FLOW SYSTEM ===
     st.markdown("#### 🔥 LIVE Options Flow - Constant Updates")
