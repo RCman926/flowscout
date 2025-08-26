@@ -63,20 +63,70 @@ class OptionsEngine:
         if self.app:
             self.app.disconnect()
     
-    async def get_options_flow(self, symbol, min_volume=100, min_premium=1000.0):
-        """Get real-time options flow data"""
+    def analyze_flow_patterns(self, symbol, min_volume=100, min_premium=1000.0):
+        """Analyze options flow patterns with real data"""
         try:
-            # Try IBKR first, fallback to Yahoo Finance
-            if await self.connect_ibkr():
-                # Implementation for IBKR options flow would go here
-                await self.disconnect_ibkr()
+            ticker = yf.Ticker(symbol)
             
-            # Fallback to Yahoo Finance data
-            return await self._get_yahoo_options_flow(symbol, min_volume, min_premium)
+            if not ticker.options:
+                return {'analysis': [], 'total_volume': 0, 'symbol': symbol}
+            
+            all_analysis = []
+            total_volume = 0
+            
+            # Analyze top 3 expirations
+            for exp_date in ticker.options[:3]:
+                try:
+                    chain = ticker.option_chain(exp_date)
+                    calls_df = chain.calls
+                    puts_df = chain.puts
+                    
+                    # Calculate days to expiry
+                    exp_dt = datetime.strptime(exp_date, '%Y-%m-%d')
+                    dte = (exp_dt.date() - datetime.now().date()).days
+                    
+                    # Filter for active options
+                    active_calls = calls_df[(calls_df['volume'] > min_volume) & (calls_df['bid'] > 0)]
+                    active_puts = puts_df[(puts_df['volume'] > min_volume) & (puts_df['bid'] > 0)]
+                    
+                    call_volume = active_calls['volume'].sum() if not active_calls.empty else 0
+                    put_volume = active_puts['volume'].sum() if not active_puts.empty else 0
+                    
+                    call_premium = (active_calls['volume'] * active_calls['lastPrice']).sum() if not active_calls.empty else 0
+                    put_premium = (active_puts['volume'] * active_puts['lastPrice']).sum() if not active_puts.empty else 0
+                    
+                    total_volume += call_volume + put_volume
+                    
+                    analysis = {
+                        'expiry': exp_date,
+                        'dte': dte,
+                        'call_volume': int(call_volume),
+                        'put_volume': int(put_volume),
+                        'call_premium': float(call_premium),
+                        'put_premium': float(put_premium),
+                        'total_volume': int(call_volume + put_volume),
+                        'pc_ratio': float(put_volume / call_volume) if call_volume > 0 else 0
+                    }
+                    all_analysis.append(analysis)
+                    
+                except Exception as e:
+                    print(f"Error analyzing {exp_date}: {e}")
+                    continue
+            
+            return {
+                'analysis': all_analysis,
+                'total_volume': int(total_volume),
+                'symbol': symbol,
+                'timestamp': datetime.now()
+            }
             
         except Exception as e:
-            print(f"Options flow fetch failed: {e}")
-            return pd.DataFrame()
+            print(f"Flow analysis error for {symbol}: {e}")
+            return {'analysis': [], 'total_volume': 0, 'symbol': symbol}
+
+    async def get_options_flow(self, symbol, min_volume=100, min_premium=1000.0):
+        """Get real-time options flow data"""
+        return self.analyze_flow_patterns(symbol, min_volume, min_premium)
     
     async def _get_yahoo_options_flow(self, symbol, min_volume, min_premium):
         """Get options flow using Yahoo Finance (fallback)"""

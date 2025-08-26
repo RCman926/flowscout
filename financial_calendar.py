@@ -35,6 +35,14 @@ class FinancialCalendar:
                         'days_until': (next_date.date() - datetime.now().date()).days,
                         'eps_estimate': calendar.iloc[0].get('EPS Estimate', 0) if len(calendar) > 0 else 0
                     }
+                elif calendar is not None and hasattr(calendar, 'empty') and not calendar.empty:
+                    # Handle DataFrame format
+                    next_date = calendar.index[0]
+                    earnings_data = {
+                        'next_earnings': next_date.strftime('%Y-%m-%d'),
+                        'days_until': (next_date.date() - datetime.now().date()).days,
+                        'eps_estimate': float(calendar.iloc[0].get('EPS Estimate', 0)) if 'EPS Estimate' in calendar.columns else 0
+                    }
             except:
                 # Fallback to ticker info
                 try:

@@ -34,7 +34,7 @@ class MarketDataApp(EWrapper, EClient):
         """Handle errors"""
         self.error_messages.append(f"Error {errorCode}: {errorString}")
 
-class MarketDataManager:
+class MarketDataEngine:
     def __init__(self):
         self.app = None
         self.cache = {}
@@ -549,3 +549,40 @@ class MarketDataManager:
         except Exception as e:
             print(f"Sector performance error: {e}")
             return pd.DataFrame()
+    
+    def get_real_time_data(self, symbol):
+        """Get real-time market data for a symbol"""
+        try:
+            ticker = yf.Ticker(symbol)
+            
+            # Get current info and recent history
+            info = ticker.info
+            hist = ticker.history(period='2d')
+            
+            if hist.empty:
+                return None
+                
+            current_price = hist['Close'].iloc[-1]
+            prev_close = hist['Close'].iloc[-2] if len(hist) > 1 else current_price
+            volume = hist['Volume'].iloc[-1]
+            
+            change = current_price - prev_close
+            change_pct = (change / prev_close) * 100
+            
+            return {
+                'symbol': symbol,
+                'price': float(current_price),
+                'change': float(change),
+                'change_pct': float(change_pct),
+                'volume': int(volume),
+                'avg_volume': int(info.get('averageVolume', volume)),
+                'market_cap': info.get('marketCap', 0),
+                'timestamp': datetime.now()
+            }
+            
+        except Exception as e:
+            print(f"Real-time data error for {symbol}: {e}")
+            return None
+
+# Create a global instance for the app to use
+market_data_manager = MarketDataEngine()
