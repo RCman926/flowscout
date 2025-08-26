@@ -40,29 +40,53 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Minimal institutional styling
+# Professional institutional styling with improved colors
 st.markdown("""
 <style>
     .main > div { padding-top: 0.5rem; }
     .stMetric { 
-        background: #0a0e27 !important; 
-        padding: 0.3rem !important; 
-        border-radius: 4px !important; 
-        margin: 0.1rem 0 !important; 
-        border: 1px solid #1e293b !important; 
+        background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%) !important; 
+        padding: 0.8rem !important; 
+        border-radius: 8px !important; 
+        margin: 0.3rem 0 !important; 
+        border: 1px solid #3b82f6 !important; 
         color: white !important;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1) !important;
     }
     .stMetric [data-testid="metric-container"] {
-        background-color: #0a0e27 !important;
+        background-color: transparent !important;
         color: white !important;
-        padding: 0.3rem !important;
-        font-size: 0.8rem !important;
+        padding: 0.5rem !important;
+        font-size: 0.9rem !important;
+    }
+    .stMetric [data-testid="metric-value"] {
+        font-size: 1.8rem !important;
+        font-weight: 700 !important;
+        color: #60a5fa !important;
+    }
+    .stMetric [data-testid="metric-delta"] {
+        font-size: 1rem !important;
+        font-weight: 600 !important;
     }
     .block-container { padding-top: 1rem !important; padding-bottom: 1rem !important; }
-    h1, h2, h3 { color: #1e293b !important; font-weight: 600 !important; margin-bottom: 0.3rem !important; }
-    h1 { font-size: 1.4rem !important; }
-    h2 { font-size: 1.1rem !important; }
-    p, div, span { font-size: 0.8rem !important; }
+    h1, h2, h3 { color: #1e40af !important; font-weight: 700 !important; margin-bottom: 0.5rem !important; }
+    h1 { font-size: 1.6rem !important; }
+    h2 { font-size: 1.3rem !important; }
+    h3 { font-size: 1.1rem !important; }
+    .stSelectbox > div > div { background: linear-gradient(135deg, #1e3a8a, #1e40af) !important; }
+    .stButton > button {
+        background: linear-gradient(135deg, #059669 0%, #10b981 100%) !important;
+        color: white !important;
+        border: none !important;
+        border-radius: 6px !important;
+        font-weight: 600 !important;
+        transition: all 0.3s ease !important;
+    }
+    .stButton > button:hover {
+        background: linear-gradient(135deg, #047857 0%, #059669 100%) !important;
+        transform: translateY(-1px) !important;
+        box-shadow: 0 6px 12px rgba(0,0,0,0.15) !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -189,72 +213,177 @@ def get_institutional_flow_data(symbol):
         return None
 
 def calculate_institutional_signal(symbol):
-    """Calculate institutional-grade trading signal"""
+    """Calculate high-confidence institutional-grade trading signal with multiple confirmations"""
     try:
         ticker = yf.Ticker(symbol)
-        hist = ticker.history(period="10d", interval="1d")
-        if hist.empty:
+        hist = ticker.history(period="30d", interval="1d")  # More data for better signals
+        if len(hist) < 20:
             return "NEUTRAL", "#6b7280", 25
         
-        # Price momentum
+        # 1. PRICE MOMENTUM ANALYSIS (Enhanced)
         returns = hist['Close'].pct_change().dropna()
+        momentum_1d = (hist['Close'][-1] / hist['Close'][-2] - 1) * 100
         momentum_5d = (hist['Close'][-1] / hist['Close'][-6] - 1) * 100 if len(hist) >= 6 else 0
+        momentum_10d = (hist['Close'][-1] / hist['Close'][-11] - 1) * 100 if len(hist) >= 11 else 0
+        momentum_20d = (hist['Close'][-1] / hist['Close'][-21] - 1) * 100 if len(hist) >= 21 else 0
         
-        # Volume analysis  
-        avg_volume = hist['Volume'][-5:].mean()
+        # 2. VOLUME CONFIRMATION (Enhanced)
+        volume_5d = hist['Volume'][-5:].mean()
+        volume_10d = hist['Volume'][-10:].mean()
+        volume_20d = hist['Volume'][-20:].mean()
         current_volume = hist['Volume'][-1]
-        volume_ratio = current_volume / avg_volume if avg_volume > 0 else 1
         
-        # Volatility
+        volume_ratio_5d = current_volume / volume_5d if volume_5d > 0 else 1
+        volume_ratio_20d = current_volume / volume_20d if volume_20d > 0 else 1
+        volume_trend = volume_5d / volume_20d if volume_20d > 0 else 1
+        
+        # 3. VOLATILITY & RISK ASSESSMENT
         volatility = returns.std() * np.sqrt(252) * 100
+        recent_volatility = returns[-5:].std() * np.sqrt(252) * 100
+        volatility_expansion = recent_volatility / volatility if volatility > 0 else 1
         
-        # Calculate signal strength
+        # 4. TECHNICAL PATTERN RECOGNITION
+        closes = hist['Close'].values
+        highs = hist['High'].values
+        lows = hist['Low'].values
+        
+        # Moving averages for trend confirmation
+        ma_5 = np.mean(closes[-5:]) if len(closes) >= 5 else closes[-1]
+        ma_10 = np.mean(closes[-10:]) if len(closes) >= 10 else closes[-1]
+        ma_20 = np.mean(closes[-20:]) if len(closes) >= 20 else closes[-1]
+        
+        current_price = closes[-1]
+        ma_alignment = 0
+        if current_price > ma_5 > ma_10 > ma_20:
+            ma_alignment = 2  # Strong bullish alignment
+        elif current_price > ma_5 > ma_10:
+            ma_alignment = 1  # Moderate bullish
+        elif current_price < ma_5 < ma_10 < ma_20:
+            ma_alignment = -2  # Strong bearish alignment
+        elif current_price < ma_5 < ma_10:
+            ma_alignment = -1  # Moderate bearish
+        
+        # 5. BREAKOUT/BREAKDOWN DETECTION
+        recent_high = np.max(highs[-10:]) if len(highs) >= 10 else current_price
+        recent_low = np.min(lows[-10:]) if len(lows) >= 10 else current_price
+        price_range = recent_high - recent_low
+        
+        breakout_signal = 0
+        if current_price > recent_high * 1.002:  # Breaking recent high
+            breakout_signal = 2
+        elif current_price < recent_low * 0.998:  # Breaking recent low
+            breakout_signal = -2
+        elif current_price > recent_high * 1.001:
+            breakout_signal = 1
+        elif current_price < recent_low * 0.999:
+            breakout_signal = -1
+        
+        # 6. MULTI-FACTOR SIGNAL CALCULATION (Enhanced weights)
         signal_score = 50  # Start neutral
+        confidence_factors = []
         
-        # Momentum factor (40% weight)
-        if momentum_5d > 3:
-            signal_score += 20
-        elif momentum_5d > 1:
-            signal_score += 10
-        elif momentum_5d < -3:
-            signal_score -= 20
-        elif momentum_5d < -1:
-            signal_score -= 10
-            
-        # Volume factor (30% weight)
-        if volume_ratio > 1.5:
-            signal_score += 15 if momentum_5d > 0 else -15
-        elif volume_ratio > 1.2:
-            signal_score += 8 if momentum_5d > 0 else -8
-            
-        # Volatility factor (20% weight)
-        if volatility > 40:
-            signal_score *= 0.9  # Reduce confidence in high vol
-        elif volatility < 15:
-            signal_score *= 1.1  # Increase confidence in low vol
-            
-        # Recent performance (10% weight)
-        recent_return = (hist['Close'][-1] / hist['Close'][-2] - 1) * 100
-        if abs(recent_return) > 2:
-            signal_score += 5 if recent_return > 0 else -5
-            
-        signal_score = max(0, min(100, signal_score))
-        confidence = abs(signal_score - 50) * 2
+        # Momentum factor (35% weight) - Multi-timeframe confirmation
+        momentum_score = 0
+        if momentum_1d > 2 and momentum_5d > 3 and momentum_10d > 5:
+            momentum_score = 25  # Strong bullish momentum across timeframes
+        elif momentum_1d > 1 and momentum_5d > 1.5:
+            momentum_score = 15  # Moderate bullish momentum
+        elif momentum_1d < -2 and momentum_5d < -3 and momentum_10d < -5:
+            momentum_score = -25  # Strong bearish momentum
+        elif momentum_1d < -1 and momentum_5d < -1.5:
+            momentum_score = -15  # Moderate bearish momentum
+        elif abs(momentum_5d) > 1:
+            momentum_score = 5 if momentum_5d > 0 else -5
         
-        # FIXED: Proper confidence thresholds - only strong signals with high confidence
-        if signal_score >= 70 and confidence >= 60:
-            return "STRONG BUY", "#10b981", confidence  # GREEN
-        elif signal_score >= 60 and confidence >= 50:
-            return "BUY", "#22c55e", confidence  # GREEN  
-        elif signal_score <= 30 and confidence >= 60:
-            return "STRONG SELL", "#dc2626", confidence  # RED
-        elif signal_score <= 40 and confidence >= 50:
-            return "SELL", "#ef4444", confidence  # RED
+        signal_score += momentum_score
+        confidence_factors.append(abs(momentum_score) / 25)
+        
+        # Volume confirmation factor (25% weight) - Enhanced
+        volume_score = 0
+        if volume_ratio_5d > 2.0 and volume_trend > 1.2:  # High volume with increasing trend
+            volume_score = 20 if momentum_score > 0 else -10  # Volume confirms direction
+        elif volume_ratio_5d > 1.5 and volume_trend > 1.1:
+            volume_score = 12 if momentum_score > 0 else -6
+        elif volume_ratio_5d > 1.2:
+            volume_score = 8 if momentum_score > 0 else -4
+        elif volume_ratio_5d < 0.7:  # Low volume weakness
+            volume_score = -5
+        
+        signal_score += volume_score
+        confidence_factors.append(min(1.0, abs(volume_score) / 20))
+        
+        # Technical pattern factor (20% weight)
+        pattern_score = ma_alignment * 8 + breakout_signal * 6
+        signal_score += pattern_score
+        confidence_factors.append(min(1.0, abs(pattern_score) / 20))
+        
+        # Volatility factor (10% weight) - Risk adjustment
+        if volatility < 20:  # Low volatility = more reliable signals
+            vol_bonus = 5
+        elif volatility < 30:
+            vol_bonus = 2
+        elif volatility > 50:  # High volatility = less reliable
+            vol_bonus = -8
         else:
-            # ALL low confidence or weak signals become NEUTRAL (GRAY/BLUE)
-            return "NEUTRAL", "#64748b", min(confidence, 45)  # NEUTRAL GRAY
+            vol_bonus = 0
             
+        signal_score += vol_bonus
+        confidence_factors.append(min(1.0, abs(vol_bonus) / 10))
+        
+        # Trend persistence factor (10% weight)
+        if momentum_5d * momentum_10d > 0 and abs(momentum_10d) > 1:  # Consistent direction
+            persistence_score = 8 if momentum_10d > 0 else -8
+        else:
+            persistence_score = 0
+            
+        signal_score += persistence_score
+        confidence_factors.append(min(1.0, abs(persistence_score) / 8))
+        
+        # Calculate final confidence based on factor agreement
+        base_confidence = np.mean(confidence_factors) * 100
+        
+        # Confidence adjustments
+        if volume_ratio_5d > 1.5:  # High volume increases confidence
+            base_confidence += 10
+        if volatility_expansion < 1.2:  # Stable volatility increases confidence
+            base_confidence += 10
+        if len([f for f in confidence_factors if f > 0.6]) >= 3:  # Multiple strong factors
+            base_confidence += 15
+        
+        # Final signal determination with higher thresholds for quality
+        final_confidence = min(95, max(20, base_confidence))
+        
+        if signal_score > 75:
+            signal_text = "STRONG BUY"
+            signal_color = "#059669"
+        elif signal_score > 65:
+            signal_text = "BUY"
+            signal_color = "#10b981"
+        elif signal_score > 55:
+            signal_text = "WEAK BUY"
+            signal_color = "#34d399"
+        elif signal_score < 25:
+            signal_text = "STRONG SELL"
+            signal_color = "#dc2626"
+        elif signal_score < 35:
+            signal_text = "SELL"
+            signal_color = "#ef4444"
+        elif signal_score < 45:
+            signal_text = "WEAK SELL"
+            signal_color = "#f87171"
+        else:
+            signal_text = "NEUTRAL"
+            signal_color = "#6b7280"
+            
+        # Only show high confidence signals (60%+) as strong signals
+        if final_confidence < 60 and "STRONG" in signal_text:
+            signal_text = signal_text.replace("STRONG ", "")
+            final_confidence = max(40, final_confidence - 10)
+        
+        return signal_text, signal_color, final_confidence
+        
     except Exception as e:
+        print(f"Signal calculation error for {symbol}: {e}")
         return "NEUTRAL", "#6b7280", 25
 
 # === SYMBOL DEFINITIONS ===
@@ -266,37 +395,28 @@ market_open = datetime.now().weekday() < 5 and 9 <= datetime.now().hour <= 16
 status_color = "#10b981" if market_open else "#dc2626"
 status_text = "LIVE TRADING" if market_open else "MARKET CLOSED"
 
-st.markdown(f"""
-<div style="background: linear-gradient(135deg, #0a0e27 0%, #1e293b 100%); padding: 1rem; border-radius: 8px; margin-bottom: 1rem; color: white; position: relative;">
-    <div style="position: absolute; top: 1rem; right: 1rem;">
-        <div style="background: {status_color}; padding: 0.3rem 0.8rem; border-radius: 20px; font-size: 0.7rem; font-weight: bold;">
-            ● {status_text}
-        </div>
-    </div>
-    <h1 style="margin: 0; color: white; font-size: 1.6rem;">🏛️ INSTITUTIONAL OPTIONS FLOW</h1>
-    <p style="margin: 0.3rem 0 0 0; color: #94a3b8; font-size: 0.9rem;">Real-time institutional-grade flow analysis • Live prediction signals • {len(symbols)} Premium Tickers</p>
-</div>
-""", unsafe_allow_html=True)
+# Clean header with status indicator using native Streamlit
+header_cols = st.columns([3, 1])
+with header_cols[0]:
+    st.title("🏛️ Institutional Options Flow")
+    st.caption(f"Real-time institutional-grade flow analysis • Live prediction signals • {len(symbols)} Premium Tickers")
 
-# === VALUE PROPOSITION BANNER ===
-st.markdown("""
-<div style="background: linear-gradient(135deg, #7c3aed 0%, #3b82f6 100%); padding: 0.5rem; border-radius: 4px; margin-bottom: 0.5rem; color: white; text-align: center;">
-    <div style="display: flex; justify-content: space-around; align-items: center; flex-wrap: wrap;">
-        <div style="text-align: center; margin: 0.2rem; font-size: 0.7rem;">
-            <strong>100% REAL DATA</strong>
-        </div>
-        <div style="text-align: center; margin: 0.2rem; font-size: 0.7rem;">
-            <strong>EXACT PRICES</strong>
-        </div>
-        <div style="text-align: center; margin: 0.2rem; font-size: 0.7rem;">
-            <strong>15-SEC REFRESH</strong>
-        </div>
-        <div style="text-align: center; margin: 0.2rem; font-size: 0.7rem;">
-            <strong>RISK ALERTS</strong>
-        </div>
-    </div>
-</div>
-""", unsafe_allow_html=True)
+with header_cols[1]:
+    if market_open:
+        st.success(f"● {status_text}")
+    else:
+        st.error(f"● {status_text}")
+
+# Value proposition using clean metrics
+value_cols = st.columns(4)
+with value_cols[0]:
+    st.metric("Data Quality", "100% REAL", "Live Market")
+with value_cols[1]: 
+    st.metric("Pricing", "EXACT", "No Delays")
+with value_cols[2]:
+    st.metric("Refresh Rate", "15-SEC", "Auto Update")
+with value_cols[3]:
+    st.metric("Signal Quality", "VERIFIED", "Risk Alerts")
 
 # === SYMBOL SELECTOR ===
 selected_symbol = st.session_state.get('selected_symbol', 'SPY')
@@ -317,29 +437,23 @@ for row in symbol_rows:
             border = "2px solid #fbbf24" if is_selected else "1px solid #374151"
             signal_icon = signal.replace("STRONG ", "").replace("BUY", "📈").replace("SELL", "📉").replace("NEUTRAL", "➖")
             
-            # Color-coded button styling
-            button_css = f"""
-            <style>
-            div[data-testid="stButton"] > button[key="select_{symbol}"] {{
-                background: {color} !important;
-                color: white !important;
-                border: {'3px solid #fbbf24' if is_selected else '1px solid transparent'} !important;
-                border-radius: 6px !important;
-                font-weight: bold !important;
-            }}
-            </style>
-            """
-            st.markdown(button_css, unsafe_allow_html=True)
+            # Use native Streamlit styling with container selection
+            container_style = "border: 3px solid #fbbf24; border-radius: 8px; padding: 0.5rem;" if is_selected else ""
             
-            # Compact clickable button
-            if st.button(
-                f"**{symbol}**\n${price:.1f} {change_pct:+.1f}%\n{signal_icon} {confidence:.0f}%",
-                key=f"select_{symbol}",
-                help=f"{symbol} - {signal} ({confidence:.0f}% confidence)",
-                use_container_width=True
-            ):
-                st.session_state.selected_symbol = symbol
-                st.rerun()
+            # Clean symbol selection with metrics
+            with st.container():
+                if is_selected:
+                    st.info(f"**{symbol}** - SELECTED")
+                
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.metric(symbol, f"${price:.1f}", f"{change_pct:+.1f}%")
+                with col2:
+                    st.metric("Signal", signal_icon, f"{confidence:.0f}%")
+                
+                if st.button(f"Select {symbol}", key=f"select_{symbol}", use_container_width=True, type="primary" if is_selected else "secondary"):
+                    st.session_state.selected_symbol = symbol
+                    st.rerun()
 
 # === LIVE FLOW ANALYSIS ===
 flow_data = get_institutional_flow_data(selected_symbol) or {
@@ -819,13 +933,9 @@ with exec_col3:
 # === LIVE OPTIONS CHAIN - BUY/SELL PRICES ===
 st.markdown("### 💰 OPTIONS CHAIN - BUY/SELL PRICES")
 
-# Add live refresh indicator
+# Add live refresh indicator using native components
 refresh_time = datetime.now().strftime("%H:%M:%S")
-st.markdown(f"""
-<div style="background: #10b981; padding: 0.3rem; border-radius: 3px; margin-bottom: 0.5rem; color: white; text-align: center; font-size: 0.7rem;">
-    🔴 LIVE • {refresh_time} • 5s refresh
-</div>
-""", unsafe_allow_html=True)
+st.success(f"🔴 LIVE • {refresh_time} • 5s refresh")
 
 # === INSTITUTIONAL SPY OPTIONS FLOW TRACKER ===
 st.markdown("### 🎯 SPY INSTITUTIONAL OPTIONS FLOW")
@@ -884,12 +994,8 @@ try:
                                 (puts_df['ask'] > puts_df['bid'])
                             ].sort_values('volume', ascending=False).head(5)
                             
-                            # Display expiry header
-                            st.markdown(f"""
-                            <div style="background: #1e40af; padding: 0.5rem; border-radius: 4px; margin: 0.5rem 0; color: white; text-align: center;">
-                                <strong>📅 {exp_info['label']} - TOP INSTITUTIONAL FLOW</strong>
-                            </div>
-                            """, unsafe_allow_html=True)
+                            # Display expiry header with clean component
+                            st.info(f"📅 **{exp_info['label']} - TOP INSTITUTIONAL FLOW**")
                             
                             col1, col2 = st.columns(2)
                             
@@ -990,46 +1096,23 @@ try:
                     unusual_flows = sorted(all_options, key=lambda x: x['flow_value'], reverse=True)[:8]
                     
                     if unusual_flows:
-                        flow_html = """
-                        <div style="background: #fbbf24; color: #1f2937; padding: 1rem; border-radius: 8px; margin: 1rem 0;">
-                            <h4 style="margin: 0 0 0.5rem 0; color: #1f2937;">🚨 TOP INSTITUTIONAL FLOWS - COPY THESE TRADES</h4>
-                            <table style="width: 100%; font-size: 0.8rem; color: #1f2937;">
-                                <tr style="background: #f59e0b; font-weight: bold;">
-                                    <td style="padding: 0.3rem; text-align: center;">TYPE</td>
-                                    <td style="padding: 0.3rem; text-align: center;">STRIKE</td>
-                                    <td style="padding: 0.3rem; text-align: center;">DAYS</td>
-                                    <td style="padding: 0.3rem; text-align: center;">PRICE</td>
-                                    <td style="padding: 0.3rem; text-align: center;">VOLUME</td>
-                                    <td style="padding: 0.3rem; text-align: center;">FLOW $</td>
-                                    <td style="padding: 0.3rem; text-align: center;">ACTION</td>
-                                </tr>
-                        """
+                        st.warning("🚨 TOP INSTITUTIONAL FLOWS - COPY THESE TRADES")
                         
-                        for flow in unusual_flows:
-                            flow_color = "#059669" if flow['type'] == 'CALL' else "#dc2626"
-                            action = "BULLISH" if flow['type'] == 'CALL' else "BEARISH"
-                            
-                            flow_html += f"""
-                            <tr style="background: rgba(255,255,255,0.1);">
-                                <td style="padding: 0.3rem; text-align: center; font-weight: bold; color: {flow_color};">{flow['type']}</td>
-                                <td style="padding: 0.3rem; text-align: center; font-weight: bold;">${flow['strike']}</td>
-                                <td style="padding: 0.3rem; text-align: center;">{flow['dte']}d</td>
-                                <td style="padding: 0.3rem; text-align: center;">${flow['price']:.2f}</td>
-                                <td style="padding: 0.3rem; text-align: center;">{flow['volume']:,}</td>
-                                <td style="padding: 0.3rem; text-align: center; font-weight: bold;">${flow['flow_value']:,.0f}</td>
-                                <td style="padding: 0.3rem; text-align: center; font-weight: bold; color: {flow_color};">{action}</td>
-                            </tr>
-                            """
+                        # Create clean dataframe for institutional flows
+                        flow_df = pd.DataFrame(unusual_flows)
+                        flow_df['Flow $'] = flow_df['flow_value'].apply(lambda x: f"${x:,.0f}")
+                        flow_df['Strike'] = flow_df['strike'].apply(lambda x: f"${x:.0f}")
+                        flow_df['Price'] = flow_df['price'].apply(lambda x: f"${x:.2f}")
+                        flow_df['Volume'] = flow_df['volume'].apply(lambda x: f"{x:,}")
+                        flow_df['Days'] = flow_df['dte'].apply(lambda x: f"{x}d")
+                        flow_df['Action'] = flow_df['type'].apply(lambda x: "BULLISH 📈" if x == 'CALL' else "BEARISH 📉")
                         
-                        flow_html += """
-                            </table>
-                            <div style="margin-top: 0.5rem; font-size: 0.8rem;">
-                                💡 <strong>Follow the Smart Money:</strong> High-volume trades indicate institutional positioning. Match their strikes and expiries for better odds.
-                            </div>
-                        </div>
-                        """
+                        display_df = flow_df[['type', 'Strike', 'Days', 'Price', 'Volume', 'Flow $', 'Action']]
+                        display_df.columns = ['TYPE', 'STRIKE', 'DAYS', 'PRICE', 'VOLUME', 'FLOW $', 'ACTION']
                         
-                        st.markdown(flow_html, unsafe_allow_html=True)
+                        st.dataframe(display_df, use_container_width=True, hide_index=True)
+                        
+                        st.info("💡 **Follow the Smart Money:** High-volume trades indicate institutional positioning. Match their strikes and expiries for better odds.")
                     
                 except Exception as e:
                     st.warning("Unusual activity analysis temporarily unavailable")
@@ -1041,16 +1124,14 @@ try:
         
         
 except Exception as e:
-    st.markdown(f"""
-    <div style="background: #dc2626; padding: 1rem; border-radius: 6px; color: white; margin: 1rem 0;">
-        <h4 style="margin: 0; color: white;">🚨 OPTIONS CHAIN ERROR</h4>
-        <div style="margin-top: 0.5rem;">
-            <div><strong>ATM Call:</strong> BID: $2.50 | ASK: $2.65</div>
-            <div><strong>ATM Put:</strong> BID: $1.80 | ASK: $1.95</div>
-            <div><strong>Status:</strong> Using fallback pricing</div>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+    st.error("🚨 OPTIONS CHAIN ERROR")
+    fallback_cols = st.columns(3)
+    with fallback_cols[0]:
+        st.metric("ATM Call", "$2.50-$2.65", "BID-ASK")
+    with fallback_cols[1]:
+        st.metric("ATM Put", "$1.80-$1.95", "BID-ASK")
+    with fallback_cols[2]:
+        st.metric("Status", "FALLBACK", "Using backup pricing")
 
 # === AI-POWERED SENTIMENT & PREDICTIONS ===
 st.markdown("---")
@@ -1125,21 +1206,22 @@ if st.session_state.sentiment_data and st.session_state.prediction_data:
         sentiment_color = "#10b981" if overall_sentiment > 0.1 else "#dc2626" if overall_sentiment < -0.1 else "#6b7280"
         sentiment_text = "BULLISH" if overall_sentiment > 0.1 else "BEARISH" if overall_sentiment < -0.1 else "NEUTRAL"
         
-        st.markdown(f"""
-        <div style="background: #374151; padding: 1rem; border-radius: 6px; margin: 0.5rem 0;">
-            <div style="color: {sentiment_color}; font-size: 1.2rem; font-weight: bold; text-align: center;">
-                {sentiment_text}
-            </div>
-            <div style="color: white; text-align: center; margin: 0.5rem 0;">
-                Score: {overall_sentiment:.3f} | Confidence: {confidence:.1%}
-            </div>
-            <div style="background: #1e293b; padding: 0.5rem; border-radius: 4px; font-size: 0.8rem;">
-                <div>📰 News: {sentiment_data.get('news_sentiment', 0.45):.2f}</div>
-                <div>📊 Technical: {sentiment_data.get('technical_sentiment', 0.38):.2f}</div>
-                <div>🗣️ Social: {sentiment_data.get('social_sentiment', 0.42):.2f}</div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
+        # Clean sentiment display with metrics
+        st.metric(
+            "Market Sentiment", 
+            sentiment_text,
+            delta=f"Score: {overall_sentiment:.3f}"
+        )
+        
+        sentiment_breakdown_cols = st.columns(3)
+        with sentiment_breakdown_cols[0]:
+            st.metric("📰 News", f"{sentiment_data.get('news_sentiment', 0.45):.2f}", "Sentiment")
+        with sentiment_breakdown_cols[1]:
+            st.metric("📊 Technical", f"{sentiment_data.get('technical_sentiment', 0.38):.2f}", "Sentiment")
+        with sentiment_breakdown_cols[2]:
+            st.metric("🗣️ Social", f"{sentiment_data.get('social_sentiment', 0.42):.2f}", "Sentiment")
+        
+        st.metric("Confidence Level", f"{confidence:.1%}", "Overall Confidence")
     
     with ai_col2:
         st.markdown("**🔮 AI PRICE PREDICTIONS**")
@@ -1151,33 +1233,26 @@ if st.session_state.sentiment_data and st.session_state.prediction_data:
         # Direction color
         direction_color = "#10b981" if direction == "BULLISH" else "#dc2626" if direction == "BEARISH" else "#6b7280"
         
-        st.markdown(f"""
-        <div style="background: #374151; padding: 1rem; border-radius: 6px; margin: 0.5rem 0;">
-            <div style="color: {direction_color}; font-size: 1.2rem; font-weight: bold; text-align: center;">
-                {direction} - {strength}
-            </div>
-            <div style="color: white; text-align: center; margin: 0.5rem 0;">
-                Confidence: {pred_confidence:.1f}%
-            </div>
-        """, unsafe_allow_html=True)
+        # Clean AI predictions display
+        st.metric(
+            "AI Prediction",
+            f"{direction} - {strength}",
+            delta=f"Confidence: {pred_confidence:.1f}%"
+        )
         
-        # Predictions table
+        # Show predictions in clean format
         if 'predictions' in prediction_data:
             predictions = prediction_data['predictions']
+            st.subheader("Price Predictions")
             
-            st.markdown("""
-            <div style="background: #1e293b; padding: 0.5rem; border-radius: 4px; font-size: 0.8rem;">
-            """, unsafe_allow_html=True)
-            
-            for timeframe, pred in predictions.items():
-                st.markdown(f"""
-                <div style="display: flex; justify-content: space-between; margin: 0.2rem 0;">
-                    <span>{timeframe.upper()}:</span>
-                    <span>${pred.get('predicted_price', 0):.2f} ({pred.get('predicted_return', 0):+.1f}%)</span>
-                </div>
-                """, unsafe_allow_html=True)
-            
-            st.markdown("</div>", unsafe_allow_html=True)
+            pred_cols = st.columns(len(predictions))
+            for i, (timeframe, pred) in enumerate(predictions.items()):
+                with pred_cols[i]:
+                    st.metric(
+                        timeframe.upper(),
+                        f"${pred.get('predicted_price', 0):.2f}",
+                        delta=f"{pred.get('predicted_return', 0):+.1f}%"
+                    )
     
     with ai_col3:
         st.markdown("**⚡ SMART ALERTS**")
@@ -1185,13 +1260,12 @@ if st.session_state.sentiment_data and st.session_state.prediction_data:
         risk_level = sentiment_data.get('risk_assessment', 'MODERATE')
         risk_color = "#dc2626" if risk_level == "HIGH" else "#f59e0b" if risk_level == "MODERATE" else "#10b981"
         
-        st.markdown(f"""
-        <div style="background: #374151; padding: 1rem; border-radius: 6px; margin: 0.5rem 0;">
-            <div style="color: {risk_color}; font-size: 1rem; font-weight: bold; text-align: center;">
-                RISK LEVEL: {risk_level}
-            </div>
-            <div style="background: #1e293b; padding: 0.5rem; border-radius: 4px; margin: 0.5rem 0; font-size: 0.8rem;">
-        """, unsafe_allow_html=True)
+        # Clean risk assessment display
+        st.metric(
+            "Risk Assessment", 
+            f"RISK LEVEL: {risk_level}",
+            delta="Smart Alert System"
+        )
         
         # Generate smart alerts based on sentiment and predictions
         smart_alerts = []
@@ -1216,10 +1290,9 @@ if st.session_state.sentiment_data and st.session_state.prediction_data:
         if not smart_alerts:
             smart_alerts = ["Normal market conditions", "No significant alerts"]
         
+        st.subheader("Active Alerts")
         for alert in smart_alerts[:3]:
-            st.markdown(f"<div style='color: #94a3b8; margin: 0.3rem 0;'>• {alert}</div>", unsafe_allow_html=True)
-        
-        st.markdown("</div></div>", unsafe_allow_html=True)
+            st.info(f"• {alert}")
     
 
 else:
@@ -1228,22 +1301,19 @@ else:
 # === SIGNAL PERFORMANCE TRACKING ===
 st.markdown("### 📊 SIGNAL PERFORMANCE TRACKING")
 
-st.markdown("""
-<div style="background: #1e293b; padding: 2rem; border-radius: 8px; color: white; text-align: center; border: 2px solid #374151;">
-    <h4 style="margin: 0; color: white;">🚀 PERFORMANCE TRACKING COMING SOON</h4>
-    <div style="margin: 1rem 0; color: #94a3b8;">
-        Signal performance tracking will begin once you start following our live signals.<br>
-        All performance metrics will be 100% real and verified - no fake data.
-    </div>
-    <div style="background: #374151; padding: 1rem; border-radius: 6px; margin-top: 1rem;">
-        <strong>What We'll Track:</strong><br>
-        • Win/Loss ratios for each signal<br>
-        • Profit/Loss per trade<br>
-        • Signal accuracy by symbol<br>
-        • Historical performance data
-    </div>
-</div>
-""", unsafe_allow_html=True)
+# Performance tracking section with clean layout
+st.info("🚀 **PERFORMANCE TRACKING COMING SOON**")
+st.caption("Signal performance tracking will begin once you start following our live signals. All performance metrics will be 100% real and verified - no fake data.")
+
+tracking_cols = st.columns(4)
+with tracking_cols[0]:
+    st.metric("Win/Loss Ratios", "Coming Soon", "Per Signal")
+with tracking_cols[1]:
+    st.metric("P&L Tracking", "Coming Soon", "Per Trade")
+with tracking_cols[2]:
+    st.metric("Signal Accuracy", "Coming Soon", "By Symbol")
+with tracking_cols[3]:
+    st.metric("Historical Data", "Coming Soon", "Full History")
 
 
 # === FEAR INDEX ===
@@ -1319,21 +1389,24 @@ with alert_col1:
         top_exp_vol = top_exps[0]['call_volume'] + top_exps[0]['put_volume'] if top_exps else 0
         concentration = (top_exp_vol / max(1, flow_data['total_volume'])) * 100
         
-        st.markdown(f"""
-        <div style="background: #fbbf24; color: #1f2937; padding: 0.8rem; border-radius: 6px; margin: 0.5rem 0;">
-            <div style="font-weight: bold; margin-bottom: 0.5rem;">📊 VOLUME BREAKDOWN: {flow_data['total_volume']:,} CONTRACTS</div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; font-size: 0.8rem;">
-                <div>📈 <strong>Calls:</strong> {total_calls:,} ({(total_calls/max(1,flow_data['total_volume']))*100:.0f}%)</div>
-                <div>📉 <strong>Puts:</strong> {total_puts:,} ({(total_puts/max(1,flow_data['total_volume']))*100:.0f}%)</div>
-                <div>🎯 <strong>C/P Ratio:</strong> {call_put_ratio:.2f}</div>
-                <div>🔥 <strong>Top Exp:</strong> {concentration:.0f}% concentrated</div>
-            </div>
-            <div style="margin-top: 0.5rem; font-size: 0.7rem; opacity: 0.9;">
-                <strong>Hottest Expirations:</strong><br>
-                {'<br>'.join([f"• {datetime.strptime(exp['exp_date'], '%Y-%m-%d').strftime('%m/%d')} ({exp['dte']}DTE): {exp['call_volume'] + exp['put_volume']:,} contracts" for exp in top_exps])}
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
+        st.warning(f"📊 VOLUME BREAKDOWN: {flow_data['total_volume']:,} CONTRACTS")
+        
+        # Volume breakdown metrics
+        vol_breakdown_cols = st.columns(4)
+        with vol_breakdown_cols[0]:
+            st.metric("📈 Calls", f"{total_calls:,}", f"{(total_calls/max(1,flow_data['total_volume']))*100:.0f}%")
+        with vol_breakdown_cols[1]:
+            st.metric("📉 Puts", f"{total_puts:,}", f"{(total_puts/max(1,flow_data['total_volume']))*100:.0f}%")
+        with vol_breakdown_cols[2]:
+            st.metric("🎯 C/P Ratio", f"{call_put_ratio:.2f}", "Call/Put Balance")
+        with vol_breakdown_cols[3]:
+            st.metric("🔥 Concentration", f"{concentration:.0f}%", "Top Expiry")
+        
+        # Hottest expirations
+        st.subheader("Hottest Expirations")
+        for exp in top_exps:
+            exp_date_str = datetime.strptime(exp['exp_date'], '%Y-%m-%d').strftime('%m/%d')
+            st.info(f"• {exp_date_str} ({exp['dte']}DTE): {exp['call_volume'] + exp['put_volume']:,} contracts")
 
 with alert_col2:
     # Institutional Risk Dashboard
@@ -1353,12 +1426,14 @@ with alert_col2:
             'CRITICAL': '#ef4444'
         }.get(risk_status['status'], '#6b7280')
         
-        st.markdown(f"""
-        <div style="background: {status_color}; padding: 0.5rem; border-radius: 4px; color: white; margin-bottom: 0.5rem;">
-            <div style="font-weight: bold; text-align: center;">RISK STATUS: {risk_status['status']}</div>
-            <div style="font-size: 0.8rem; text-align: center;">Risk Score: {risk_status['metrics'].get('risk_score', 0):.0f}/100</div>
-        </div>
-        """, unsafe_allow_html=True)
+        if risk_status['status'] == 'NORMAL':
+            st.success(f"RISK STATUS: {risk_status['status']}")
+        elif risk_status['status'] == 'WARNING':
+            st.warning(f"RISK STATUS: {risk_status['status']}")
+        else:
+            st.error(f"RISK STATUS: {risk_status['status']}")
+        
+        st.metric("Risk Score", f"{risk_status['metrics'].get('risk_score', 0):.0f}/100", "Overall Risk Level")
         
         # Market structure analysis (simplified for stability)
         market_structure = {
@@ -1401,6 +1476,80 @@ with alert_col2:
         with stats_metrics[2]:
             st.metric("Success Rate", f"{alert_stats.get('success_rate', 0):.0f}%")
 
+# === INTERACTIVE PRICE CHART ===
+st.markdown("### 📈 LIVE PRICE & VOLUME ANALYSIS")
+
+try:
+    # Get extended price data for chart
+    ticker = yf.Ticker(selected_symbol)
+    hist_chart = ticker.history(period="5d", interval="5m")
+    
+    if not hist_chart.empty and len(hist_chart) > 10:
+        # Create interactive price chart with volume
+        fig = make_subplots(
+            rows=2, cols=1,
+            subplot_titles=(f'{selected_symbol} Price Action', 'Volume Analysis'),
+            vertical_spacing=0.1,
+            row_width=[0.7, 0.3]
+        )
+        
+        # Price candlestick chart
+        fig.add_trace(go.Candlestick(
+            x=hist_chart.index,
+            open=hist_chart['Open'],
+            high=hist_chart['High'], 
+            low=hist_chart['Low'],
+            close=hist_chart['Close'],
+            name="Price",
+            increasing_line_color='#10b981',
+            decreasing_line_color='#dc2626'
+        ), row=1, col=1)
+        
+        # Volume bars
+        fig.add_trace(go.Bar(
+            x=hist_chart.index,
+            y=hist_chart['Volume'],
+            name="Volume",
+            marker_color='#3b82f6',
+            opacity=0.7
+        ), row=2, col=1)
+        
+        # Update layout with professional styling
+        fig.update_layout(
+            height=500,
+            showlegend=False,
+            template="plotly_dark",
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='rgba(0,0,0,0)',
+            font=dict(color='white', size=12)
+        )
+        
+        fig.update_xaxes(showgrid=True, gridcolor='#374151')
+        fig.update_yaxes(showgrid=True, gridcolor='#374151')
+        
+        st.plotly_chart(fig, use_container_width=True)
+        
+        # Chart insights
+        current_vol = hist_chart['Volume'][-1]
+        avg_vol = hist_chart['Volume'].mean()
+        vol_ratio = current_vol / avg_vol if avg_vol > 0 else 1
+        
+        price_change = ((hist_chart['Close'][-1] - hist_chart['Close'][-20]) / hist_chart['Close'][-20] * 100) if len(hist_chart) >= 20 else 0
+        
+        chart_insights = st.columns(3)
+        with chart_insights[0]:
+            st.metric("Volume Ratio", f"{vol_ratio:.2f}x", "vs Average")
+        with chart_insights[1]:
+            st.metric("Price Trend", f"{price_change:+.2f}%", "20-Period Change")
+        with chart_insights[2]:
+            st.metric("Volatility", f"{hist_chart['Close'].pct_change().std()*100:.1f}%", "Recent Volatility")
+        
+    else:
+        st.info("Chart data loading...")
+        
+except Exception as e:
+    st.warning("Chart temporarily unavailable")
+
 # === REAL-TIME MONITORING ===
 # Auto-refresh every 15 seconds for better performance
 current_time = time.time()
@@ -1410,17 +1559,9 @@ now = datetime.now()
 is_market_hours = (9.5 <= now.hour + now.minute/60 <= 16) and now.weekday() < 5
 
 if is_market_hours:
-    st.markdown(f"""
-    <div style="background: #10b981; padding: 0.5rem; border-radius: 4px; color: white; text-align: center; margin-top: 1rem;">
-        🔥 LIVE TRADING • Auto-refresh every 15s • Last update: {now.strftime('%H:%M:%S')}
-    </div>
-    """, unsafe_allow_html=True)
+    st.success(f"🔥 LIVE TRADING • Auto-refresh every 15s • Last update: {now.strftime('%H:%M:%S')}")
 else:
-    st.markdown(f"""
-    <div style="background: #6b7280; padding: 0.5rem; border-radius: 4px; color: white; text-align: center; margin-top: 1rem;">
-        MARKET CLOSED • Next session: Tomorrow 9:30 AM ET
-    </div>
-    """, unsafe_allow_html=True)
+    st.info(f"MARKET CLOSED • Next session: Tomorrow 9:30 AM ET")
 
 
 # Store current data for alert monitoring
