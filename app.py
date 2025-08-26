@@ -626,49 +626,201 @@ def main():
         potential_gain = max_risk_dollars * 10  # Conservative 1000% gain
         st.metric("Potential Gain", f"${potential_gain:.0f}", "10x return target")
     
-    # Position sizing examples
-    st.markdown("**🎯 Real Position Examples:**")
+    # Balanced position sizing examples
+    st.markdown("**🎯 Balanced Risk/Reward Strategies:**")
     
-    example_cols = st.columns(3)
+    strategy_cols = st.columns(4)
     
-    with example_cols[0]:
-        st.success("**Conservative Play**")
-        contracts_conservative = int(max_risk_dollars / 100)  # $1.00 premium
-        st.write(f"• {contracts_conservative} contracts at $1.00")
-        st.write(f"• Cost: ${contracts_conservative * 100}")
-        st.write(f"• Target: 300% gain = ${contracts_conservative * 300}")
+    with strategy_cols[0]:
+        st.success("**🛡️ Conservative Income**")
+        st.caption("Win Rate: 70-80%")
+        conservative_premium = 2.50  # ITM or ATM options
+        contracts_conservative = int(max_risk_dollars / (conservative_premium * 100))
+        profit_target = 25  # 25% gain target
+        st.write(f"• {contracts_conservative} contracts at ${conservative_premium:.2f}")
+        st.write(f"• Cost: ${contracts_conservative * conservative_premium * 100:.0f}")
+        st.write(f"• Target: {profit_target}% = ${contracts_conservative * conservative_premium * 100 * profit_target/100:.0f}")
+        st.caption("Strategy: ITM/ATM, 30+ DTE")
         
-    with example_cols[1]:
-        st.warning("**Aggressive Play**") 
-        contracts_aggressive = int(max_risk_dollars / 50)   # $0.50 premium
-        st.write(f"• {contracts_aggressive} contracts at $0.50")
-        st.write(f"• Cost: ${contracts_aggressive * 50}")
-        st.write(f"• Target: 800% gain = ${contracts_aggressive * 400}")
+    with strategy_cols[1]:
+        st.info("**📈 Moderate Growth**") 
+        st.caption("Win Rate: 50-60%")
+        moderate_premium = 1.25  # Slightly OTM
+        contracts_moderate = int(max_risk_dollars / (moderate_premium * 100))
+        profit_target = 75  # 75% gain target
+        st.write(f"• {contracts_moderate} contracts at ${moderate_premium:.2f}")
+        st.write(f"• Cost: ${contracts_moderate * moderate_premium * 100:.0f}")
+        st.write(f"• Target: {profit_target}% = ${contracts_moderate * moderate_premium * 100 * profit_target/100:.0f}")
+        st.caption("Strategy: Near ATM, 14-21 DTE")
         
-    with example_cols[2]:
-        st.error("**0DTE YOLO**")
-        contracts_yolo = int(max_risk_dollars / 20)  # $0.20 premium
-        st.write(f"• {contracts_yolo} contracts at $0.20")
-        st.write(f"• Cost: ${contracts_yolo * 20}")
-        st.write(f"• Target: 2000% gain = ${contracts_yolo * 400}")
+    with strategy_cols[2]:
+        st.warning("**🚀 Aggressive Swing**") 
+        st.caption("Win Rate: 35-45%")
+        aggressive_premium = 0.50   # OTM options
+        contracts_aggressive = int(max_risk_dollars / (aggressive_premium * 100))
+        profit_target = 200  # 200% gain target
+        st.write(f"• {contracts_aggressive} contracts at ${aggressive_premium:.2f}")
+        st.write(f"• Cost: ${contracts_aggressive * aggressive_premium * 100:.0f}")
+        st.write(f"• Target: {profit_target}% = ${contracts_aggressive * aggressive_premium * 100 * profit_target/100:.0f}")
+        st.caption("Strategy: OTM, 7-14 DTE")
+        
+    with strategy_cols[3]:
+        st.error("**🎰 High Risk/Reward**")
+        st.caption("Win Rate: 15-25%")
+        yolo_premium = 0.15  # Far OTM 0DTE
+        contracts_yolo = int(max_risk_dollars / (yolo_premium * 100))
+        profit_target = 500  # 500% gain target
+        st.write(f"• {contracts_yolo} contracts at ${yolo_premium:.2f}")
+        st.write(f"• Cost: ${contracts_yolo * yolo_premium * 100:.0f}")
+        st.write(f"• Target: {profit_target}% = ${contracts_yolo * yolo_premium * 100 * profit_target/100:.0f}")
+        st.caption("Strategy: Far OTM, 0-1 DTE")
     
-    # Volatility-based recommendations
-    if daily_vol > 2:
-        position_rec = "High Vol = Smaller size, bigger gains"
-        vol_color = "error"
-    elif daily_vol > 1:
-        position_rec = "Normal Vol = Standard sizing"
-        vol_color = "warning"  
+    # Portfolio allocation recommendation
+    st.markdown("---")
+    st.markdown("**💼 Recommended Portfolio Allocation:**")
+    
+    allocation_cols = st.columns(4)
+    
+    with allocation_cols[0]:
+        st.metric("Conservative", "40%", "Steady income")
+        st.caption("Monthly income plays")
+    
+    with allocation_cols[1]:
+        st.metric("Moderate", "35%", "Growth focused")
+        st.caption("2-3 week swings")
+    
+    with allocation_cols[2]:
+        st.metric("Aggressive", "20%", "High upside")
+        st.caption("Weekly plays")
+    
+    with allocation_cols[3]:
+        st.metric("Speculation", "5%", "Lottery tickets")
+        st.caption("0DTE only")
+    
+    # Professional risk-based recommendations
+    st.markdown("---")
+    st.markdown("### 🎯 Professional Strategy Builder")
+    
+    # Import professional risk management
+    from professional_risk_management import professional_risk
+    
+    # Generate balanced strategies
+    strategies = professional_risk.generate_balanced_strategies(
+        selected_symbol, current_price, account_value
+    )
+    
+    # Display strategies in columns
+    if strategies:
+        strat_tabs = st.tabs([
+            "🛡️ Conservative (40%)",
+            "📈 Moderate (35%)", 
+            "🚀 Aggressive (20%)",
+            "🎰 Speculation (5%)"
+        ])
+        
+        for i, strategy in enumerate(strategies):
+            with strat_tabs[i]:
+                risk_level = strategy.get('risk_level', 'unknown')
+                
+                st.markdown(f"**{strategy.get('description', 'Strategy')}**")
+                st.caption(f"Win Rate: {strategy.get('expected_win_rate', 0):.0f}% | Target Return: {strategy.get('target_return', 'N/A')}")
+                
+                # Strategy metrics
+                metrics_cols = st.columns(3)
+                
+                with metrics_cols[0]:
+                    st.metric("Allocation", f"${strategy.get('allocation_amount', 0):.0f}")
+                    st.caption(f"{strategy.get('allocation_pct', 0):.0f}% of portfolio")
+                
+                with metrics_cols[1]:
+                    st.metric("Strategy Type", strategy.get('strategy_type', 'N/A'))
+                    st.caption(f"Expires: {strategy.get('expiration', 'N/A')}")
+                
+                with metrics_cols[2]:
+                    if risk_level == 'conservative':
+                        st.success(f"Risk Level: LOW")
+                        st.caption("Steady income focus")
+                    elif risk_level == 'moderate':
+                        st.info(f"Risk Level: MEDIUM")
+                        st.caption("Balanced approach")
+                    elif risk_level == 'aggressive':
+                        st.warning(f"Risk Level: HIGH")
+                        st.caption("Growth focused")
+                    else:
+                        st.error(f"Risk Level: VERY HIGH")
+                        st.caption("Speculation only")
+                
+                # Show individual strategies if available
+                individual_strategies = strategy.get('strategies', [])
+                if individual_strategies:
+                    st.markdown("**Specific Plays:**")
+                    
+                    for j, play in enumerate(individual_strategies):
+                        with st.expander(f"{play.get('type', 'Strategy')} - ${play.get('strike', 0):.0f}"):
+                            play_cols = st.columns(2)
+                            
+                            with play_cols[0]:
+                                st.write(f"**Strike:** ${play.get('strike', 0):.2f}")
+                                st.write(f"**Premium:** ${play.get('premium', 0):.2f}")
+                                st.write(f"**Contracts:** {play.get('contracts', 0)}")
+                                st.write(f"**Total Cost:** ${play.get('cost', 0):.0f}")
+                            
+                            with play_cols[1]:
+                                if 'break_even' in play:
+                                    st.write(f"**Break Even:** ${play['break_even']:.2f}")
+                                if 'target_return' in play:
+                                    st.write(f"**Target Return:** {play['target_return']}")
+                                if 'probability' in play:
+                                    st.write(f"**Success Rate:** {play['probability']}")
+                                if 'move_needed' in play:
+                                    st.write(f"**Move Needed:** {play['move_needed']}")
+        
+        # Portfolio summary
+        portfolio_metrics = professional_risk.calculate_portfolio_metrics(strategies)
+        
+        st.markdown("---")
+        st.markdown("### 📊 Portfolio Summary")
+        
+        summary_cols = st.columns(4)
+        
+        with summary_cols[0]:
+            st.metric("Total Allocation", f"${portfolio_metrics['total_allocation']:.0f}")
+            st.caption("Across all strategies")
+        
+        with summary_cols[1]:
+            st.metric("Weighted Win Rate", f"{portfolio_metrics['weighted_win_rate']:.0f}%")
+            st.caption("Portfolio average")
+        
+        with summary_cols[2]:
+            st.metric("Expected Return", f"{portfolio_metrics['expected_return']:.0f}%")
+            st.caption("Risk-adjusted")
+        
+        with summary_cols[3]:
+            risk_dist = portfolio_metrics['risk_distribution']
+            highest_risk = max(risk_dist.items(), key=lambda x: x[1])
+            st.metric("Primary Focus", highest_risk[0].title())
+            st.caption(f"{highest_risk[1]:.0f}% allocation")
+    
     else:
-        position_rec = "Low Vol = Bigger size, steady gains"
-        vol_color = "success"
+        st.info("Unable to generate strategies - using market-based recommendations")
         
-    if vol_color == "error":
-        st.error(f"⚡ {position_rec}")
-    elif vol_color == "warning":
-        st.warning(f"📊 {position_rec}")
-    else:
-        st.success(f"💚 {position_rec}")
+        # Volatility-based fallback recommendations
+        if daily_vol > 2:
+            position_rec = "High Vol = Smaller size, bigger gains"
+            vol_color = "error"
+        elif daily_vol > 1:
+            position_rec = "Normal Vol = Standard sizing"
+            vol_color = "warning"  
+        else:
+            position_rec = "Low Vol = Bigger size, steady gains"
+            vol_color = "success"
+            
+        if vol_color == "error":
+            st.error(f"⚡ {position_rec}")
+        elif vol_color == "warning":
+            st.warning(f"📊 {position_rec}")
+        else:
+            st.success(f"💚 {position_rec}")
     
     # === COMPREHENSIVE OPTIONS CHAIN ===
     st.markdown("#### 🎯 High-Profit Options Chain")
@@ -715,13 +867,37 @@ def main():
                         
                         st.info(f"⚡ {exp_label}")
                         
-                        # Create options table
+                        # Create balanced options table with all risk levels
                         options_data = []
                         
                         for strike in strikes_to_show:
                             # Find call and put data for this strike
                             call_row = chain.calls[chain.calls['strike'] == strike]
                             put_row = chain.puts[chain.puts['strike'] == strike]
+                            
+                            # Categorize option by risk level
+                            distance_from_atm = abs(strike - current_price) / current_price
+                            
+                            if distance_from_atm <= 0.02:  # Within 2% of current price
+                                risk_category = "🛡️ CONSERVATIVE"
+                                risk_color = "success"
+                                win_rate = "70-80%"
+                                target_return = "25-50%"
+                            elif distance_from_atm <= 0.05:  # Within 5% of current price
+                                risk_category = "📈 MODERATE"
+                                risk_color = "info"
+                                win_rate = "50-60%"
+                                target_return = "50-150%"
+                            elif distance_from_atm <= 0.10:  # Within 10% of current price
+                                risk_category = "🚀 AGGRESSIVE"
+                                risk_color = "warning"
+                                win_rate = "35-45%"
+                                target_return = "150-400%"
+                            else:  # Far OTM
+                                risk_category = "🎰 SPECULATION"
+                                risk_color = "error"
+                                win_rate = "15-25%"
+                                target_return = "400-2000%"
                             
                             if not call_row.empty and not put_row.empty:
                                 call_data = call_row.iloc[0]
