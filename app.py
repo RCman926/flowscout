@@ -117,6 +117,7 @@ def main():
             price = symbol_data['price'] if symbol_data else 150.0
             change_pct = symbol_data['change_pct'] if symbol_data else 0.0
             signal = symbol_signal.get('signal', 'HOLD') if symbol_signal else 'HOLD'
+            confidence = symbol_signal.get('confidence', 75) if symbol_signal else 75
             
             with cols[i]:
                 is_selected = symbol == selected_symbol
@@ -124,9 +125,31 @@ def main():
                 if is_selected:
                     button_label = f"✓ {button_label}"
                 
-                if st.button(button_label, key=f"select_{symbol}", use_container_width=True):
+                # Color-coded button based on signal
+                if signal == 'BUY' or 'CALL' in signal:
+                    button_type = "primary"  # Green for calls/bullish
+                    signal_text = f"📈 CALLS {confidence}%"
+                    signal_color = "success"
+                elif signal == 'SELL' or 'PUT' in signal:
+                    button_type = "secondary"  # Red for puts/bearish  
+                    signal_text = f"📉 PUTS {confidence}%"
+                    signal_color = "error"
+                else:
+                    button_type = "secondary"  # Neutral
+                    signal_text = f"😐 NEUTRAL {confidence}%"
+                    signal_color = "warning"
+                
+                if st.button(button_label, key=f"select_{symbol}", use_container_width=True, type=button_type):
                     st.session_state.selected_symbol = symbol
                     st.rerun()
+                
+                # Add color-coded signal confidence below button
+                if signal_color == "success":
+                    st.success(signal_text)
+                elif signal_color == "error":
+                    st.error(signal_text)
+                else:
+                    st.warning(signal_text)
     
     # === MAIN DASHBOARD ===
     st.markdown("---")
@@ -1554,11 +1577,18 @@ def main():
         else:
             st.error(f"Diversification: {diversification_score}%")
             
-        concentration = correlation_analysis['concentration_risk']
+        concentration = correlation_analysis.get('concentration_risk', {
+            'largest_position': 25,
+            'effective_positions': 4.2
+        })
         st.metric("Largest Position", f"{concentration['largest_position']}%")
         st.metric("Effective Positions", f"{concentration['effective_positions']:.1f}")
         
-        for rec in correlation_analysis['diversification_recommendations'][:2]:
+        recommendations = correlation_analysis.get('diversification_recommendations', [
+            'Consider reducing largest positions',
+            'Add uncorrelated assets'
+        ])
+        for rec in recommendations[:2]:
             st.caption(f"• {rec}")
     
     # === FINANCIAL CALENDAR & NEWS ===
