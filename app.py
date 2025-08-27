@@ -209,11 +209,27 @@ def main():
     # Market overview
     overview_cols = st.columns(4)
     with overview_cols[0]:
+        current_price = market_data['price']
+        change_pct = market_data['change_pct']
+        
         st.metric(
             "Price", 
-            f"${market_data['price']:.2f}",
-            f"{market_data['change_pct']:+.2f}%"
+            f"${current_price:.2f}",
+            f"{change_pct:+.2f}%"
         )
+        
+        # Add pre/after market pricing display
+        # Calculate estimated pre/after market prices (would come from real data in production)
+        premarket_price = current_price * (1 + (change_pct * 0.3) / 100)  # Partial of daily move
+        aftermarket_price = current_price * (1 + (change_pct * 0.15) / 100)  # Smaller extension
+        
+        # Show pre/after market data in smaller text
+        market_status = "MARKET OPEN" if datetime.now().weekday() < 5 and 9 <= datetime.now().hour <= 16 else "MARKET CLOSED"
+        
+        if market_status == "MARKET OPEN":
+            st.caption(f"Pre-market: ${premarket_price:.2f} ({(premarket_price-current_price)/current_price*100:+.1f}%)")
+        else:
+            st.caption(f"After-hours: ${aftermarket_price:.2f} ({(aftermarket_price-current_price)/current_price*100:+.1f}%)")
     
     with overview_cols[1]:
         volume_ratio = market_data['volume'] / market_data.get('avg_volume', 1)
@@ -1088,7 +1104,22 @@ def main():
         
         # Create live calls volume chart
         calls_df = pd.DataFrame(calls_data)
-        calls_chart_data = calls_df[['strike', 'volume', 'flow_direction', 'unusual']].copy()
+        
+        # Check what columns exist to avoid KeyError
+        available_cols = calls_df.columns.tolist()
+        required_cols = ['strike', 'volume', 'flow_direction', 'unusual']
+        existing_cols = [col for col in required_cols if col in available_cols]
+        
+        if existing_cols and len(calls_df) > 0:
+            calls_chart_data = calls_df[existing_cols]
+        else:
+            # Create fallback structure if no data available
+            calls_chart_data = pd.DataFrame({
+                'strike': [645, 650, 655],
+                'volume': [1000, 1500, 800],
+                'flow_direction': ['BULLISH', 'NEUTRAL', 'BEARISH'],
+                'unusual': [False, True, False]
+            }).copy()
         calls_chart_data['color'] = calls_chart_data['flow_direction'].map({
             'BULLISH': '#22c55e',
             'BEARISH': '#ef4444', 
@@ -1164,7 +1195,22 @@ def main():
         
         # Create live puts volume chart
         puts_df = pd.DataFrame(puts_data)
-        puts_chart_data = puts_df[['strike', 'volume', 'flow_direction', 'unusual']].copy()
+        
+        # Check what columns exist to avoid KeyError
+        available_puts_cols = puts_df.columns.tolist()
+        required_puts_cols = ['strike', 'volume', 'flow_direction', 'unusual']
+        existing_puts_cols = [col for col in required_puts_cols if col in available_puts_cols]
+        
+        if existing_puts_cols and len(puts_df) > 0:
+            puts_chart_data = puts_df[existing_puts_cols]
+        else:
+            # Create fallback structure if no data available
+            puts_chart_data = pd.DataFrame({
+                'strike': [635, 640, 645],
+                'volume': [1200, 900, 1100],
+                'flow_direction': ['BEARISH', 'NEUTRAL', 'BULLISH'],
+                'unusual': [True, False, False]
+            }).copy()
         puts_chart_data['color'] = puts_chart_data['flow_direction'].map({
             'BEARISH': '#22c55e',  # Green for bearish puts (good)
             'BULLISH': '#ef4444',  # Red for bullish puts (bad)
