@@ -232,9 +232,15 @@ def main():
         market_status = "MARKET OPEN" if datetime.now().weekday() < 5 and 9 <= datetime.now().hour <= 16 else "MARKET CLOSED"
         
         if market_status == "MARKET OPEN":
-            st.caption(f"Pre-market: ${premarket_price:.2f} ({(premarket_price-current_price)/current_price*100:+.1f}%)")
+            if current_price > 0:
+                st.caption(f"Pre-market: ${premarket_price:.2f} ({(premarket_price-current_price)/current_price*100:+.1f}%)")
+            else:
+                st.caption(f"Pre-market: ${premarket_price:.2f}")
         else:
-            st.caption(f"After-hours: ${aftermarket_price:.2f} ({(aftermarket_price-current_price)/current_price*100:+.1f}%)")
+            if current_price > 0:
+                st.caption(f"After-hours: ${aftermarket_price:.2f} ({(aftermarket_price-current_price)/current_price*100:+.1f}%)")
+            else:
+                st.caption(f"After-hours: ${aftermarket_price:.2f}")
     
     with overview_cols[1]:
         volume_ratio = market_data['volume'] / market_data.get('avg_volume', 1)
