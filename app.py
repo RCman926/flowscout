@@ -295,53 +295,116 @@ def main():
         pressure = "HIGH" if total_volume > 100000 else "MEDIUM" if total_volume > 50000 else "LOW"
         st.metric("MM Pressure", pressure, f"{total_volume/1000:.0f}K vol")
     
-    # === MARKET SENTIMENT OVERVIEW ===
-    from ai_sentiment_engine_fixed import sentiment_engine
-    combined_sentiment = sentiment_engine.get_combined_sentiment_score(selected_symbol)
+    # === ENHANCED PRIORITY-BASED TRADING SIGNAL ===
+    st.markdown("### 🎯 Enhanced Trading Signal System")
+    st.caption("Priority-weighted analysis eliminates conflicting signals")
     
-    # Add live update timestamp  
-    current_time = datetime.now().strftime("%H:%M:%S")
-    st.caption(f"🔄 Last updated: {current_time}")
+    from enhanced_signal_coordinator import enhanced_signal_coordinator
     
-    # Simple sentiment bar
-    sentiment_cols = st.columns([1, 1, 1])
+    # Calculate unified signal with priority weighting
+    unified_signal = enhanced_signal_coordinator.calculate_unified_signal(
+        market_data=market_data,
+        flow_data=flow_data, 
+        tech_data=tech_data,
+        gex_data=gex_data
+    )
     
-    with sentiment_cols[0]:
-        if combined_sentiment['overall_score'] > 0.2:
-            st.success("📈 BULLISH Sentiment")
-        elif combined_sentiment['overall_score'] < -0.2:
-            st.error("📉 BEARISH Sentiment") 
-        else:
-            st.info("⚪ NEUTRAL Sentiment")
-        st.caption(f"AI Confidence: {combined_sentiment['confidence']:.0%}")
+    # Main signal display
+    signal_cols = st.columns([2, 1, 1, 1])
     
-    with sentiment_cols[1]:
-        # Show call/put bias from actual flow data
-        call_vol = flow_data.get('call_volume', 1000000)
-        put_vol = flow_data.get('put_volume', 1000000)
+    with signal_cols[0]:
+        direction = unified_signal['unified_direction']
+        confidence = unified_signal['unified_confidence']
+        action = unified_signal['action_recommendation']
         
-        if call_vol > put_vol * 1.3:
-            st.success("🟢 CALL Bias")
-            st.caption(f"{call_vol:,} vs {put_vol:,}")
-        elif put_vol > call_vol * 1.3:
-            st.error("🔴 PUT Bias")
-            st.caption(f"{put_vol:,} vs {call_vol:,}")
+        if direction == 'BULLISH' and confidence > 75:
+            st.success(f"🚀 STRONG BUY SIGNAL")
+            st.caption(f"Action: {action}")
+        elif direction == 'BULLISH':
+            st.success(f"📈 BUY SIGNAL")
+            st.caption(f"Action: {action}")
+        elif direction == 'BEARISH' and confidence > 75:
+            st.error(f"💥 STRONG SELL SIGNAL")
+            st.caption(f"Action: {action}")
+        elif direction == 'BEARISH':
+            st.error(f"📉 SELL SIGNAL")
+            st.caption(f"Action: {action}")
         else:
-            st.warning("🟡 MIXED Flow")
-            st.caption(f"Balanced volume")
+            st.info(f"⚪ HOLD/WAIT")
+            st.caption(f"Action: {action}")
     
-    with sentiment_cols[2]:
-        # Show technical bias
-        rsi = tech_data.get('rsi', 50)
-        price_change = market_data.get('price_change_pct', 0)
+    with signal_cols[1]:
+        st.metric("Confidence", f"{confidence:.0f}%")
+        st.caption("Priority-weighted")
+    
+    with signal_cols[2]:
+        st.metric("Signal Strength", f"{unified_signal['signal_strength']:.0f}")
+        st.caption("Conviction level")
+    
+    with signal_cols[3]:
+        risk_level = unified_signal['risk_level']
+        time_horizon = unified_signal['time_horizon']
         
-        if rsi > 60 and price_change > 1:
-            st.success("📊 BULLISH Technical")
-        elif rsi < 40 and price_change < -1:
-            st.error("📊 BEARISH Technical")
+        if risk_level == 'LOW':
+            st.success(f"Risk: {risk_level}")
+        elif risk_level == 'MEDIUM':
+            st.warning(f"Risk: {risk_level}")
         else:
-            st.info("📊 NEUTRAL Technical")
-        st.caption(f"RSI: {rsi:.1f} | {price_change:+.1f}%")
+            st.error(f"Risk: {risk_level}")
+        st.caption(f"Time: {time_horizon}")
+    
+    # Priority breakdown
+    st.markdown("#### 📊 Signal Priority Breakdown")
+    priority_cols = st.columns(5)
+    
+    individual_signals = unified_signal['individual_signals']
+    breakdown = unified_signal['priority_breakdown']
+    
+    priorities = [
+        ('institutional_flow', '🏛️ Institutional Flow', '40%'),
+        ('gamma_exposure', '🎯 Gamma Exposure', '25%'),
+        ('technical_momentum', '📈 Technical', '20%'),
+        ('options_sentiment', '📊 Options Sentiment', '10%'),
+        ('news_sentiment', '📰 News', '5%')
+    ]
+    
+    for i, (signal_key, signal_name, weight) in enumerate(priorities):
+        with priority_cols[i]:
+            if signal_key in individual_signals:
+                signal_info = individual_signals[signal_key]
+                direction = signal_info['direction']
+                confidence = signal_info['confidence']
+                
+                if direction == 'BULLISH':
+                    st.success(f"📈 {direction}")
+                elif direction == 'BEARISH':
+                    st.error(f"📉 {direction}")
+                else:
+                    st.info(f"⚪ {direction}")
+                
+                st.caption(f"**{signal_name}**")
+                st.caption(f"Weight: {weight}")
+                st.caption(f"Confidence: {confidence:.0f}%")
+            else:
+                st.info("⚪ NO DATA")
+                st.caption(f"**{signal_name}**")
+                st.caption(f"Weight: {weight}")
+    
+    # Signal priority explanation
+    with st.expander("🔍 Signal Priority System Explained"):
+        priorities_explanation = enhanced_signal_coordinator.get_signal_priority_explanation()
+        
+        for priority in priorities_explanation:
+            priority_num = priority['priority']
+            signal_name = priority['signal'] 
+            weight = priority['weight']
+            reason = priority['reason']
+            indicators = priority['indicators']
+            
+            st.markdown(f"**{priority_num}. {signal_name} ({weight})**")
+            st.write(f"• {reason}")
+            st.write(f"• Indicators: {', '.join(indicators)}")
+            st.markdown("---")
     
     # === ENHANCED MARKET INTELLIGENCE ===
     st.markdown("#### 📊 Live Market Intelligence")
@@ -820,7 +883,9 @@ def main():
     
     # Live options chain with constant updates
     current_price = market_data.get('price', 100)
-    live_strikes = live_flow_system.get_top_strikes_by_volume(selected_symbol, current_price)
+    # Use real_live_scraper instead of undefined live_flow_system
+    live_options_data = real_live_scraper.get_live_options_chain(selected_symbol)
+    live_strikes = live_options_data.get('top_strikes', []) if live_options_data else []
     
     st.markdown(f"**{selected_symbol} @ ${current_price:.2f} - LIVE FEED - Updated: {datetime.now().strftime('%H:%M:%S')}**")
     
