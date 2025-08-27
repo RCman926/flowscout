@@ -356,11 +356,14 @@ def main():
             pct = earning.get('beat_percentage', 0)
             
             if result in ['BEAT', 'STRONG_BEAT']:
-                st.text(f"✓ {symbol} +{pct:.1f}%")
+                st.text(f"✓ {symbol} Beat +{pct:.1f}%")
+                st.caption("EPS vs estimate")
             elif result in ['MISS', 'STRONG_MISS']:
-                st.text(f"✗ {symbol} {pct:.1f}%")
+                st.text(f"✗ {symbol} Miss {pct:.1f}%")
+                st.caption("EPS vs estimate")
             else:
                 st.text(f"• {symbol} ${earning.get('actual', 0):.2f}")
+                st.caption("Actual EPS")
     
     with intel_cols[1]:
         st.text("📅 Earnings Coming")
@@ -394,14 +397,29 @@ def main():
     with intel_cols[3]:
         st.text("🌍 Global News")
         # Most important global news affecting markets
-        for news in live_news[:4]:
-            title = news['title'][:25] + "..." if len(news['title']) > 25 else news['title']
+        for i, news in enumerate(live_news[:3]):
+            title = news['title'][:30] + "..." if len(news['title']) > 30 else news['title']
             
-            # Time indicator
+            # Time indicator - fix the time calculation
             time_ago = (datetime.now() - news['timestamp']).total_seconds() / 60
-            time_str = f"{int(time_ago)}m" if time_ago < 60 else f"{int(time_ago/60)}h"
+            if time_ago < 60:
+                time_str = f"{max(1, int(time_ago))}m"
+            elif time_ago < 1440:  # Less than 24 hours
+                time_str = f"{int(time_ago/60)}h"
+            else:
+                time_str = f"{int(time_ago/1440)}d"
             
-            st.text(f"• {title} ({time_str})")
+            # Show sentiment impact
+            impact = ""
+            if news['sentiment'] == 'BULLISH':
+                impact = "↗"
+            elif news['sentiment'] == 'BEARISH':
+                impact = "↘"
+            elif news['sentiment'] == 'VOLATILE':
+                impact = "⚡"
+            
+            st.text(f"{impact} {title}")
+            st.caption(f"{news.get('source', 'News')} • {time_str} • Market impact")
     
     # Key levels in minimal format
     current_price = market_data['price']
@@ -1041,7 +1059,8 @@ def main():
     rsi = tech_data.get('rsi', 50)
     bb_upper = tech_data.get('bb_upper', current_price * 1.02)
     bb_lower = tech_data.get('bb_lower', current_price * 0.98)
-    volume_ratio = market_data['volume'] / market_data.get('avg_volume', 1)
+    avg_volume = market_data.get('avg_volume', market_data['volume'])
+    volume_ratio = market_data['volume'] / max(avg_volume, 1)  # Prevent division by zero
     
     # Advanced signal analysis from unified signal
     signal = unified_signal.get('direction', 'NEUTRAL')
