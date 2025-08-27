@@ -244,7 +244,11 @@ def main():
                 st.caption(f"After-hours: ${aftermarket_price:.2f}")
     
     with overview_cols[1]:
-        volume_ratio = market_data['volume'] / market_data.get('avg_volume', 1)
+        avg_volume = market_data.get('avg_volume', market_data.get('volume', 1000000))
+        if avg_volume > 0:
+            volume_ratio = market_data['volume'] / avg_volume
+        else:
+            volume_ratio = 1.0
         st.metric("Volume", f"{market_data['volume']/1e6:.1f}M", f"{volume_ratio:.1f}x avg")
     
     with overview_cols[2]:

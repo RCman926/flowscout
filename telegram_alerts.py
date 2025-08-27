@@ -13,7 +13,9 @@ from typing import Dict, List, Optional
 class TelegramAlertsEngine:
     def __init__(self):
         self.bot_token = os.environ.get("TELEGRAM_BOT_TOKEN")
-        self.chat_id = "6314164168"  # User's chat ID
+        # Support both individual chat and group notifications
+        self.chat_id = "6314164168"  # Primary user chat ID
+        self.group_chat_id = "-1002419286503"  # Group chat ID extracted from https://t.me/+HqIZrYAjdycxMjlh
         self.base_url = f"https://api.telegram.org/bot{self.bot_token}"
         
         # Alert cooldown tracking (prevent spam)
@@ -85,8 +87,8 @@ class TelegramAlertsEngine:
             print(f"Sentiment alert error: {e}")
             return False
 
-    def send_alert(self, message: str, alert_type: str = "general", disable_notification: bool = False) -> bool:
-        """Send a Telegram alert with spam protection"""
+    def send_alert(self, message: str, alert_type: str = "general", disable_notification: bool = False, send_to_group: bool = True) -> bool:
+        """Send a Telegram alert with spam protection to both individual and group"""
         try:
             if not self.bot_token:
                 return False
@@ -100,17 +102,34 @@ class TelegramAlertsEngine:
                 if time_since_last < self.cooldown_minutes:
                     return False  # Still in cooldown
             
-            # Send the alert
-            payload = {
+            success_count = 0
+            
+            # Send to individual chat
+            payload_individual = {
                 'chat_id': self.chat_id,
                 'text': message,
                 'parse_mode': 'Markdown',
                 'disable_notification': disable_notification
             }
             
-            response = requests.post(f"{self.base_url}/sendMessage", json=payload, timeout=10)
+            response_individual = requests.post(f"{self.base_url}/sendMessage", json=payload_individual, timeout=10)
+            if response_individual.status_code == 200:
+                success_count += 1
             
-            if response.status_code == 200:
+            # Send to group chat if enabled
+            if send_to_group and self.group_chat_id:
+                payload_group = {
+                    'chat_id': self.group_chat_id,
+                    'text': f"🏛️ **INSTITUTIONAL SIGNAL**\n\n{message}",  # Add group header
+                    'parse_mode': 'Markdown',
+                    'disable_notification': disable_notification
+                }
+                
+                response_group = requests.post(f"{self.base_url}/sendMessage", json=payload_group, timeout=10)
+                if response_group.status_code == 200:
+                    success_count += 1
+            
+            if success_count > 0:
                 # Update cooldown tracking
                 self.last_alerts[cooldown_key] = now
                 
@@ -119,7 +138,8 @@ class TelegramAlertsEngine:
                     'timestamp': now.isoformat(),
                     'type': alert_type,
                     'message': message[:100],  # Truncated for storage
-                    'success': True
+                    'success': True,
+                    'destinations': f"individual+group" if success_count > 1 else "individual_only"
                 })
                 
                 return True
