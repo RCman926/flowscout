@@ -2127,10 +2127,10 @@ def main():
     data_status_cols = st.columns(4)
     
     with data_status_cols[0]:
-        if auth_result['is_authentic'] and auth_result['quality_score'] >= 90:
+        if auth_result.is_authentic and auth_result.quality_score >= 90:
             st.success("🟢 AUTHENTICATED")
             st.caption("Real-time authenticated")
-        elif auth_result['is_authentic'] and auth_result['quality_score'] >= 75:
+        elif auth_result.is_authentic and auth_result.quality_score >= 75:
             st.warning("🟡 AUTHENTICATED")
             st.caption("Real but delayed")
         else:
@@ -2138,7 +2138,7 @@ def main():
             st.caption("Failed authentication")
     
     with data_status_cols[1]:
-        data_source = auth_result.get('source', 'UNKNOWN')
+        data_source = auth_result.data_source if auth_result.data_source else 'UNKNOWN'
         st.metric("Source", data_source.replace('_authenticated', '').upper())
         
         # Calculate actual data age
@@ -2158,7 +2158,7 @@ def main():
         st.caption(f"Updated: {time_display}")
     
     with data_status_cols[2]:
-        quality_score = auth_result['quality_score']
+        quality_score = auth_result.quality_score
         if quality_score >= 95:
             st.success(f"📊 QUALITY: {quality_score}%")
             st.caption("Institutional grade")
@@ -2174,17 +2174,17 @@ def main():
     
     with data_status_cols[3]:
         # Show rejection reason if data is not authentic
-        if not auth_result['is_authentic']:
+        if not auth_result.is_authentic:
             st.error("❌ REJECTED")
-            st.caption(auth_result.get('reason', 'Failed validation'))
+            st.caption(auth_result.rejection_reason if auth_result.rejection_reason else 'Failed validation')
         else:
             st.success("✅ VERIFIED")
             st.caption("Passed all checks")
     
     # Data authenticity guarantee
-    if auth_result['is_authentic'] and auth_result['quality_score'] >= 90:
+    if auth_result.is_authentic and auth_result.quality_score >= 90:
         st.success("🎯 **ZERO TOLERANCE POLICY ACTIVE**: Only authenticated real-time data is displayed. All synthetic, fallback, and simulated data is automatically rejected.")
-    elif auth_result['is_authentic']:
+    elif auth_result.is_authentic:
         st.warning("🎯 **AUTHENTICATED BUT DELAYED**: Real data confirmed but not real-time. No synthetic data present.")
     else:
         st.error("🎯 **DATA REJECTED**: This data failed authentication and has been rejected according to zero tolerance policy. Connect IBKR or enable live data feeds for authentic data.")
