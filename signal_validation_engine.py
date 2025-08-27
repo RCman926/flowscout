@@ -119,6 +119,62 @@ class SignalValidationEngine:
         
         return recommendations
     
+    def integrate_ml_prediction(self, ml_prediction: Dict, unified_signal: Dict) -> Dict:
+        """
+        Integrate ML prediction with unified signal while respecting confidence thresholds
+        
+        Args:
+            ml_prediction: ML prediction with confidence
+            unified_signal: Current unified signal
+            
+        Returns:
+            Updated unified signal with ML integration
+        """
+        ml_confidence = ml_prediction.get('confidence', 0)
+        ml_direction = ml_prediction.get('direction', 'NEUTRAL')
+        
+        # Only integrate ML if it meets confidence threshold
+        if ml_confidence >= self.confidence_threshold:
+            # Weight ML prediction (30%) with existing signal (70%)
+            current_confidence = unified_signal.get('confidence', 50)
+            
+            # Calculate weighted confidence
+            weighted_confidence = (current_confidence * 0.7) + (ml_confidence * 0.3)
+            
+            # Determine if ML and current signal agree
+            current_direction = unified_signal.get('direction', 'NEUTRAL')
+            
+            if ml_direction == current_direction or current_direction == 'NEUTRAL':
+                # Signals agree or current is neutral - boost confidence
+                final_confidence = min(95, weighted_confidence * 1.1)
+                final_direction = ml_direction if current_direction == 'NEUTRAL' else current_direction
+            elif ml_direction == 'NEUTRAL':
+                # ML is neutral - reduce confidence
+                final_confidence = weighted_confidence * 0.8
+                final_direction = current_direction
+            else:
+                # Signals conflict - average them and reduce confidence
+                final_confidence = weighted_confidence * 0.6
+                final_direction = 'NEUTRAL'  # Default to neutral on conflict
+            
+            unified_signal.update({
+                'confidence': final_confidence,
+                'direction': final_direction,
+                'ml_integrated': True,
+                'ml_confidence': ml_confidence,
+                'ml_direction': ml_direction
+            })
+        else:
+            # ML below threshold - mark as rejected
+            unified_signal.update({
+                'ml_integrated': False,
+                'ml_confidence': ml_confidence,
+                'ml_direction': ml_direction,
+                'ml_rejection_reason': f'Below {self.confidence_threshold}% threshold'
+            })
+        
+        return unified_signal
+
     def create_unified_signal(self, raw_signals: Dict, market_data: Dict, data_quality: Dict) -> Dict:
         """
         Create a unified signal that represents the platform's consensus
