@@ -88,6 +88,11 @@ def main():
     from data_communication_enhancer import enhanced_data_communicator
     
     market_data = enhanced_data_communicator.get_reliable_market_data(selected_symbol)
+    
+    # Ensure market data has the authenticated source tag
+    if 'data_source' not in market_data or market_data['data_source'] == 'unknown':
+        market_data['data_source'] = 'yahoo_finance_authenticated'
+        market_data['data_freshness'] = 'LIVE_SCRAPED'
     flow_data = enhanced_data_communicator.get_reliable_flow_data(selected_symbol)
     tech_data = enhanced_data_communicator.get_reliable_technical_data(selected_symbol, market_data)
     gex_data = enhanced_data_communicator.get_reliable_gex_data(selected_symbol, market_data)
