@@ -421,26 +421,37 @@ def main():
         stop_diff = ((stop - market_data['price']) / market_data['price']) * 100
         st.caption(f"Downside: {stop_diff:+.1f}%")
     
-    # Advanced Signal Breakdown
-    st.markdown("#### 🧠 Advanced Signal Analysis - 7 Factor Model")
+    # HIGHEST LEVEL Signal Breakdown - REAL DATA ONLY
+    st.markdown("#### 🏛️ HIGHEST LEVEL Signal Analysis - 6-Factor Model")
+    st.caption("Professional hedge fund analytics using REAL DATA only - rejects all synthetic data")
     
-    # Get signal contributions
+    # Get signal contributions from highest level system
     signal_contributions = unified_signal.get('signal_contributions', {})
+    data_quality_score = unified_signal.get('data_quality_score', 0)
+    is_real_data = unified_signal.get('is_real_data', False)
     
-    # Advanced 7-factor breakdown
-    advanced_factors = [
-        ('institutional_flow', '🏛️ Institutional Flow', 'Smart money patterns'),
-        ('gamma_exposure', '⚡ Gamma Mechanics', 'Market structure forces'),
-        ('dark_pool_activity', '🕳️ Dark Pool Activity', 'Hidden positioning'),
-        ('volatility_surface', '📊 Volatility Surface', 'Options sentiment'),
-        ('technical_momentum', '📈 Technical Momentum', 'Price action'),
-        ('intermarket_analysis', '🌐 Intermarket', 'Cross-asset signals'),
-        ('sentiment_divergence', '🔄 Divergence', 'Contrarian signals')
+    # Data quality indicator
+    if is_real_data:
+        st.success(f"✅ REAL DATA CONFIRMED - Quality Score: {data_quality_score}%")
+    else:
+        st.error("❌ SYNTHETIC DATA REJECTED - Waiting for authentic market data")
+        data_issues = unified_signal.get('data_quality_issues', [])
+        if data_issues:
+            st.caption(f"Issues: {', '.join(data_issues)}")
+    
+    # Highest level 6-factor breakdown
+    highest_level_factors = [
+        ('smart_money_flow', '🏛️ Smart Money Flow', 'Institutional order flow analysis'),
+        ('market_structure', '⚡ Market Structure', 'Gamma mechanics & dealer positioning'),
+        ('dark_pool_intelligence', '🕳️ Dark Pool Intelligence', 'Stealth institutional positioning'),
+        ('volatility_intelligence', '📊 Volatility Intelligence', 'Options microstructure analysis'),
+        ('cross_asset_signals', '🌐 Cross-Asset Signals', 'Macro & intermarket correlations'),
+        ('technical_confirmation', '📈 Technical Confirmation', 'Price action confirmation only')
     ]
     
-    breakdown_cols = st.columns(7)
+    breakdown_cols = st.columns(6)
     
-    for i, (factor_key, factor_name, description) in enumerate(advanced_factors):
+    for i, (factor_key, factor_name, description) in enumerate(highest_level_factors):
         with breakdown_cols[i]:
             if factor_key in signal_contributions:
                 contribution = signal_contributions[factor_key]
@@ -448,12 +459,15 @@ def main():
                 direction = original_signal['direction']
                 confidence = original_signal['confidence']
                 effective_weight = contribution.get('effective_weight', 0)
+                regime_multiplier = contribution.get('regime_multiplier', 1.0)
                 
-                # Display direction with color coding
+                # Display direction with enhanced color coding
                 if direction == 'BULLISH':
                     st.success("📈 BULL")
                 elif direction == 'BEARISH':
                     st.error("📉 BEAR")
+                elif direction == 'NO_DATA':
+                    st.warning("❌ NO DATA")
                 else:
                     st.info("⚪ NEUT")
                 
@@ -461,8 +475,12 @@ def main():
                 st.caption(f"Weight: {effective_weight:.1f}%")
                 st.caption(f"Conf: {confidence:.0f}%")
                 
+                # Show regime multiplier for ML enhancement
+                if regime_multiplier != 1.0:
+                    st.caption(f"Regime: {regime_multiplier:.1f}x")
+                
                 # Quality indicators for institutional signals
-                if factor_key == 'institutional_flow':
+                if factor_key == 'smart_money_flow':
                     quality = original_signal.get('quality', 'STANDARD')
                     if quality == 'INSTITUTIONAL_GRADE':
                         st.success("🏛️ INST")
@@ -473,72 +491,104 @@ def main():
             else:
                 st.info("⚪ NO DATA")
                 st.caption(f"**{factor_name}**")
-                st.caption("No signal")
+                st.caption("Insufficient data")
     
-    # Institutional Flow Deep Dive
-    if 'institutional_flow' in signal_contributions:
-        inst_signal = signal_contributions['institutional_flow']['original_signal']
+    # Smart Money Flow Deep Dive (Highest Level)
+    if 'smart_money_flow' in signal_contributions:
+        smart_money_signal = signal_contributions['smart_money_flow']['original_signal']
+        institutional_signals = smart_money_signal.get('institutional_signals', {})
         
-        st.markdown("##### 🏛️ Institutional Flow Intelligence")
-        flow_intel_cols = st.columns(4)
+        st.markdown("##### 🏛️ Smart Money Flow Intelligence - REAL DATA")
+        flow_intel_cols = st.columns(5)
         
         with flow_intel_cols[0]:
-            block_count = inst_signal.get('block_trades_count', 0)
+            block_count = institutional_signals.get('block_trades', 0)
             st.metric("Block Trades", block_count)
             st.caption("Large institutional orders")
         
         with flow_intel_cols[1]:
-            sweep_count = inst_signal.get('sweep_trades_count', 0)
+            sweep_count = institutional_signals.get('sweep_trades', 0)
             st.metric("Sweep Orders", sweep_count)  
             st.caption("Aggressive institutional")
         
         with flow_intel_cols[2]:
-            cp_ratio = inst_signal.get('call_put_ratio', 1)
-            st.metric("C/P Ratio", f"{cp_ratio:.2f}")
-            if cp_ratio > 2:
-                st.caption("🔥 Extreme call bias")
-            elif cp_ratio < 0.5:
-                st.caption("🔥 Extreme put bias")
-            else:
-                st.caption("Balanced flow")
+            dark_count = institutional_signals.get('dark_pool_prints', 0)
+            st.metric("Dark Pool Prints", dark_count)
+            st.caption("Stealth positioning")
         
         with flow_intel_cols[3]:
-            quality_factors = inst_signal.get('quality_factors', [])
-            if quality_factors:
-                primary_factor = quality_factors[0]
-                if 'EXTREME' in primary_factor:
-                    st.error(f"🚨 {primary_factor}")
-                elif 'AGGRESSIVE' in primary_factor:
-                    st.warning(f"⚡ {primary_factor}")
-                else:
-                    st.info(f"📊 {primary_factor}")
-                st.caption(f"+{len(quality_factors)-1} more factors")
+            total_vol = institutional_signals.get('total_volume', 0)
+            st.metric("Total Volume", f"{total_vol:,}")
+            st.caption("Real options volume")
+        
+        with flow_intel_cols[4]:
+            cp_ratio = institutional_signals.get('call_put_ratio', 1)
+            st.metric("C/P Ratio", f"{cp_ratio:.2f}")
+            if cp_ratio > 3:
+                st.caption("🔥 Extreme call bias")
+            elif cp_ratio < 0.33:
+                st.caption("🔥 Extreme put bias")
             else:
-                st.info("No special factors")
-                st.caption("Standard flow pattern")
+                st.caption("Balanced institutional flow")
+        
+        # Quality indicators
+        quality_indicators = smart_money_signal.get('quality_indicators', [])
+        if quality_indicators:
+            st.markdown("**🎯 Institutional Quality Indicators:**")
+            indicator_cols = st.columns(min(4, len(quality_indicators)))
+            for i, indicator in enumerate(quality_indicators[:4]):
+                with indicator_cols[i]:
+                    if 'EXTREME' in indicator:
+                        st.error(f"🚨 {indicator}")
+                    elif 'AGGRESSIVE' in indicator:
+                        st.warning(f"⚡ {indicator}")
+                    elif 'SIGNIFICANT' in indicator:
+                        st.success(f"📊 {indicator}")
+                    else:
+                        st.info(f"📈 {indicator}")
+            
+            if len(quality_indicators) > 4:
+                st.caption(f"+ {len(quality_indicators)-4} more institutional indicators")
     
-    # Advanced System Information
-    with st.expander("🔬 Advanced Signal System Details"):
-        st.markdown("**🏛️ Institutional-Grade Signal System Features:**")
+    # Highest Level System Information
+    with st.expander("🏛️ HIGHEST LEVEL Signal System - Professional Details"):
+        st.markdown("**🏛️ HIGHEST LEVEL Signal System Features - REAL DATA ONLY:**")
         
         features = [
-            "• **7-Factor Analysis**: Institutional flow, gamma mechanics, dark pools, volatility surface, technical, intermarket, divergence",
-            "• **Machine Learning Fusion**: Dynamic weight adjustment based on market regime and confidence levels",
-            "• **Professional Risk Management**: Position sizing from 0x to 8x based on conviction level",
-            "• **Institutional Thresholds**: 85%+ confidence for institutional-grade signals",
-            "• **Advanced Pattern Recognition**: Block trades, sweep orders, dark pool analysis",
-            "• **Real-time Regime Detection**: High/medium/low volatility regime adjustments"
+            "• **REAL DATA VALIDATION**: Strict authentication - rejects all synthetic/fallback data",
+            "• **6-Factor Professional Model**: Smart money flow, market structure, dark pool intelligence, volatility intelligence, cross-asset, technical confirmation",
+            "• **Advanced ML Signal Fusion**: Dynamic regime detection with ML-enhanced weight adjustment",
+            "• **Kelly Criterion Position Sizing**: Professional risk management with Kelly fractions (0.10-0.25)",
+            "• **Institutional Quality Thresholds**: 90%+ confidence for maximum conviction signals",
+            "• **Real-Time Data Quality Scoring**: Continuous authentication and freshness validation",
+            "• **Professional Risk Matrix**: Position multipliers from 0x to 10x based on conviction level"
         ]
         
         for feature in features:
             st.write(feature)
         
-        st.markdown("**📊 Conviction Levels:**")
-        st.write("• **INSTITUTIONAL_GRADE (85%+)**: 8x position, max 3% risk, 0-2 DTE")
-        st.write("• **HIGH_CONVICTION (75%+)**: 5x position, max 2% risk, 1-3 DTE") 
-        st.write("• **MEDIUM_CONVICTION (60%+)**: 3x position, max 1.5% risk, 2-5 DTE")
-        st.write("• **LOW_CONVICTION (45%+)**: 1x position, max 1% risk, 5-10 DTE")
-        st.write("• **NO_SIGNAL (<45%)**: 0x position, wait for clarity")
+        st.markdown("**📊 Professional Conviction Levels:**")
+        st.write("• **MAXIMUM_CONVICTION (90%+)**: 10x position, max 4% risk, Kelly 0.25, 0-1 DTE")
+        st.write("• **HIGH_CONVICTION (80%+)**: 7x position, max 3% risk, Kelly 0.20, 1-3 DTE") 
+        st.write("• **MEDIUM_CONVICTION (65%+)**: 4x position, max 2% risk, Kelly 0.15, 2-5 DTE")
+        st.write("• **LOW_CONVICTION (50%+)**: 2x position, max 1% risk, Kelly 0.10, 5-10 DTE")
+        st.write("• **NO_CONVICTION (<50%)**: 0x position, wait for real data")
+        
+        st.markdown("**📈 Data Quality Requirements:**")
+        st.write("• Minimum 100,000 volume threshold for institutional signals")
+        st.write("• Maximum 60 seconds data age for real-time analysis")
+        st.write("• Authenticated data sources: live_scraper, yahoo_finance, institutional_feed")
+        st.write("• Minimum 70% confidence score for signal activation")
+        
+        # Show current data sources if available
+        data_sources = unified_signal.get('data_sources_verified', [])
+        if data_sources:
+            st.markdown("**✅ Current Verified Data Sources:**")
+            for source in data_sources:
+                st.write(f"• {source}")
+        
+        system_version = unified_signal.get('system_version', 'UNKNOWN')
+        st.caption(f"System Version: {system_version}")
     
     # === ENHANCED MARKET INTELLIGENCE ===
     st.markdown("#### 📊 Live Market Intelligence")
@@ -758,6 +808,7 @@ def main():
     st.markdown("#### ⚡ LIVE STREAMING OPTIONS ACTION")
     
     # Get comprehensive options data for streaming view
+    from real_live_options_scraper import real_live_scraper
     live_options_data = real_live_scraper.get_live_options_chain(selected_symbol)
     
     if live_options_data:
