@@ -161,30 +161,40 @@ def main():
         cols = st.columns(len(row))
         for i, symbol in enumerate(row):
             # Get live data for each symbol
-            symbol_data = data_coordinator.get_market_data(symbol)
-            symbol_signal = data_coordinator.generate_trading_signal(symbol)
+            try:
+                symbol_data = enhanced_data_communicator.get_reliable_market_data(symbol)
+                price = symbol_data['price']
+                change_pct = symbol_data['change_pct']
+            except:
+                price = 150.0
+                change_pct = 0.0
             
-            price = symbol_data['price'] if symbol_data else 150.0
-            change_pct = symbol_data['change_pct'] if symbol_data else 0.0
-            signal = symbol_signal.get('signal', 'HOLD') if symbol_signal else 'HOLD'
-            confidence = symbol_signal.get('confidence', 75) if symbol_signal else 75
-
+            # Generate signal based on price change
+            if change_pct > 1.0:
+                signal_emoji = "🟢"
+                signal_type = "CALLS"
+                confidence = min(85, abs(change_pct) * 30)
+            elif change_pct > 0.2:
+                signal_emoji = "🟢"
+                signal_type = "CALLS"
+                confidence = min(75, abs(change_pct) * 40)
+            elif change_pct < -1.0:
+                signal_emoji = "🔴"
+                signal_type = "PUTS"
+                confidence = min(85, abs(change_pct) * 30)
+            elif change_pct < -0.2:
+                signal_emoji = "🔴"
+                signal_type = "PUTS"
+                confidence = min(75, abs(change_pct) * 40)
+            else:
+                signal_emoji = "⚪"
+                signal_type = "NEUTRAL"
+                confidence = 50
             
             with cols[i]:
                 is_selected = symbol == selected_symbol
                 
-                # Determine signal and colors properly
-                if signal == 'BUY' or 'CALL' in signal or change_pct > 0.5:
-                    signal_emoji = "🟢"
-                    signal_type = "CALLS"
-                elif signal == 'SELL' or 'PUT' in signal or change_pct < -0.5:
-                    signal_emoji = "🔴" 
-                    signal_type = "PUTS"
-                else:
-                    signal_emoji = "⚪"
-                    signal_type = "NEUTRAL"
-                
-                # Single line button with all info
+                # Single line button with all info and proper color coding
                 if is_selected:
                     button_label = f"✓ {symbol} ${price:.0f} {change_pct:+.1f}% | {signal_emoji} {signal_type} {confidence:.0f}%"
                 else:
@@ -1315,9 +1325,9 @@ def main():
     
     # Calculate sophisticated trading levels
     current_price = market_data['price']
-    rsi = tech_data['rsi']
-    bb_upper = tech_data['bb_upper']
-    bb_lower = tech_data['bb_lower']
+    rsi = tech_data.get('rsi', 50)
+    bb_upper = tech_data.get('bb_upper', current_price * 1.02)
+    bb_lower = tech_data.get('bb_lower', current_price * 0.98)
     volume_ratio = market_data['volume'] / market_data.get('avg_volume', 1)
     
     # Advanced signal analysis
