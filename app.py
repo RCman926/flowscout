@@ -288,49 +288,7 @@ def main():
             st.info("📊 DATA STATUS")
             st.caption(f"{data_freshness}")
     
-    # === UNIFIED OPTIONS FLOW ANALYSIS ===
-    st.markdown("#### ⚡ Unified Options Flow Analysis")
-    st.caption("📊 Single data source - consistent numbers with Live Battle section")
-    
-    flow_cols = st.columns(3)
-    
-    # Use SAME unified data source for consistency
-    unified_flow = enhanced_data_communicator.get_reliable_flow_data(selected_symbol)
-    call_volume = unified_flow.get('call_volume', 0)
-    put_volume = unified_flow.get('put_volume', 0)
-    total_volume = call_volume + put_volume
-    
-    with flow_cols[0]:
-        if call_volume > 0:
-            st.success(f"📈 CALLS: {call_volume:,}")
-            call_premium = sum([exp.get('call_premium', 0) for exp in flow_data.get('analysis', [])])
-            st.caption(f"${call_premium/1e6:.1f}M premium")
-        else:
-            st.info("📈 No call flow")
-    
-    with flow_cols[1]:
-        if put_volume > 0:
-            st.error(f"📉 PUTS: {put_volume:,}")
-            put_premium = sum([exp.get('put_premium', 0) for exp in flow_data.get('analysis', [])])
-            st.caption(f"${put_premium/1e6:.1f}M premium")
-        else:
-            st.info("📉 No put flow")
-    
-    with flow_cols[2]:
-        net_flow = call_volume - put_volume
-        if total_volume > 50000:
-            if net_flow > 50000:
-                st.success("📈 BULLISH Net Flow")
-                st.caption(f"+{net_flow:,} call bias")
-            elif net_flow < -50000:
-                st.error("📉 BEARISH Net Flow") 
-                st.caption(f"{net_flow:,} put bias")
-            else:
-                st.info("⚪ BALANCED Net Flow")
-                st.caption(f"{net_flow:+,} difference")
-        else:
-            st.info("📊 Low Activity")
-            st.caption("Net Flow: Difference between call and put volume")
+
     
     # === GAMMA EXPOSURE ===
     st.markdown("#### ⚡ Gamma Exposure & Key Strikes")
