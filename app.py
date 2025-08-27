@@ -353,61 +353,90 @@ def main():
             st.success("✅ All brokers configured")
             st.caption("Maximum data coverage")
     
-    # === COMPACT MARKET INTELLIGENCE ===
-    st.markdown("#### 📊 Market Intelligence")
+    # === ENHANCED MARKET INTELLIGENCE ===
+    st.markdown("#### 📊 Live Market Intelligence")
     
-    intel_cols = st.columns([1, 3])
+    from enhanced_market_intelligence import market_intelligence
     
-    with intel_cols[0]:
-        st.markdown("**📅 This Week**")
-        # Ultra-compact earnings in 2 columns
-        earn_mini = st.columns(2)
-        with earn_mini[0]:
-            st.info("**NVDA** Wed")
-            st.caption("$0.75")
-        with earn_mini[1]:
-            st.error("**META** Thu")
-            st.caption("$5.23")
+    # Get live data
+    live_news = market_intelligence.get_live_market_news(max_items=4)
+    earnings_calendar = market_intelligence.get_live_earnings_calendar()
     
-    with intel_cols[1]:
-        st.markdown("**🔥 Breaking News & Intelligence**")
+    # Ultra-compact layout
+    intel_container = st.container()
+    with intel_container:
+        # Single row with earnings and news
+        intel_row = st.columns([1, 2, 1])
         
-        # Enhanced news from multiple premium sources
-        current_hour = datetime.now().hour
-        
-        news_mini_cols = st.columns(2)
-        
-        with news_mini_cols[0]:
-            if current_hour < 12:  # Morning
-                st.success("📈 Fed dovish pivot signals rate cut cycle")
-                st.caption("Reuters • 45m • BULLISH")
-                
-                st.info(f"📊 {selected_symbol} dark pool activity +300% vs 20-day avg")
-                st.caption("Flow Traders • 1.2h • WATCH")
-                
-                st.warning("⚡ Gamma squeeze setup detected in mega-cap tech")
-                st.caption("Goldman Flow • 2h • VOLATILE")
-                
-            else:  # Afternoon
-                st.error("📉 Credit spreads widen on recession fears")
-                st.caption("Bloomberg • 30m • BEARISH")
-                
-                st.success("📈 China stimulus package exceeds expectations")
-                st.caption("Financial Times • 1h • BULLISH")
-                
-                st.info("📊 Pension funds rebalancing into equities")
-                st.caption("Institutional Investor • 2h • WATCH")
-        
-        with news_mini_cols[1]:
-            # Additional premium intelligence
-            st.warning("⚡ JPM upgrades sector to overweight on earnings")
-            st.caption("JP Morgan Research • 1.5h • BULLISH")
+        # Earnings column
+        with intel_row[0]:
+            st.markdown("**📅 Earnings**")
             
-            st.info("📊 Unusual options activity in QQQ detected")
-            st.caption("Options Analytics • 2h • WATCH")
+            for earning in earnings_calendar[:2]:  # Top 2 only
+                if earning['status'] == 'REPORTED':
+                    # Show beat/miss result
+                    result_data = earning.get('result', 'PENDING')
+                    if result_data == 'BEAT' or result_data == 'STRONG_BEAT':
+                        st.success(f"✅ {earning['symbol']}")
+                        st.caption(f"Beat by {earning.get('beat_percentage', 0):.1f}%")
+                    elif result_data == 'MISS' or result_data == 'STRONG_MISS':
+                        st.error(f"❌ {earning['symbol']}")
+                        st.caption(f"Miss by {abs(earning.get('beat_percentage', 0)):.1f}%")
+                    else:
+                        st.info(f"📊 {earning['symbol']}")
+                        st.caption(f"${earning.get('actual', 0):.2f}")
+                else:
+                    # Upcoming earnings
+                    if earning['importance'] == 'HIGH':
+                        st.warning(f"🔥 {earning['symbol']}")
+                    else:
+                        st.info(f"📊 {earning['symbol']}")
+                    st.caption(f"{earning['date']} • ${earning['estimate']:.2f}")
+        
+        # News column (main)
+        with intel_row[1]:
+            st.markdown("**🔥 Live Market News**")
             
-            st.success("📈 Insider buying accelerates at current levels")
-            st.caption("SEC Filings • 3h • BULLISH")
+            # Display live news in compact format
+            for i, news in enumerate(live_news[:3]):
+                # Determine color based on sentiment
+                if news['sentiment'] == 'BULLISH':
+                    st.success(f"📈 {news['title'][:50]}...")
+                elif news['sentiment'] == 'BEARISH':
+                    st.error(f"📉 {news['title'][:50]}...")
+                elif news['sentiment'] == 'VOLATILE':
+                    st.warning(f"⚡ {news['title'][:50]}...")
+                else:
+                    st.info(f"📊 {news['title'][:50]}...")
+                
+                # Compact source info
+                time_ago = (datetime.now() - news['timestamp']).total_seconds() / 60
+                if time_ago < 60:
+                    time_str = f"{int(time_ago)}m"
+                else:
+                    time_str = f"{int(time_ago/60)}h"
+                
+                st.caption(f"{news['source']} • {time_str} • {news['sentiment']}")
+        
+        # Key levels column
+        with intel_row[2]:
+            st.markdown("**🎯 Levels**")
+            
+            current_price = market_data['price']
+            
+            # Calculate dynamic levels
+            resistance = round((current_price * 1.02) / 5) * 5
+            support = round((current_price * 0.98) / 5) * 5
+            target = round((current_price * 1.05) / 5) * 5
+            
+            st.error("🔴 Resistance")
+            st.caption(f"${resistance:.2f}")
+            
+            st.success("🟢 Support")
+            st.caption(f"${support:.2f}")
+            
+            st.info("📊 Target")
+            st.caption(f"${target:.2f}")
     
     # === MAIN OPTIONS ANALYSIS ===
     st.markdown("#### 🎯 Key Trading Levels")

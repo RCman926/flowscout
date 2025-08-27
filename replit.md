@@ -100,6 +100,9 @@ Preferred communication style: Simple, everyday language.
 - **Animated Market Mood Indicator**: Real-time animated gauge showing market sentiment with 5-component analysis (Technical, Flow, Sentiment, Volatility, Momentum)
 - **Professional Mood Insights**: AI-generated trading insights based on current market mood (Extreme Fear to Extreme Greed scale)
 - **Visual Mood History**: Animated timeline of market mood changes with component breakdowns
+- **Enhanced Market Intelligence**: Real-time news feeds with automatic updates from Yahoo Finance and premium sources
+- **Automated Earnings Tracker**: Live earnings calendar with automatic beat/miss detection and percentage analysis
+- **Signal Alignment System**: Unified consensus indicator combining mood, sentiment, flow, and technical signals
 
 ## Live Data Infrastructure Implementation (January 2025)
 - **API Bypass System**: Comprehensive web scraping infrastructure to get LIVE data from Yahoo Finance website (bypassing 15-minute API delay)
