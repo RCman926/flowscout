@@ -9,6 +9,9 @@ import random
 from typing import Dict, List, Any, Optional
 from datetime import datetime, timedelta
 import logging
+import yfinance as yf
+import numpy as np
+from real_data_authenticator import real_data_authenticator
 
 class DataCommunicationEnhancer:
     """
@@ -33,14 +36,21 @@ class DataCommunicationEnhancer:
         }
     
     def get_reliable_market_data(self, symbol: str) -> Dict:
-        """Get market data with multiple fallbacks and error handling"""
+        """Get market data with REAL DATA AUTHENTICATION - rejects synthetic data"""
         cache_key = f"market_data_{symbol}"
         
         # Check cache first
         if self._is_cache_valid(cache_key):
-            return self.data_cache[cache_key]
+            cached_data = self.data_cache[cache_key]
+            # Re-authenticate cached data
+            auth_result = real_data_authenticator.authenticate_data_source(cached_data, symbol)
+            if auth_result.is_authentic:
+                return cached_data
+            else:
+                # Remove invalid cached data
+                del self.data_cache[cache_key]
         
-        # Try multiple data sources in priority order
+        # Try to get REAL data only
         data = None
         errors = []
         
@@ -75,15 +85,29 @@ class DataCommunicationEnhancer:
                     'change_pct': float((current_price - prev_close) / prev_close * 100),
                     'volume': int(hist['Volume'].iloc[-1]),
                     'avg_volume': int(info.get('averageVolume', hist['Volume'].mean())),
-                    'data_source': 'live_scraper',
-                    'data_freshness': 'LIVE_SCRAPED',
-                    'quality_score': 85,
-                    'last_update_timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                    'data_source': 'yahoo_finance',
+                    'data_freshness': 'LIVE_API',
+                    'quality_score': 90,
+                    'last_update_timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                    'real_data_confirmed': True
                 }
                 
-                if self._validate_market_data(data):
-                    self._cache_data(cache_key, data)
-                    return data
+                # AUTHENTICATE DATA BEFORE USING
+                auth_result = real_data_authenticator.authenticate_data_source(data, symbol)
+                if auth_result.is_authentic:
+                    # Update data with authentication results
+                    data['data_source'] = auth_result.data_source
+                    data['data_freshness'] = auth_result.freshness_status
+                    data['quality_score'] = auth_result.quality_score
+                    data['authenticated'] = True
+                    data['authentication_timestamp'] = auth_result.validation_timestamp
+                    
+                    if self._validate_market_data(data):
+                        self._cache_data(cache_key, data)
+                        return data
+                else:
+                    errors.append(f"Data authentication failed: {auth_result.rejection_reason}")
+                    logging.error(f"❌ REJECTED {symbol} data: {auth_result.rejection_reason}")
         except Exception as e:
             errors.append(f"Yahoo Finance error: {str(e)}")
         

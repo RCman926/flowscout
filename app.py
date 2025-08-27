@@ -1422,7 +1422,7 @@ def main():
         Position Size: {position_size}<br>
         Max Risk: {max_risk}<br>
         Volume Confirmation: {'✓' if volume_ratio > 1.2 else '✗'}<br>
-        Trend Alignment: {'✓' if current_price > tech_data['sma_20'] else '✗'}
+        Trend Alignment: {'✓' if current_price > tech_data.get('sma_20', current_price * 0.98) else '✗'}
         </div>
         """, unsafe_allow_html=True)
         
