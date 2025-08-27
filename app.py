@@ -52,10 +52,11 @@ with st.sidebar:
     st.caption("Auto-refresh: Every 15s")
     
     # Live data indicators
-    st.markdown("### 📡 Data Status")
+    st.markdown("### 📡 System Status")
     st.success("✅ Market Data: LIVE")
     st.success("✅ Options Flow: LIVE") 
     st.success("✅ News Feed: LIVE")
+    st.success("✅ Telegram Alerts: ACTIVE")
     st.info("📊 Updates: Real-time")
 
 # === UNIFIED DATA SYSTEM ===
