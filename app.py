@@ -172,35 +172,29 @@ def main():
             
             with cols[i]:
                 is_selected = symbol == selected_symbol
-                button_label = f"{symbol} ${price:.0f} {change_pct:+.1f}%"
-                if is_selected:
-                    button_label = f"✓ {button_label}"
                 
-                # Color-coded button based on signal
-                if signal == 'BUY' or 'CALL' in signal:
-                    button_type = "primary"  # Green for calls/bullish
-                    signal_text = f"📈 CALLS {confidence}%"
-                    signal_color = "success"
-                elif signal == 'SELL' or 'PUT' in signal:
-                    button_type = "secondary"  # Red for puts/bearish  
-                    signal_text = f"📉 PUTS {confidence}%"
-                    signal_color = "error"
+                # Determine signal and colors properly
+                if signal == 'BUY' or 'CALL' in signal or change_pct > 0.5:
+                    signal_emoji = "🟢"
+                    signal_type = "CALLS"
+                elif signal == 'SELL' or 'PUT' in signal or change_pct < -0.5:
+                    signal_emoji = "🔴" 
+                    signal_type = "PUTS"
                 else:
-                    button_type = "secondary"  # Neutral
-                    signal_text = f"😐 NEUTRAL {confidence}%"
-                    signal_color = "warning"
+                    signal_emoji = "⚪"
+                    signal_type = "NEUTRAL"
+                
+                # Single line button with all info
+                if is_selected:
+                    button_label = f"✓ {symbol} ${price:.0f} {change_pct:+.1f}% | {signal_emoji} {signal_type} {confidence:.0f}%"
+                else:
+                    button_label = f"{symbol} ${price:.0f} {change_pct:+.1f}% | {signal_emoji} {signal_type} {confidence:.0f}%"
+                
+                button_type = "primary" if is_selected else "secondary"
                 
                 if st.button(button_label, key=f"select_{symbol}", use_container_width=True, type=button_type):
                     st.session_state.selected_symbol = symbol
                     st.rerun()
-                
-                # Add color-coded signal confidence below button
-                if signal_color == "success":
-                    st.success(signal_text)
-                elif signal_color == "error":
-                    st.error(signal_text)
-                else:
-                    st.warning(signal_text)
     
     # === MAIN DASHBOARD ===
     st.markdown("---")

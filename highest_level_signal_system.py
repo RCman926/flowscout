@@ -416,12 +416,13 @@ class HighestLevelSignalSystem:
                               if trade.get('option_type') == 'CALL')
         put_dark_volume = total_dark_volume - call_dark_volume
         
+        # Calculate dark pool bias (initialize outside conditional)
+        dark_bias = call_dark_volume / put_dark_volume if put_dark_volume > 0 else 10.0
+        avg_premium = 0  # Initialize avg_premium as well
+        
         if total_dark_volume > 100000:  # Significant institutional dark pool activity
             confidence += 35
             intelligence_signals.append("INSTITUTIONAL_DARK_ACTIVITY")
-            
-            # Dark pool bias analysis
-            dark_bias = call_dark_volume / put_dark_volume if put_dark_volume > 0 else 10
             
             if dark_bias > 3.0:  # Extreme call accumulation in dark pools
                 dark_intel_score += 50
