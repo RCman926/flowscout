@@ -90,6 +90,7 @@ def main():
     flow_data = enhanced_data_communicator.get_reliable_flow_data(selected_symbol)
     tech_data = enhanced_data_communicator.get_reliable_technical_data(selected_symbol, market_data)
     gex_data = enhanced_data_communicator.get_reliable_gex_data(selected_symbol, market_data)
+    news_data = enhanced_data_communicator.get_reliable_news_data(selected_symbol)
     
     # Set defaults if data unavailable
     if not market_data:
@@ -332,12 +333,13 @@ def main():
     
     from highest_level_signal_system import highest_level_signal_system
     
-    # Calculate highest level signal with REAL DATA ONLY
+    # Calculate highest level signal with REAL DATA ONLY - All 6 factors
     unified_signal = highest_level_signal_system.calculate_highest_level_signal(
         market_data=market_data,
         flow_data=unified_flow, 
         tech_data=tech_data,
-        gex_data=gex_data
+        gex_data=gex_data,
+        news_data=news_data
     )
     
     # Institutional-Grade Signal Display
@@ -1445,19 +1447,19 @@ def main():
     
     # Calculate specific recommendation
     current_price = market_data['price']
-    rsi = tech_data['rsi']
-    bb_upper = tech_data['bb_upper']
-    bb_lower = tech_data['bb_lower'] 
-    sma_20 = tech_data['sma_20']
+    rsi = tech_data.get('rsi', 50)
+    bb_upper = tech_data.get('bb_upper', current_price * 1.02)
+    bb_lower = tech_data.get('bb_lower', current_price * 0.98) 
+    sma_20 = tech_data.get('sma_20', current_price * 0.99)
     daily_vol = abs(market_data.get('change_pct', 0))
     
     # Decision logic aligned with main signal generator
-    main_signal = signal_data.get('signal', 'HOLD')
+    main_signal = unified_signal.get('direction', 'HOLD')
     
     # Use the main signal generator's recommendation for consistency
     if 'BUY CALLS' in main_signal or main_signal == 'BUY CALLS':
         trade_rec = "📈 BUY CALLS"
-        setup_reason = f"Bullish signal detected - {', '.join(signal_data.get('reasons', ['Technical alignment']))}"
+        setup_reason = f"Bullish signal detected - {', '.join(unified_signal.get('key_factors', ['Technical alignment']))}"
         entry_level = current_price * 1.005
         stop_loss = current_price * 0.98  # 2% max risk
         target_1 = current_price * 1.02   # 2% target
@@ -1466,7 +1468,7 @@ def main():
         color = "success"
     elif 'BUY PUTS' in main_signal or main_signal == 'BUY PUTS':
         trade_rec = "📉 BUY PUTS"
-        setup_reason = f"Bearish signal detected - {', '.join(signal_data.get('reasons', ['Technical divergence']))}"
+        setup_reason = f"Bearish signal detected - {', '.join(unified_signal.get('key_factors', ['Technical divergence']))}"
         entry_level = current_price * 0.995
         stop_loss = current_price * 1.02  # 2% max risk
         target_1 = current_price * 0.98   # 2% target
