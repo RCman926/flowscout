@@ -346,18 +346,20 @@ class HighestLevelSignalSystem:
         resistance_levels = gex_data.get('resistance_levels', [])
         
         for level in support_levels:
-            distance = abs(current_price - level['strike']) / current_price * 100
-            if distance < 0.5:  # Very close to support
-                structure_score += 30
-                confidence += 20
+            if current_price > 0:  # Prevent division by zero
+                distance = abs(current_price - level['strike']) / current_price * 100
+                if distance < 0.5:  # Very close to support
+                    structure_score += 30
+                    confidence += 20
                 structure_signals.append(f"STRONG_SUPPORT_{level['strike']}")
         
         for level in resistance_levels:
-            distance = abs(current_price - level['strike']) / current_price * 100
-            if distance < 0.5:  # Very close to resistance
-                structure_score -= 30
-                confidence += 20
-                structure_signals.append(f"STRONG_RESISTANCE_{level['strike']}")
+            if current_price > 0:  # Prevent division by zero
+                distance = abs(current_price - level['strike']) / current_price * 100
+                if distance < 0.5:  # Very close to resistance
+                    structure_score -= 30
+                    confidence += 20
+                    structure_signals.append(f"STRONG_RESISTANCE_{level['strike']}")
         
         # Options flow integration with structure
         call_volume = flow_data.get('call_volume', 0)
@@ -393,7 +395,7 @@ class HighestLevelSignalSystem:
                 'net_gex': net_gex,
                 'gamma_flip_point': gamma_flip_point,
                 'current_price': current_price,
-                'flip_distance_pct': ((current_price - gamma_flip_point) / gamma_flip_point) * 100
+                'flip_distance_pct': ((current_price - gamma_flip_point) / gamma_flip_point) * 100 if gamma_flip_point > 0 else 0
             }
         }
     

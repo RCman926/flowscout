@@ -334,90 +334,73 @@ def main():
 
 
     
-    # === ENHANCED MARKET INTELLIGENCE ===
-    st.markdown("#### 📊 Live Market Intelligence")
+    # === COMPRESSED MARKET INTELLIGENCE ===
+    st.markdown("#### 📊 Market Intelligence")
     
     from enhanced_market_intelligence import market_intelligence
     
     # Get live data
-    live_news = market_intelligence.get_live_market_news(max_items=4)
+    live_news = market_intelligence.get_live_market_news(max_items=2)
     earnings_calendar = market_intelligence.get_live_earnings_calendar()
     
-    # Ultra-compact layout
-    intel_container = st.container()
-    with intel_container:
-        # Single row with earnings and news
-        intel_row = st.columns([1, 2, 1])
-        
-        # Earnings column
-        with intel_row[0]:
-            st.markdown("**📅 Earnings**")
-            
-            for earning in earnings_calendar[:2]:  # Top 2 only
-                if earning['status'] == 'REPORTED':
-                    # Show beat/miss result
-                    result_data = earning.get('result', 'PENDING')
-                    if result_data == 'BEAT' or result_data == 'STRONG_BEAT':
-                        st.success(f"✅ {earning['symbol']}")
-                        st.caption(f"Beat by {earning.get('beat_percentage', 0):.1f}%")
-                    elif result_data == 'MISS' or result_data == 'STRONG_MISS':
-                        st.error(f"❌ {earning['symbol']}")
-                        st.caption(f"Miss by {abs(earning.get('beat_percentage', 0)):.1f}%")
-                    else:
-                        st.info(f"📊 {earning['symbol']}")
-                        st.caption(f"${earning.get('actual', 0):.2f}")
+    # Super compressed single row
+    intel_cols = st.columns([1, 2, 1])
+    
+    with intel_cols[0]:
+        st.markdown("**📅 Today**")
+        # Show only 1 most important earning
+        if earnings_calendar:
+            earning = earnings_calendar[0]
+            if earning['status'] == 'REPORTED':
+                result = earning.get('result', 'PENDING')
+                if result in ['BEAT', 'STRONG_BEAT']:
+                    st.success(f"✅ {earning['symbol']}")
+                    st.caption(f"+{earning.get('beat_percentage', 0):.1f}%")
+                elif result in ['MISS', 'STRONG_MISS']:
+                    st.error(f"❌ {earning['symbol']}")
+                    st.caption(f"{earning.get('beat_percentage', 0):.1f}%")
                 else:
-                    # Upcoming earnings
-                    if earning['importance'] == 'HIGH':
-                        st.warning(f"🔥 {earning['symbol']}")
-                    else:
-                        st.info(f"📊 {earning['symbol']}")
-                    st.caption(f"{earning['date']} • ${earning['estimate']:.2f}")
-        
-        # News column (main)
-        with intel_row[1]:
-            st.markdown("**🔥 Live Market News**")
-            
-            # Display live news in compact format
-            for i, news in enumerate(live_news[:3]):
-                # Determine color based on sentiment
-                if news['sentiment'] == 'BULLISH':
-                    st.success(f"📈 {news['title'][:50]}...")
-                elif news['sentiment'] == 'BEARISH':
-                    st.error(f"📉 {news['title'][:50]}...")
-                elif news['sentiment'] == 'VOLATILE':
-                    st.warning(f"⚡ {news['title'][:50]}...")
+                    st.info(f"📊 {earning['symbol']}")
+            else:
+                if earning['importance'] == 'HIGH':
+                    st.warning(f"🔥 {earning['symbol']}")
                 else:
-                    st.info(f"📊 {news['title'][:50]}...")
-                
-                # Compact source info
-                time_ago = (datetime.now() - news['timestamp']).total_seconds() / 60
-                if time_ago < 60:
-                    time_str = f"{int(time_ago)}m"
-                else:
-                    time_str = f"{int(time_ago/60)}h"
-                
-                st.caption(f"{news['source']} • {time_str} • {news['sentiment']}")
+                    st.info(f"📊 {earning['symbol']}")
+                st.caption(f"{earning['date']}")
         
-        # Key levels column
-        with intel_row[2]:
-            st.markdown("**🎯 Levels**")
-            
-            current_price = market_data['price']
-            
-            # Calculate dynamic levels
-            resistance = round((current_price * 1.02) / 5) * 5
-            support = round((current_price * 0.98) / 5) * 5
-            target = round((current_price * 1.05) / 5) * 5
-            
-            st.error("🔴 Resistance")
-            st.caption(f"${resistance:.2f}")
-            
-            st.success("🟢 Support")
-            st.caption(f"${support:.2f}")
-            
-            st.info("📊 Target")
-            st.caption(f"${target:.2f}")
+        # FOMC and key events (simulated)
+        from datetime import datetime, timedelta
+        next_fomc = datetime.now() + timedelta(days=14)  # Next FOMC in ~2 weeks
+        st.warning("🏛️ FOMC")
+        st.caption(f"{next_fomc.strftime('%m/%d')}")
+    
+    with intel_cols[1]:
+        st.markdown("**🔥 Breaking**")
+        # Show only top 2 most important news
+        for news in live_news[:2]:
+            title = news['title'][:35] + "..." if len(news['title']) > 35 else news['title']
+            if news['sentiment'] == 'BULLISH':
+                st.success(f"📈 {title}")
+            elif news['sentiment'] == 'BEARISH':
+                st.error(f"📉 {title}")
+            elif news['sentiment'] == 'VOLATILE':
+                st.warning(f"⚡ {title}")
+            else:
+                st.info(f"📊 {title}")
+    
+    with intel_cols[2]:
+        st.markdown("**🎯 Levels**")
+        current_price = market_data['price']
+        
+        # Key strike levels
+        atm_strike = round(current_price / 5) * 5
+        resistance = atm_strike + 5
+        support = atm_strike - 5
+        
+        st.error(f"🔴 {resistance}")
+        st.caption("Resistance")
+        st.success(f"🟢 {support}")
+        st.caption("Support")
     
     # === MAIN OPTIONS ANALYSIS ===
     st.markdown("#### 🎯 Key Trading Levels")
