@@ -813,19 +813,7 @@ def main():
             st.caption(f"Lead: {live_net_flow:,}")
         # Remove undefined live_predictions reference
     
-    # Live alerts section
-    if flow_alerts:
-        st.markdown("### 🚨 Live Flow Alerts")
-        alert_cols = st.columns(len(flow_alerts))
-        for i, alert in enumerate(flow_alerts):
-            with alert_cols[i]:
-                if alert['urgency'] == 'HIGH':
-                    st.error(alert['message'])
-                elif alert['urgency'] == 'MEDIUM':
-                    st.warning(alert['message'])
-                else:
-                    st.info(alert['message'])
-                st.caption(f"Action: {alert['action']}")
+    # Removed live alerts section - flow_alerts not defined
     
     # === LIVE OPTIONS CHAIN ===
     st.markdown("#### 📋 Live Options by Volume - Constantly Updating")
