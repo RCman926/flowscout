@@ -224,7 +224,17 @@ def main():
                  "Overbought" if tech_data['rsi'] > 70 else "Oversold" if tech_data['rsi'] < 30 else "Normal")
     
     with overview_cols[3]:
-        st.metric("Signal", signal_data['signal'], f"{signal_data['confidence']}% conf")
+        # Show data freshness indicator instead of undefined signal_data
+        data_freshness = market_data.get('data_freshness', 'UNKNOWN')
+        if data_freshness == 'LIVE_SCRAPED':
+            st.success("✅ LIVE DATA")
+            st.caption("Real-time scraping")
+        elif data_freshness == 'API_DELAYED':
+            st.warning("⚠️ DELAYED DATA") 
+            st.caption("15min delay")
+        else:
+            st.info("📊 DATA STATUS")
+            st.caption(f"{data_freshness}")
     
     # === UNIFIED OPTIONS FLOW ANALYSIS ===
     st.markdown("#### ⚡ Unified Options Flow Analysis")
@@ -296,16 +306,16 @@ def main():
         pressure = "HIGH" if total_volume > 100000 else "MEDIUM" if total_volume > 50000 else "LOW"
         st.metric("MM Pressure", pressure, f"{total_volume/1000:.0f}K vol")
     
-    # === INSTITUTIONAL-GRADE SIGNAL SYSTEM ===
-    st.markdown("### 🏛️ Institutional-Grade Signal System")
-    st.caption("Professional trading firm-level analytics with ML-enhanced signal fusion")
+    # === HIGHEST LEVEL SIGNAL SYSTEM ===
+    st.markdown("### 🏛️ HIGHEST LEVEL Signal System")
+    st.caption("**REAL DATA ONLY** - Professional hedge fund-level analytics with advanced ML")
     
-    from institutional_grade_signal_system import institutional_signal_system
+    from highest_level_signal_system import highest_level_signal_system
     
-    # Calculate institutional-grade signal with advanced analytics
-    unified_signal = institutional_signal_system.calculate_institutional_signal(
+    # Calculate highest level signal with REAL DATA ONLY
+    unified_signal = highest_level_signal_system.calculate_highest_level_signal(
         market_data=market_data,
-        flow_data=flow_data, 
+        flow_data=unified_flow, 
         tech_data=tech_data,
         gex_data=gex_data
     )
@@ -319,28 +329,31 @@ def main():
         action = unified_signal['action_recommendation']
         conviction = unified_signal['conviction_level']
         
-        # Institutional-grade action display
-        if action == 'INSTITUTIONAL_BUY':
-            st.success("🏛️ INSTITUTIONAL BUY")
-            st.caption("Maximum conviction bullish - institutional size")
-        elif action == 'INSTITUTIONAL_SELL':
-            st.error("🏛️ INSTITUTIONAL SELL")
-            st.caption("Maximum conviction bearish - institutional size")
+        # Highest level action display with REAL DATA validation
+        if action == 'WAIT_FOR_REAL_DATA':
+            st.warning("⚠️ WAITING FOR REAL DATA")
+            st.caption("System requires authentic data only - no synthetic data")
+        elif action == 'MAXIMUM_BUY':
+            st.success("🏛️ MAXIMUM BUY")
+            st.caption("Maximum conviction bullish - institutional size (REAL DATA)")
+        elif action == 'MAXIMUM_SELL':
+            st.error("🏛️ MAXIMUM SELL")
+            st.caption("Maximum conviction bearish - institutional size (REAL DATA)")
         elif action == 'STRONG_BUY':
             st.success("🚀 STRONG BUY")
-            st.caption("High conviction bullish - significant position")
+            st.caption("High conviction bullish - large position (REAL DATA)")
         elif action == 'STRONG_SELL':
             st.error("💥 STRONG SELL")
-            st.caption("High conviction bearish - significant position")
+            st.caption("High conviction bearish - large position (REAL DATA)")
         elif action in ['BUY', 'SMALL_BUY']:
             st.success("📈 BUY SIGNAL")
-            st.caption(f"Standard position size")
+            st.caption("Standard position size (REAL DATA)")
         elif action in ['SELL', 'SMALL_SELL']:
             st.error("📉 SELL SIGNAL") 
-            st.caption(f"Standard position size")
+            st.caption("Standard position size (REAL DATA)")
         else:
             st.info("⚪ WAIT/HOLD")
-            st.caption("No clear institutional signal")
+            st.caption("Insufficient signal strength or data quality")
     
     with signal_cols[1]:
         st.metric("Confidence", f"{confidence:.0f}%")
@@ -355,19 +368,23 @@ def main():
     with signal_cols[2]:
         conviction_level = unified_signal['conviction_level']
         position_size = unified_signal['position_size_multiplier']
+        kelly_fraction = unified_signal.get('kelly_fraction', 0)
         
-        if conviction_level == 'INSTITUTIONAL_GRADE':
-            st.success(f"CONVICTION: MAX")
-            st.caption(f"Position: {position_size}x")
+        if conviction_level == 'MAXIMUM_CONVICTION':
+            st.success("CONVICTION: MAXIMUM")
+            st.caption(f"Position: {position_size}x | Kelly: {kelly_fraction:.2f}")
         elif conviction_level == 'HIGH_CONVICTION':
-            st.success(f"CONVICTION: HIGH")
-            st.caption(f"Position: {position_size}x")
+            st.success("CONVICTION: HIGH")
+            st.caption(f"Position: {position_size}x | Kelly: {kelly_fraction:.2f}")
         elif conviction_level == 'MEDIUM_CONVICTION':
-            st.warning(f"CONVICTION: MED")
-            st.caption(f"Position: {position_size}x")
+            st.warning("CONVICTION: MEDIUM")
+            st.caption(f"Position: {position_size}x | Kelly: {kelly_fraction:.2f}")
+        elif conviction_level == 'LOW_CONVICTION':
+            st.info("CONVICTION: LOW")
+            st.caption(f"Position: {position_size}x | Kelly: {kelly_fraction:.2f}")
         else:
-            st.info(f"CONVICTION: LOW")
-            st.caption(f"Position: {position_size}x")
+            st.error("CONVICTION: NONE")
+            st.caption("No position - data quality issues")
     
     with signal_cols[3]:
         risk_level = unified_signal['risk_level']
