@@ -5,6 +5,10 @@ This is a comprehensive options trading platform built with Streamlit that provi
 # User Preferences
 
 Preferred communication style: Simple, everyday language.
+UI/UX Preferences:
+- Dislikes: Complex market mood displays, multi-broker dashboards, confusing unified data sections
+- Prefers: Clean, simple layouts with clear data presentation
+- Focus on: Live options flow, real news, earnings results, clear trading signals
 
 # System Architecture
 

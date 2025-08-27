@@ -290,118 +290,53 @@ def main():
         pressure = "HIGH" if total_volume > 100000 else "MEDIUM" if total_volume > 50000 else "LOW"
         st.metric("MM Pressure", pressure, f"{total_volume/1000:.0f}K vol")
     
-    # === ANIMATED MARKET MOOD INDICATOR ===
-    st.markdown("### 🎭 Live Market Mood")
-    
-    # Add live update timestamp
-    current_time = datetime.now().strftime("%H:%M:%S")
-    st.caption(f"🔄 Last updated: {current_time} | Auto-refresh: {'ON' if st.session_state.get('refresh_system_active', True) else 'OFF'}")
-    
-    from animated_market_mood import market_mood_indicator
-    from multi_broker_integration import multi_broker_client
+    # === MARKET SENTIMENT OVERVIEW ===
     from ai_sentiment_engine_fixed import sentiment_engine
-    
-    # Get sentiment first (needed for mood calculation)
     combined_sentiment = sentiment_engine.get_combined_sentiment_score(selected_symbol)
     
-    # Calculate current market mood
-    mood_data = market_mood_indicator.calculate_market_mood(market_data, flow_data, combined_sentiment)
+    # Add live update timestamp  
+    current_time = datetime.now().strftime("%H:%M:%S")
+    st.caption(f"🔄 Last updated: {current_time}")
     
-    mood_cols = st.columns([2, 2, 1])
+    # Simple sentiment bar
+    sentiment_cols = st.columns([1, 1, 1])
     
-    with mood_cols[0]:
-        # Animated gauge
-        gauge_fig = market_mood_indicator.create_animated_gauge(mood_data)
-        st.plotly_chart(gauge_fig, use_container_width=True)
-    
-    with mood_cols[1]:
-        # Component breakdown
-        breakdown_fig = market_mood_indicator.create_component_breakdown(mood_data)
-        st.plotly_chart(breakdown_fig, use_container_width=True)
-    
-    with mood_cols[2]:
-        st.markdown("**🎯 Mood Insights**")
-        insights = market_mood_indicator.get_mood_insights(mood_data)
-        for insight in insights[:3]:  # Show top 3 insights
-            st.info(insight)
-    
-    # === MULTI-BROKER INTEGRATION ===
-    st.markdown("### 🏢 Multi-Broker Dashboard")
-    
-    broker_cols = st.columns(4)
-    
-    with broker_cols[0]:
-        st.markdown("**📊 Active Brokers**")
-        # Show connected brokers
-        broker_comparison = multi_broker_client.get_broker_comparison(selected_symbol)
-        
-        connected_count = len([b for b in broker_comparison['brokers'] if b['connected']])
-        total_count = len(broker_comparison['brokers'])
-        
-        st.metric("Connected", f"{connected_count}/{total_count}")
-        st.caption("Live broker connections")
-        
-        # Show top 3 connected brokers
-        connected_brokers = [b for b in broker_comparison['brokers'] if b['connected']][:3]
-        for broker in connected_brokers:
-            if broker['real_time']:
-                st.success(f"✅ {broker['name']}")
-            else:
-                st.info(f"📊 {broker['name']}")
-            st.caption(f"${broker['commission']}/contract")
-    
-    with broker_cols[1]:
-        st.markdown("**💰 Best Execution**")
-        
-        if broker_comparison['best_execution']:
-            best = broker_comparison['best_execution']
-            st.success(f"🏆 {best['name']}")
-            st.caption(f"${best['commission']}/contract")
-            
-            if best['real_time']:
-                st.info("⚡ Real-time data")
-            else:
-                st.warning("⏰ Delayed data")
+    with sentiment_cols[0]:
+        if combined_sentiment['overall_score'] > 0.2:
+            st.success("📈 BULLISH Sentiment")
+        elif combined_sentiment['overall_score'] < -0.2:
+            st.error("📉 BEARISH Sentiment") 
         else:
-            st.error("❌ No brokers connected")
-            st.caption("Setup broker credentials")
+            st.info("⚪ NEUTRAL Sentiment")
+        st.caption(f"AI Confidence: {combined_sentiment['confidence']:.0%}")
     
-    with broker_cols[2]:
-        st.markdown("**📈 Unified Data**")
+    with sentiment_cols[1]:
+        # Show call/put bias from actual flow data
+        call_vol = flow_data.get('call_volume', 1000000)
+        put_vol = flow_data.get('put_volume', 1000000)
         
-        # Show aggregated options data from all brokers
-        try:
-            # This would use async in production
-            unified_data = {
-                'call_volume': 145200 + flow_data.get('call_volume', 0),
-                'put_volume': 128400 + flow_data.get('put_volume', 0),
-                'total_oi': 2450000,
-                'active_strikes': 156
-            }
-            
-            st.metric("Call Volume", f"{unified_data['call_volume']:,}")
-            st.metric("Put Volume", f"{unified_data['put_volume']:,}")
-            st.caption(f"{unified_data['active_strikes']} active strikes")
-            
-        except Exception as e:
-            st.error("❌ Data aggregation error")
-            st.caption("Check broker connections")
-    
-    with broker_cols[3]:
-        st.markdown("**⚙️ Setup**")
-        
-        # Show setup status for each broker
-        setup_needed = []
-        for broker in broker_comparison['brokers']:
-            if not broker['connected'] and broker['options_support']:
-                setup_needed.append(broker['name'])
-        
-        if setup_needed:
-            st.warning(f"📋 {len(setup_needed)} brokers need setup")
-            st.caption("Add API credentials in secrets")
+        if call_vol > put_vol * 1.3:
+            st.success("🟢 CALL Bias")
+            st.caption(f"{call_vol:,} vs {put_vol:,}")
+        elif put_vol > call_vol * 1.3:
+            st.error("🔴 PUT Bias")
+            st.caption(f"{put_vol:,} vs {call_vol:,}")
         else:
-            st.success("✅ All brokers configured")
-            st.caption("Maximum data coverage")
+            st.warning("🟡 MIXED Flow")
+            st.caption(f"Balanced volume")
+    
+    with sentiment_cols[2]:
+        # Show technical bias
+        rsi = tech_data.get('rsi', 50)
+        price_change = market_data.get('price_change_pct', 0)
+        
+        if rsi > 60 and price_change > 1:
+            st.success("📊 BULLISH Technical")
+        elif rsi < 40 and price_change < -1:
+            st.error("📊 BEARISH Technical")
+        else:
+            st.info("📊 NEUTRAL Technical")
+        st.caption(f"RSI: {rsi:.1f} | {price_change:+.1f}%")
     
     # === ENHANCED MARKET INTELLIGENCE ===
     st.markdown("#### 📊 Live Market Intelligence")
@@ -848,65 +783,72 @@ def main():
     else:
         st.info("🎯 No verified results yet - predictions need time to expire")
     
-    # === UNIFIED SIGNAL ALIGNMENT ===
-    st.markdown("**🎯 Unified Trading Signal**")
+    # === SIMPLE TRADING SIGNAL ===
+    st.markdown("**🎯 Trading Signal**")
     
-    # Collect all signals for alignment analysis
-    signals = {
-        'mood_signal': mood_data['category'],
-        'sentiment_signal': combined_sentiment.get('overall_sentiment', 'NEUTRAL'),
-        'flow_signal': 'BULLISH' if flow_data.get('call_put_ratio', 1) > 1.2 else 'BEARISH' if flow_data.get('call_put_ratio', 1) < 0.8 else 'NEUTRAL',
-        'technical_signal': 'BULLISH' if tech_data.get('rsi', 50) > 55 and market_data.get('price_change_pct', 0) > 0 else 'BEARISH' if tech_data.get('rsi', 50) < 45 and market_data.get('price_change_pct', 0) < 0 else 'NEUTRAL'
-    }
+    # Simple signal based on sentiment, flow, and technical
+    signals = []
     
-    # Calculate signal consensus
-    bullish_count = sum(1 for s in signals.values() if 'BULLISH' in s or s in ['greed', 'extreme_greed'])
-    bearish_count = sum(1 for s in signals.values() if 'BEARISH' in s or s in ['fear', 'extreme_fear'])
+    # Sentiment signal
+    if combined_sentiment['overall_score'] > 0.2:
+        signals.append('BULLISH')
+    elif combined_sentiment['overall_score'] < -0.2:
+        signals.append('BEARISH')
+    else:
+        signals.append('NEUTRAL')
     
-    consensus_cols = st.columns(4)
+    # Flow signal
+    call_vol = flow_data.get('call_volume', 1000000)
+    put_vol = flow_data.get('put_volume', 1000000)
+    if call_vol > put_vol * 1.3:
+        signals.append('BULLISH')
+    elif put_vol > call_vol * 1.3:
+        signals.append('BEARISH')
+    else:
+        signals.append('NEUTRAL')
     
-    with consensus_cols[0]:
-        if bullish_count >= 3:
-            st.success("🚀 STRONG CONSENSUS BULLISH")
-            unified_signal = "STRONG_BUY"
-        elif bullish_count > bearish_count:
-            st.success("📈 BULLISH CONSENSUS")
-            unified_signal = "BUY"
-        elif bearish_count >= 3:
-            st.error("💥 STRONG CONSENSUS BEARISH")
-            unified_signal = "STRONG_SELL"
-        elif bearish_count > bullish_count:
-            st.error("📉 BEARISH CONSENSUS")
-            unified_signal = "SELL"
+    # Technical signal
+    rsi = tech_data.get('rsi', 50)
+    price_change = market_data.get('price_change_pct', 0)
+    if rsi > 60 and price_change > 1:
+        signals.append('BULLISH')
+    elif rsi < 40 and price_change < -1:
+        signals.append('BEARISH')
+    else:
+        signals.append('NEUTRAL')
+    
+    # Count signals
+    bullish_count = signals.count('BULLISH')
+    bearish_count = signals.count('BEARISH')
+    
+    signal_cols = st.columns(3)
+    
+    with signal_cols[0]:
+        if bullish_count >= 2:
+            st.success("🚀 BUY SIGNAL")
+            st.caption(f"{bullish_count}/3 indicators bullish")
+        elif bearish_count >= 2:
+            st.error("💥 SELL SIGNAL")
+            st.caption(f"{bearish_count}/3 indicators bearish")
         else:
-            st.info("⚪ MIXED SIGNALS - HOLD")
-            unified_signal = "HOLD"
+            st.info("⚪ HOLD")
+            st.caption("Mixed signals - wait")
     
-    with consensus_cols[1]:
-        confidence = max(bullish_count, bearish_count) * 25
-        st.metric("Consensus", f"{confidence}%")
-        st.caption(f"{bullish_count}B / {bearish_count}B")
+    with signal_cols[1]:
+        confidence = max(bullish_count, bearish_count) * 33
+        st.metric("Confidence", f"{confidence:.0f}%")
+        st.caption("Signal strength")
     
-    with consensus_cols[2]:
-        # Show conflicting signals if any
-        if abs(bullish_count - bearish_count) <= 1:
-            st.warning("⚠️ CONFLICTING")
-            st.caption("Wait for clarity")
+    with signal_cols[2]:
+        if confidence >= 67:
+            st.metric("Action", "High Conviction")
+            st.caption("Strong signal")
+        elif confidence >= 33:
+            st.metric("Action", "Medium Risk")
+            st.caption("Some confirmation")
         else:
-            st.success("✅ ALIGNED")
-            st.caption("High conviction")
-    
-    with consensus_cols[3]:
-        # Time frame based on signal strength
-        if confidence >= 75:
-            st.metric("Time Frame", "0-1 DTE")
-            st.caption("High conviction trades")
-        elif confidence >= 50:
-            st.metric("Time Frame", "1-3 DTE")
-            st.caption("Medium conviction")
-        else:
-            st.metric("Time Frame", "3-7 DTE")
-            st.caption("Wait for setup")
+            st.metric("Action", "Wait")
+            st.caption("Unclear direction")
     
     # Generate new ML predictions
     from advanced_prediction_engine import prediction_engine
