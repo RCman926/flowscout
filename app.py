@@ -171,23 +171,43 @@ def main():
                 price = 150.0
                 change_pct = 0.0
             
-            # Generate signal based on price change
+            # Generate signal based on price change - CONSISTENT WITH TRADING DECISION CENTER
             if change_pct > 1.0:
-                signal_emoji = "🟢"
-                signal_type = "CALLS"
                 confidence = min(85, abs(change_pct) * 30)
+                # Only show CALLS if confidence is >= 60%
+                if confidence >= 60:
+                    signal_emoji = "🟢"
+                    signal_type = "CALLS"
+                else:
+                    signal_emoji = "⚪"
+                    signal_type = "NEUTRAL"
             elif change_pct > 0.2:
-                signal_emoji = "🟢"
-                signal_type = "CALLS"
                 confidence = min(75, abs(change_pct) * 40)
+                # Only show CALLS if confidence is >= 60%
+                if confidence >= 60:
+                    signal_emoji = "🟢"
+                    signal_type = "CALLS"
+                else:
+                    signal_emoji = "⚪"
+                    signal_type = "NEUTRAL"
             elif change_pct < -1.0:
-                signal_emoji = "🔴"
-                signal_type = "PUTS"
                 confidence = min(85, abs(change_pct) * 30)
+                # Only show PUTS if confidence is >= 60%
+                if confidence >= 60:
+                    signal_emoji = "🔴"
+                    signal_type = "PUTS"
+                else:
+                    signal_emoji = "⚪"
+                    signal_type = "NEUTRAL"
             elif change_pct < -0.2:
-                signal_emoji = "🔴"
-                signal_type = "PUTS"
                 confidence = min(75, abs(change_pct) * 40)
+                # Only show PUTS if confidence is >= 60%
+                if confidence >= 60:
+                    signal_emoji = "🔴"
+                    signal_type = "PUTS"
+                else:
+                    signal_emoji = "⚪"
+                    signal_type = "NEUTRAL"
             else:
                 signal_emoji = "⚪"
                 signal_type = "NEUTRAL"
@@ -1463,22 +1483,34 @@ def main():
     sma_20 = tech_data.get('sma_20', current_price * 0.99)
     daily_vol = abs(market_data.get('change_pct', 0))
     
-    # Decision logic aligned with main signal generator
-    main_signal = unified_signal.get('direction', 'HOLD')
+    # Decision logic aligned with main signal generator - MUST BE CONSISTENT
+    main_signal = unified_signal.get('direction', 'NEUTRAL')
+    main_confidence = unified_signal.get('unified_confidence', 0)
+    conviction_level = unified_signal.get('conviction_level', 'NO_CONVICTION')
     
-    # Use the main signal generator's recommendation for consistency
-    if 'BUY CALLS' in main_signal or main_signal == 'BUY CALLS':
+    # Only suggest trades if we have sufficient confidence AND conviction
+    # Below 60% confidence OR NO_CONVICTION should always be NEUTRAL
+    if main_confidence < 60 or conviction_level == 'NO_CONVICTION':
+        trade_rec = "⚪ NEUTRAL/HOLD"
+        setup_reason = f"Low confidence ({main_confidence:.0f}%) - wait for clearer setup"
+        entry_level = current_price
+        stop_loss = current_price * 0.98
+        target_1 = current_price * 1.02
+        target_2 = current_price * 1.04
+        target_3 = current_price * 1.06
+        color = "info"
+    elif main_signal == 'BULLISH' and main_confidence >= 60:
         trade_rec = "📈 BUY CALLS"
-        setup_reason = f"Bullish signal detected - {', '.join(unified_signal.get('key_factors', ['Technical alignment']))}"
+        setup_reason = f"Bullish signal ({main_confidence:.0f}% confidence) - {conviction_level}"
         entry_level = current_price * 1.005
         stop_loss = current_price * 0.98  # 2% max risk
         target_1 = current_price * 1.02   # 2% target
         target_2 = current_price * 1.05   # 5% target
         target_3 = current_price * 1.08   # 8% target
         color = "success"
-    elif 'BUY PUTS' in main_signal or main_signal == 'BUY PUTS':
+    elif main_signal == 'BEARISH' and main_confidence >= 60:
         trade_rec = "📉 BUY PUTS"
-        setup_reason = f"Bearish signal detected - {', '.join(unified_signal.get('key_factors', ['Technical divergence']))}"
+        setup_reason = f"Bearish signal ({main_confidence:.0f}% confidence) - {conviction_level}"
         entry_level = current_price * 0.995
         stop_loss = current_price * 1.02  # 2% max risk
         target_1 = current_price * 0.98   # 2% target
@@ -1486,8 +1518,8 @@ def main():
         target_3 = current_price * 0.92   # 8% target
         color = "error"
     else:
-        trade_rec = "⚪ HOLD"
-        setup_reason = f"No clear setup - Current signal: {main_signal}"
+        trade_rec = "⚪ NEUTRAL/HOLD"
+        setup_reason = f"Signal: {main_signal} ({main_confidence:.0f}%) - insufficient setup"
         entry_level = current_price
         stop_loss = current_price * 0.98
         target_1 = current_price * 1.02
