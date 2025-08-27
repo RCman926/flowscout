@@ -83,11 +83,13 @@ def main():
     # Get selected symbol
     selected_symbol = st.session_state.get('selected_symbol', 'SPY')
     
-    # Get all data using unified coordinator
-    market_data = data_coordinator.get_market_data(selected_symbol)
-    flow_data = data_coordinator.get_options_flow(selected_symbol)
-    tech_data = data_coordinator.get_technical_indicators(selected_symbol)
-    signal_data = data_coordinator.generate_trading_signal(selected_symbol)
+    # Get all data using enhanced communication system
+    from data_communication_enhancer import enhanced_data_communicator
+    
+    market_data = enhanced_data_communicator.get_reliable_market_data(selected_symbol)
+    flow_data = enhanced_data_communicator.get_reliable_flow_data(selected_symbol)
+    tech_data = enhanced_data_communicator.get_reliable_technical_data(selected_symbol, market_data)
+    gex_data = enhanced_data_communicator.get_reliable_gex_data(selected_symbol, market_data)
     
     # Set defaults if data unavailable
     if not market_data:
@@ -102,9 +104,6 @@ def main():
     
     if not tech_data:
         tech_data = {'rsi': 50, 'macd': 0, 'bb_upper': 650, 'bb_lower': 620, 'sma_20': 635}
-    
-    if not signal_data:
-        signal_data = {'signal': 'HOLD', 'confidence': 50, 'reasons': ['No data']}
     
     # === HEADER ===
     market_open = datetime.now().weekday() < 5 and 9 <= datetime.now().hour <= 16
@@ -295,116 +294,232 @@ def main():
         pressure = "HIGH" if total_volume > 100000 else "MEDIUM" if total_volume > 50000 else "LOW"
         st.metric("MM Pressure", pressure, f"{total_volume/1000:.0f}K vol")
     
-    # === ENHANCED PRIORITY-BASED TRADING SIGNAL ===
-    st.markdown("### 🎯 Enhanced Trading Signal System")
-    st.caption("Priority-weighted analysis eliminates conflicting signals")
+    # === INSTITUTIONAL-GRADE SIGNAL SYSTEM ===
+    st.markdown("### 🏛️ Institutional-Grade Signal System")
+    st.caption("Professional trading firm-level analytics with ML-enhanced signal fusion")
     
-    from enhanced_signal_coordinator import enhanced_signal_coordinator
+    from institutional_grade_signal_system import institutional_signal_system
     
-    # Calculate unified signal with priority weighting
-    unified_signal = enhanced_signal_coordinator.calculate_unified_signal(
+    # Calculate institutional-grade signal with advanced analytics
+    unified_signal = institutional_signal_system.calculate_institutional_signal(
         market_data=market_data,
         flow_data=flow_data, 
         tech_data=tech_data,
         gex_data=gex_data
     )
     
-    # Main signal display
-    signal_cols = st.columns([2, 1, 1, 1])
+    # Institutional-Grade Signal Display
+    signal_cols = st.columns([3, 1, 1, 1])
     
     with signal_cols[0]:
         direction = unified_signal['unified_direction']
         confidence = unified_signal['unified_confidence']
         action = unified_signal['action_recommendation']
+        conviction = unified_signal['conviction_level']
         
-        if direction == 'BULLISH' and confidence > 75:
-            st.success(f"🚀 STRONG BUY SIGNAL")
-            st.caption(f"Action: {action}")
-        elif direction == 'BULLISH':
-            st.success(f"📈 BUY SIGNAL")
-            st.caption(f"Action: {action}")
-        elif direction == 'BEARISH' and confidence > 75:
-            st.error(f"💥 STRONG SELL SIGNAL")
-            st.caption(f"Action: {action}")
-        elif direction == 'BEARISH':
-            st.error(f"📉 SELL SIGNAL")
-            st.caption(f"Action: {action}")
+        # Institutional-grade action display
+        if action == 'INSTITUTIONAL_BUY':
+            st.success("🏛️ INSTITUTIONAL BUY")
+            st.caption("Maximum conviction bullish - institutional size")
+        elif action == 'INSTITUTIONAL_SELL':
+            st.error("🏛️ INSTITUTIONAL SELL")
+            st.caption("Maximum conviction bearish - institutional size")
+        elif action == 'STRONG_BUY':
+            st.success("🚀 STRONG BUY")
+            st.caption("High conviction bullish - significant position")
+        elif action == 'STRONG_SELL':
+            st.error("💥 STRONG SELL")
+            st.caption("High conviction bearish - significant position")
+        elif action in ['BUY', 'SMALL_BUY']:
+            st.success("📈 BUY SIGNAL")
+            st.caption(f"Standard position size")
+        elif action in ['SELL', 'SMALL_SELL']:
+            st.error("📉 SELL SIGNAL") 
+            st.caption(f"Standard position size")
         else:
-            st.info(f"⚪ HOLD/WAIT")
-            st.caption(f"Action: {action}")
+            st.info("⚪ WAIT/HOLD")
+            st.caption("No clear institutional signal")
     
     with signal_cols[1]:
         st.metric("Confidence", f"{confidence:.0f}%")
-        st.caption("Priority-weighted")
+        quality = unified_signal.get('signal_quality', 'STANDARD')
+        if quality == 'INSTITUTIONAL_GRADE':
+            st.success("🏛️ INSTITUTIONAL")
+        elif quality == 'PROFESSIONAL':
+            st.warning("🏢 PROFESSIONAL")
+        else:
+            st.info("📊 STANDARD")
     
     with signal_cols[2]:
-        st.metric("Signal Strength", f"{unified_signal['signal_strength']:.0f}")
-        st.caption("Conviction level")
+        conviction_level = unified_signal['conviction_level']
+        position_size = unified_signal['position_size_multiplier']
+        
+        if conviction_level == 'INSTITUTIONAL_GRADE':
+            st.success(f"CONVICTION: MAX")
+            st.caption(f"Position: {position_size}x")
+        elif conviction_level == 'HIGH_CONVICTION':
+            st.success(f"CONVICTION: HIGH")
+            st.caption(f"Position: {position_size}x")
+        elif conviction_level == 'MEDIUM_CONVICTION':
+            st.warning(f"CONVICTION: MED")
+            st.caption(f"Position: {position_size}x")
+        else:
+            st.info(f"CONVICTION: LOW")
+            st.caption(f"Position: {position_size}x")
     
     with signal_cols[3]:
         risk_level = unified_signal['risk_level']
+        max_risk = unified_signal['max_risk_percentage']
         time_horizon = unified_signal['time_horizon']
         
         if risk_level == 'LOW':
-            st.success(f"Risk: {risk_level}")
+            st.success(f"RISK: {risk_level}")
         elif risk_level == 'MEDIUM':
-            st.warning(f"Risk: {risk_level}")
+            st.warning(f"RISK: {risk_level}")
         else:
-            st.error(f"Risk: {risk_level}")
-        st.caption(f"Time: {time_horizon}")
+            st.error(f"RISK: {risk_level}")
+        st.caption(f"Max Risk: {max_risk}% | {time_horizon}")
     
-    # Priority breakdown
-    st.markdown("#### 📊 Signal Priority Breakdown")
-    priority_cols = st.columns(5)
+    # Professional Trading Levels
+    st.markdown("#### 💼 Professional Trading Levels")
+    levels_cols = st.columns(3)
     
-    individual_signals = unified_signal['individual_signals']
-    breakdown = unified_signal['priority_breakdown']
+    with levels_cols[0]:
+        entry = unified_signal.get('recommended_entry', market_data['price'])
+        st.metric("Entry Level", f"${entry:.2f}")
+        entry_diff = ((entry - market_data['price']) / market_data['price']) * 100
+        st.caption(f"Current: ${market_data['price']:.2f} ({entry_diff:+.2f}%)")
     
-    priorities = [
-        ('institutional_flow', '🏛️ Institutional Flow', '40%'),
-        ('gamma_exposure', '🎯 Gamma Exposure', '25%'),
-        ('technical_momentum', '📈 Technical', '20%'),
-        ('options_sentiment', '📊 Options Sentiment', '10%'),
-        ('news_sentiment', '📰 News', '5%')
+    with levels_cols[1]:
+        target = unified_signal.get('target_level', market_data['price'])
+        st.metric("Target Level", f"${target:.2f}")
+        target_diff = ((target - market_data['price']) / market_data['price']) * 100
+        st.caption(f"Upside: {target_diff:+.1f}%")
+    
+    with levels_cols[2]:
+        stop = unified_signal.get('stop_loss_level', market_data['price'])
+        st.metric("Stop Loss", f"${stop:.2f}")
+        stop_diff = ((stop - market_data['price']) / market_data['price']) * 100
+        st.caption(f"Downside: {stop_diff:+.1f}%")
+    
+    # Advanced Signal Breakdown
+    st.markdown("#### 🧠 Advanced Signal Analysis - 7 Factor Model")
+    
+    # Get signal contributions
+    signal_contributions = unified_signal.get('signal_contributions', {})
+    
+    # Advanced 7-factor breakdown
+    advanced_factors = [
+        ('institutional_flow', '🏛️ Institutional Flow', 'Smart money patterns'),
+        ('gamma_exposure', '⚡ Gamma Mechanics', 'Market structure forces'),
+        ('dark_pool_activity', '🕳️ Dark Pool Activity', 'Hidden positioning'),
+        ('volatility_surface', '📊 Volatility Surface', 'Options sentiment'),
+        ('technical_momentum', '📈 Technical Momentum', 'Price action'),
+        ('intermarket_analysis', '🌐 Intermarket', 'Cross-asset signals'),
+        ('sentiment_divergence', '🔄 Divergence', 'Contrarian signals')
     ]
     
-    for i, (signal_key, signal_name, weight) in enumerate(priorities):
-        with priority_cols[i]:
-            if signal_key in individual_signals:
-                signal_info = individual_signals[signal_key]
-                direction = signal_info['direction']
-                confidence = signal_info['confidence']
+    breakdown_cols = st.columns(7)
+    
+    for i, (factor_key, factor_name, description) in enumerate(advanced_factors):
+        with breakdown_cols[i]:
+            if factor_key in signal_contributions:
+                contribution = signal_contributions[factor_key]
+                original_signal = contribution['original_signal']
+                direction = original_signal['direction']
+                confidence = original_signal['confidence']
+                effective_weight = contribution.get('effective_weight', 0)
                 
+                # Display direction with color coding
                 if direction == 'BULLISH':
-                    st.success(f"📈 {direction}")
+                    st.success("📈 BULL")
                 elif direction == 'BEARISH':
-                    st.error(f"📉 {direction}")
+                    st.error("📉 BEAR")
                 else:
-                    st.info(f"⚪ {direction}")
+                    st.info("⚪ NEUT")
                 
-                st.caption(f"**{signal_name}**")
-                st.caption(f"Weight: {weight}")
-                st.caption(f"Confidence: {confidence:.0f}%")
+                st.caption(f"**{factor_name}**")
+                st.caption(f"Weight: {effective_weight:.1f}%")
+                st.caption(f"Conf: {confidence:.0f}%")
+                
+                # Quality indicators for institutional signals
+                if factor_key == 'institutional_flow':
+                    quality = original_signal.get('quality', 'STANDARD')
+                    if quality == 'INSTITUTIONAL_GRADE':
+                        st.success("🏛️ INST")
+                    elif quality == 'HIGH_QUALITY':
+                        st.warning("🏢 HIGH")
+                    else:
+                        st.info("📊 STD")
             else:
                 st.info("⚪ NO DATA")
-                st.caption(f"**{signal_name}**")
-                st.caption(f"Weight: {weight}")
+                st.caption(f"**{factor_name}**")
+                st.caption("No signal")
     
-    # Signal priority explanation
-    with st.expander("🔍 Signal Priority System Explained"):
-        priorities_explanation = enhanced_signal_coordinator.get_signal_priority_explanation()
+    # Institutional Flow Deep Dive
+    if 'institutional_flow' in signal_contributions:
+        inst_signal = signal_contributions['institutional_flow']['original_signal']
         
-        for priority in priorities_explanation:
-            priority_num = priority['priority']
-            signal_name = priority['signal'] 
-            weight = priority['weight']
-            reason = priority['reason']
-            indicators = priority['indicators']
-            
-            st.markdown(f"**{priority_num}. {signal_name} ({weight})**")
-            st.write(f"• {reason}")
-            st.write(f"• Indicators: {', '.join(indicators)}")
-            st.markdown("---")
+        st.markdown("##### 🏛️ Institutional Flow Intelligence")
+        flow_intel_cols = st.columns(4)
+        
+        with flow_intel_cols[0]:
+            block_count = inst_signal.get('block_trades_count', 0)
+            st.metric("Block Trades", block_count)
+            st.caption("Large institutional orders")
+        
+        with flow_intel_cols[1]:
+            sweep_count = inst_signal.get('sweep_trades_count', 0)
+            st.metric("Sweep Orders", sweep_count)  
+            st.caption("Aggressive institutional")
+        
+        with flow_intel_cols[2]:
+            cp_ratio = inst_signal.get('call_put_ratio', 1)
+            st.metric("C/P Ratio", f"{cp_ratio:.2f}")
+            if cp_ratio > 2:
+                st.caption("🔥 Extreme call bias")
+            elif cp_ratio < 0.5:
+                st.caption("🔥 Extreme put bias")
+            else:
+                st.caption("Balanced flow")
+        
+        with flow_intel_cols[3]:
+            quality_factors = inst_signal.get('quality_factors', [])
+            if quality_factors:
+                primary_factor = quality_factors[0]
+                if 'EXTREME' in primary_factor:
+                    st.error(f"🚨 {primary_factor}")
+                elif 'AGGRESSIVE' in primary_factor:
+                    st.warning(f"⚡ {primary_factor}")
+                else:
+                    st.info(f"📊 {primary_factor}")
+                st.caption(f"+{len(quality_factors)-1} more factors")
+            else:
+                st.info("No special factors")
+                st.caption("Standard flow pattern")
+    
+    # Advanced System Information
+    with st.expander("🔬 Advanced Signal System Details"):
+        st.markdown("**🏛️ Institutional-Grade Signal System Features:**")
+        
+        features = [
+            "• **7-Factor Analysis**: Institutional flow, gamma mechanics, dark pools, volatility surface, technical, intermarket, divergence",
+            "• **Machine Learning Fusion**: Dynamic weight adjustment based on market regime and confidence levels",
+            "• **Professional Risk Management**: Position sizing from 0x to 8x based on conviction level",
+            "• **Institutional Thresholds**: 85%+ confidence for institutional-grade signals",
+            "• **Advanced Pattern Recognition**: Block trades, sweep orders, dark pool analysis",
+            "• **Real-time Regime Detection**: High/medium/low volatility regime adjustments"
+        ]
+        
+        for feature in features:
+            st.write(feature)
+        
+        st.markdown("**📊 Conviction Levels:**")
+        st.write("• **INSTITUTIONAL_GRADE (85%+)**: 8x position, max 3% risk, 0-2 DTE")
+        st.write("• **HIGH_CONVICTION (75%+)**: 5x position, max 2% risk, 1-3 DTE") 
+        st.write("• **MEDIUM_CONVICTION (60%+)**: 3x position, max 1.5% risk, 2-5 DTE")
+        st.write("• **LOW_CONVICTION (45%+)**: 1x position, max 1% risk, 5-10 DTE")
+        st.write("• **NO_SIGNAL (<45%)**: 0x position, wait for clarity")
     
     # === ENHANCED MARKET INTELLIGENCE ===
     st.markdown("#### 📊 Live Market Intelligence")
