@@ -1217,6 +1217,19 @@ def main():
         platform_signals, market_data, data_quality_scores
     )
     
+    # Get ML predictions first (needed for signal integration)
+    try:
+        from live_options_engine import live_options_engine
+        live_predictions = live_options_engine.get_live_predictions(selected_symbol)
+    except Exception as e:
+        # Fallback predictions if engine fails
+        live_predictions = {
+            'confidence': 0.5,
+            'prediction_score': 0.0,
+            'next_hour_prediction': {'direction': 'NEUTRAL', 'probability': 0.5},
+            'momentum_score': 50
+        }
+    
     # Integrate ML prediction with proper confidence thresholds
     ml_prediction = {
         'confidence': live_predictions.get('confidence', 0) * 100,  # Convert to percentage
@@ -1678,9 +1691,8 @@ def main():
     with placeholder.container():
         st.success("🟢 LIVE FEED ACTIVE - Auto-updating every 15 seconds")
     
-    # Live options chain data
+    # Live options chain data (live_predictions already loaded above)
     live_chain = live_options_engine.get_live_options_chain(selected_symbol)
-    live_predictions = live_options_engine.get_live_predictions(selected_symbol)
     
     # Live signals display
     signal_cols = st.columns(3)
