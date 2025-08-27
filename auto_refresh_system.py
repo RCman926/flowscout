@@ -12,7 +12,7 @@ import threading
 class AutoRefreshSystem:
     """Manages automatic dashboard refreshes and data updates"""
     
-    def __init__(self, refresh_interval: int = 30):
+    def __init__(self, refresh_interval: int = 15):
         self.refresh_interval = refresh_interval
         self.last_refresh = time.time()
         self.is_active = True
@@ -47,7 +47,7 @@ class AutoRefreshSystem:
             auto_refresh_enabled = st.checkbox(
                 "Auto-refresh enabled",
                 value=st.session_state.get('refresh_system_active', True),
-                help="Automatically refresh data every 30 seconds"
+                help="Automatically refresh data every 15 seconds"
             )
             st.session_state.refresh_system_active = auto_refresh_enabled
             
@@ -170,7 +170,7 @@ class AutoRefreshSystem:
         """Adjust refresh interval based on market hours"""
         
         if self.check_market_hours():
-            return 30  # 30 seconds during market hours
+            return 15  # 15 seconds during market hours
         else:
             return 300  # 5 minutes after hours
     
@@ -202,4 +202,4 @@ class AutoRefreshSystem:
                 st.caption("Reduced frequency")
 
 # Global auto-refresh system
-auto_refresh_system = AutoRefreshSystem(refresh_interval=30)
+auto_refresh_system = AutoRefreshSystem(refresh_interval=15)

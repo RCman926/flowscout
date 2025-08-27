@@ -27,13 +27,13 @@ st.set_page_config(
 # Add auto-refresh functionality
 import time
 
-# Auto-refresh every 30 seconds
+# Auto-refresh every 15 seconds for live data
 if 'last_refresh' not in st.session_state:
     st.session_state.last_refresh = time.time()
 
-# Check if 30 seconds have passed
+# Check if 15 seconds have passed
 current_time = time.time()
-if current_time - st.session_state.last_refresh > 30:
+if current_time - st.session_state.last_refresh > 15:
     st.session_state.last_refresh = current_time
     st.rerun()
 
@@ -49,7 +49,7 @@ with st.sidebar:
     # Auto-refresh status
     time_since_refresh = int(current_time - st.session_state.last_refresh)
     st.caption(f"Last refresh: {time_since_refresh}s ago")
-    st.caption("Auto-refresh: Every 30s")
+    st.caption("Auto-refresh: Every 15s")
     
     # Live data indicators
     st.markdown("### 📡 Data Status")
@@ -811,11 +811,7 @@ def main():
         else:
             st.error("📉 PUTS WINNING") 
             st.caption(f"Lead: {live_net_flow:,}")
-        st.caption(f"C/P Ratio: {live_predictions['cp_ratio']}")
-    
-    with flow_overview_cols[3]:
-        st.metric("🤖 AI Prediction", live_predictions['bias'], f"{live_predictions['confidence']}% conf")
-        st.caption(f"Target: {live_predictions['target_move']}")
+        # Remove undefined live_predictions reference
     
     # Live alerts section
     if flow_alerts:
