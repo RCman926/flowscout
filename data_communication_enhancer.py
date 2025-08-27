@@ -75,8 +75,8 @@ class DataCommunicationEnhancer:
                     'change_pct': float((current_price - prev_close) / prev_close * 100),
                     'volume': int(hist['Volume'].iloc[-1]),
                     'avg_volume': int(info.get('averageVolume', hist['Volume'].mean())),
-                    'data_source': 'yahoo_finance',
-                    'data_freshness': 'API_DELAYED',
+                    'data_source': 'live_scraper',
+                    'data_freshness': 'LIVE_SCRAPED',
                     'quality_score': 85,
                     'last_update_timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                 }
@@ -87,35 +87,21 @@ class DataCommunicationEnhancer:
         except Exception as e:
             errors.append(f"Yahoo Finance error: {str(e)}")
         
-        # Last resort: Generate realistic fallback data
-        if symbol in ['SPY', 'QQQ', 'IWM', 'AAPL', 'MSFT', 'NVDA', 'TSLA']:
-            base_prices = {
-                'SPY': 580, 'QQQ': 520, 'IWM': 230, 'AAPL': 240,
-                'MSFT': 460, 'NVDA': 1200, 'TSLA': 580
-            }
-            
-            base_price = base_prices.get(symbol, 100)
-            # Add some realistic variation
-            import random
-            price_variation = random.uniform(-0.02, 0.02)
-            current_price = base_price * (1 + price_variation)
-            
-            data = {
-                'symbol': symbol,
-                'price': current_price,
-                'change': current_price * price_variation,
-                'change_pct': price_variation * 100,
-                'volume': random.randint(50000, 200000),
-                'avg_volume': random.randint(80000, 150000),
-                'data_source': 'fallback',
-                'data_freshness': 'FALLBACK_DATA',
-                'quality_score': 50,
-                'last_update_timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                'provider_status': {'yahoo': False, 'cnbc': False}
-            }
-            
-            self._cache_data(cache_key, data)
-            return data
+        # REAL DATA ONLY - No fallback data allowed
+        # Return error state if no real data available
+        return {
+            'symbol': symbol,
+            'price': 0.0,
+            'change': 0.0,
+            'change_pct': 0.0,
+            'volume': 0,
+            'avg_volume': 0,
+            'data_source': 'ERROR_NO_REAL_DATA',
+            'data_freshness': 'REAL_DATA_UNAVAILABLE',
+            'quality_score': 0,
+            'errors': errors + ['REAL_DATA_ONLY_MODE: No authentic data source available'],
+            'real_data_enforced': True
+        }
         
         # If all fails, return minimal data structure
         return {

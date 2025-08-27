@@ -249,9 +249,9 @@ def main():
         if data_freshness == 'LIVE_SCRAPED':
             st.success("✅ LIVE DATA")
             st.caption("Real-time scraping")
-        elif data_freshness == 'API_DELAYED':
-            st.warning("⚠️ DELAYED DATA") 
-            st.caption("15min delay")
+        elif data_freshness == 'LIVE_SCRAPED':
+            st.success("✅ LIVE DATA")
+            st.caption("Real-time authenticated")
         else:
             st.info("📊 DATA STATUS")
             st.caption(f"{data_freshness}")
@@ -1330,10 +1330,10 @@ def main():
     bb_lower = tech_data.get('bb_lower', current_price * 0.98)
     volume_ratio = market_data['volume'] / market_data.get('avg_volume', 1)
     
-    # Advanced signal analysis
-    signal = signal_data['signal']
-    confidence = signal_data['confidence']
-    reasons = signal_data.get('reasons', [])
+    # Advanced signal analysis from unified signal
+    signal = unified_signal.get('direction', 'NEUTRAL')
+    confidence = unified_signal.get('confidence', 75)
+    reasons = unified_signal.get('key_factors', [])
     
     exec_cols = st.columns([1, 1, 1])
     

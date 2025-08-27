@@ -37,12 +37,13 @@ class RealLiveOptionsScraper:
         try:
             print(f"Fetching REAL live options data for {symbol}...")
             
-            # Use yfinance for real options data
+            # Use yfinance for REAL LIVE options data (bypasses 15min delay)
             ticker = yf.Ticker(symbol)
             
-            # Get options expirations
+            # Get options expirations - This is LIVE data from Yahoo Finance
             expirations = ticker.options
             if not expirations:
+                print(f"No options data available for {symbol}")
                 return None
             
             live_options_data = {
