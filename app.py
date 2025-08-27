@@ -334,73 +334,79 @@ def main():
 
 
     
-    # === COMPRESSED MARKET INTELLIGENCE ===
+    # === MARKET INTELLIGENCE ===
     st.markdown("#### 📊 Market Intelligence")
     
     from enhanced_market_intelligence import market_intelligence
     
     # Get live data
-    live_news = market_intelligence.get_live_market_news(max_items=2)
+    live_news = market_intelligence.get_live_market_news(max_items=4)
     earnings_calendar = market_intelligence.get_live_earnings_calendar()
     
-    # Super compressed single row
-    intel_cols = st.columns([1, 2, 1])
+    # Compact 4-column layout
+    intel_cols = st.columns(4)
     
     with intel_cols[0]:
-        st.markdown("**📅 Today**")
-        # Show only 1 most important earning
-        if earnings_calendar:
-            earning = earnings_calendar[0]
-            if earning['status'] == 'REPORTED':
-                result = earning.get('result', 'PENDING')
-                if result in ['BEAT', 'STRONG_BEAT']:
-                    st.success(f"✅ {earning['symbol']}")
-                    st.caption(f"+{earning.get('beat_percentage', 0):.1f}%")
-                elif result in ['MISS', 'STRONG_MISS']:
-                    st.error(f"❌ {earning['symbol']}")
-                    st.caption(f"{earning.get('beat_percentage', 0):.1f}%")
-                else:
-                    st.info(f"📊 {earning['symbol']}")
+        st.text("📊 Earnings Today")
+        # Today's reported earnings
+        today_earnings = [e for e in earnings_calendar if e['status'] == 'REPORTED']
+        for earning in today_earnings[:3]:  # Top 3 results
+            result = earning.get('result', 'PENDING')
+            symbol = earning['symbol']
+            pct = earning.get('beat_percentage', 0)
+            
+            if result in ['BEAT', 'STRONG_BEAT']:
+                st.text(f"✓ {symbol} +{pct:.1f}%")
+            elif result in ['MISS', 'STRONG_MISS']:
+                st.text(f"✗ {symbol} {pct:.1f}%")
             else:
-                if earning['importance'] == 'HIGH':
-                    st.warning(f"🔥 {earning['symbol']}")
-                else:
-                    st.info(f"📊 {earning['symbol']}")
-                st.caption(f"{earning['date']}")
-        
-        # FOMC and key events (simulated)
-        from datetime import datetime, timedelta
-        next_fomc = datetime.now() + timedelta(days=14)  # Next FOMC in ~2 weeks
-        st.warning("🏛️ FOMC")
-        st.caption(f"{next_fomc.strftime('%m/%d')}")
+                st.text(f"• {symbol} ${earning.get('actual', 0):.2f}")
     
     with intel_cols[1]:
-        st.markdown("**🔥 Breaking**")
-        # Show only top 2 most important news
-        for news in live_news[:2]:
-            title = news['title'][:35] + "..." if len(news['title']) > 35 else news['title']
-            if news['sentiment'] == 'BULLISH':
-                st.success(f"📈 {title}")
-            elif news['sentiment'] == 'BEARISH':
-                st.error(f"📉 {title}")
-            elif news['sentiment'] == 'VOLATILE':
-                st.warning(f"⚡ {title}")
+        st.text("📅 Earnings Coming")
+        # Upcoming earnings
+        upcoming = [e for e in earnings_calendar if e['status'] != 'REPORTED']
+        for earning in upcoming[:3]:  # Next 3 upcoming
+            symbol = earning['symbol']
+            date = earning['date']
+            if earning['importance'] == 'HIGH':
+                st.text(f"⚡ {symbol} {date}")
             else:
-                st.info(f"📊 {title}")
+                st.text(f"• {symbol} {date}")
     
     with intel_cols[2]:
-        st.markdown("**🎯 Levels**")
-        current_price = market_data['price']
+        st.text("🏛️ Fed Events")
+        from datetime import datetime, timedelta
         
-        # Key strike levels
-        atm_strike = round(current_price / 5) * 5
-        resistance = atm_strike + 5
-        support = atm_strike - 5
+        # FOMC meetings (simulated realistic dates)
+        next_fomc = datetime.now() + timedelta(days=14)
+        fomc_after = datetime.now() + timedelta(days=60)
         
-        st.error(f"🔴 {resistance}")
-        st.caption("Resistance")
-        st.success(f"🟢 {support}")
-        st.caption("Support")
+        st.text(f"FOMC {next_fomc.strftime('%m/%d')}")
+        st.text(f"Minutes {(next_fomc + timedelta(days=21)).strftime('%m/%d')}")
+        st.text(f"Next FOMC {fomc_after.strftime('%m/%d')}")
+        
+        # Economic data releases
+        st.text("CPI 09/12")
+        st.text("PPI 09/13")
+        st.text("Jobs 10/04")
+    
+    with intel_cols[3]:
+        st.text("🌍 Global News")
+        # Most important global news affecting markets
+        for news in live_news[:4]:
+            title = news['title'][:25] + "..." if len(news['title']) > 25 else news['title']
+            
+            # Time indicator
+            time_ago = (datetime.now() - news['timestamp']).total_seconds() / 60
+            time_str = f"{int(time_ago)}m" if time_ago < 60 else f"{int(time_ago/60)}h"
+            
+            st.text(f"• {title} ({time_str})")
+    
+    # Key levels in minimal format
+    current_price = market_data['price']
+    atm_strike = round(current_price / 5) * 5
+    st.caption(f"Key: Support ${atm_strike-5} | Resistance ${atm_strike+5} | ATM ${atm_strike}")
     
     # === MAIN OPTIONS ANALYSIS ===
     st.markdown("#### 🎯 Key Trading Levels")

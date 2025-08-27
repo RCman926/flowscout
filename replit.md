@@ -6,9 +6,11 @@ This is a comprehensive options trading platform built with Streamlit that provi
 
 Preferred communication style: Simple, everyday language.
 UI/UX Preferences:
-- Dislikes: Complex market mood displays, multi-broker dashboards, confusing unified data sections
-- Prefers: Clean, simple layouts with clear data presentation
+- Dislikes: Complex market mood displays, multi-broker dashboards, confusing unified data sections, oversized colored boxes
+- Prefers: Clean, simple layouts with clear data presentation, compact text-based information display
 - Focus on: Live options flow, real news, earnings results, clear trading signals
+- Market Intelligence Requirements: Separate today's earnings from upcoming earnings, include FOMC dates, Fed economic data releases (CPI, PPI, Jobs), global market-moving news
+- Interface Style: Minimal colors, text-based display, compact layout without large colored containers
 
 # System Architecture
 
