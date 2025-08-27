@@ -338,8 +338,7 @@ def main():
         market_data=market_data,
         flow_data=unified_flow, 
         tech_data=tech_data,
-        gex_data=gex_data,
-        news_data=news_data
+        gex_data=gex_data
     )
     
     # Institutional-Grade Signal Display
