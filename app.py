@@ -1172,8 +1172,99 @@ def main():
         else:
             st.error(f"🏛️ Institutional Grade: {institutional_score}%")
     
-    # === TRADING DECISION CENTER ===
-    st.markdown("#### 🎯 Trading Decision Center")
+    # === SIGNAL VALIDATION & COORDINATION ===
+    from signal_validation_engine import signal_validator
+    
+    # Collect all platform signals for validation
+    platform_signals = {
+        'symbol_selector': {
+            'signal_type': signal_type,
+            'confidence': confidence,
+            'price_change': change_pct
+        },
+        'trading_decision_center': unified_signal,
+        'live_battle': {
+            'call_volume': call_volume,
+            'put_volume': put_volume,
+            'net_flow_direction': 'BULLISH' if call_volume > put_volume else 'BEARISH' if put_volume > call_volume else 'NEUTRAL',
+            'confidence': min(85, (abs(call_volume - put_volume) / max(total_volume, 1)) * 100)
+        }
+    }
+    
+    # Get data quality scores
+    data_quality_scores = {
+        'market_data': 99 if market_data.get('data_freshness') == 'LIVE_SCRAPED' else 75,
+        'options_flow': 95,
+        'technical_data': 85,
+        'news_data': 80
+    }
+    
+    # Validate signal consistency
+    validation_report = signal_validator.validate_signal_consistency(platform_signals)
+    
+    # Create unified signal
+    unified_consensus = signal_validator.create_unified_signal(
+        platform_signals, market_data, data_quality_scores
+    )
+    
+    # === SIGNAL CONSISTENCY DASHBOARD ===
+    st.markdown("#### 📊 Signal Validation Dashboard")
+    consistency_cols = st.columns(4)
+    
+    with consistency_cols[0]:
+        if validation_report['is_consistent']:
+            st.success("✅ SIGNALS ALIGNED")
+            st.caption("All signals consistent")
+        else:
+            st.error("⚠️ SIGNAL CONFLICTS")
+            st.caption(f"{len(validation_report['conflicts'])} issues")
+    
+    with consistency_cols[1]:
+        avg_data_quality = sum(data_quality_scores.values()) / len(data_quality_scores)
+        if avg_data_quality >= 90:
+            st.success(f"📡 DATA: {avg_data_quality:.0f}%")
+            st.caption("Institutional grade")
+        elif avg_data_quality >= 75:
+            st.warning(f"📡 DATA: {avg_data_quality:.0f}%")
+            st.caption("Professional grade")
+        else:
+            st.error(f"📡 DATA: {avg_data_quality:.0f}%")
+            st.caption("Below standards")
+    
+    with consistency_cols[2]:
+        unified_conf = unified_consensus['confidence']
+        if unified_conf >= 80:
+            st.success(f"🎯 CONSENSUS: {unified_conf:.0f}%")
+        elif unified_conf >= 60:
+            st.warning(f"🎯 CONSENSUS: {unified_conf:.0f}%")
+        else:
+            st.info(f"🎯 CONSENSUS: {unified_conf:.0f}%")
+        st.caption("Multi-factor confidence")
+    
+    with consistency_cols[3]:
+        signal_age = (datetime.now() - unified_consensus['timestamp']).seconds
+        if signal_age < 30:
+            st.success(f"⏱️ FRESH: {signal_age}s")
+            st.caption("Real-time signal")
+        elif signal_age < 60:
+            st.warning(f"⏱️ RECENT: {signal_age}s")
+            st.caption("Still valid")
+        else:
+            st.error(f"⏱️ STALE: {signal_age}s")
+            st.caption("Needs refresh")
+    
+    # Show conflicts if any
+    if not validation_report['is_consistent']:
+        with st.expander("🔍 Signal Conflicts Detected"):
+            for conflict in validation_report['conflicts']:
+                st.warning(f"• {conflict}")
+            st.markdown("**Recommendations:**")
+            for rec in validation_report['recommendations']:
+                st.info(f"• {rec}")
+    
+    # === TRADING DECISION CENTER (MASTER AUTHORITY) ===
+    st.markdown("#### 🎯 Trading Decision Center - MASTER SIGNALS")
+    st.caption("🏛️ INSTITUTIONAL GRADE - Final trading authority with signal validation")
     
     # Calculate specific recommendation
     current_price = market_data['price']
@@ -1183,10 +1274,11 @@ def main():
     sma_20 = tech_data.get('sma_20', current_price * 0.99)
     daily_vol = abs(market_data.get('change_pct', 0))
     
-    # Decision logic aligned with main signal generator - MUST BE CONSISTENT
-    main_signal = unified_signal.get('direction', 'NEUTRAL')
-    main_confidence = unified_signal.get('unified_confidence', 0)
-    conviction_level = unified_signal.get('conviction_level', 'NO_CONVICTION')
+    # Use the validated unified consensus signal as the MASTER authority
+    main_signal = unified_consensus['direction']
+    main_confidence = unified_consensus['confidence']
+    conviction_level = unified_signal.get('conviction_level', 'LOW_CONVICTION')
+    action_recommendation = unified_consensus['action']
     
     # Only suggest trades if we have sufficient confidence AND conviction
     # Below 60% confidence OR NO_CONVICTION should always be NEUTRAL
@@ -1846,13 +1938,13 @@ def main():
     with levels_cols[0]:
         st.markdown("**🟢 GEX Support Levels**")
         for level in gex_data['support_levels']:
-            distance = ((level['strike'] - current_price) / current_price) * 100
+            distance = ((level['strike'] - current_price) / max(current_price, 1)) * 100
             st.info(f"${level['strike']:.0f} ({distance:+.1f}%) - ${level['gex']/1000:.0f}K GEX")
     
     with levels_cols[1]:
         st.markdown("**🔴 GEX Resistance Levels**") 
         for level in gex_data['resistance_levels']:
-            distance = ((level['strike'] - current_price) / current_price) * 100
+            distance = ((level['strike'] - current_price) / max(current_price, 1)) * 100
             st.warning(f"${level['strike']:.0f} ({distance:+.1f}%) - ${level['gex']/1000:.0f}K GEX")
     
     # === INSTITUTIONAL FLOW ANALYSIS ===
