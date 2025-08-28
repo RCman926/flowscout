@@ -1181,10 +1181,20 @@ def main():
     from signal_validation_engine import signal_validator
     from working_signal_generator import working_signal_generator
     
-    # Use signal communication bridge to get unified signals
+    # Use live market data fix for better signals and confidence
+    from live_market_data_fix import live_market_fix
+    live_market_data = live_market_fix.get_live_market_display(selected_symbol)
+    
+    # Extract signals from live data
+    working_signals = {
+        'action': live_market_data['options_signal'],
+        'confidence': live_market_data['options_confidence'],
+        'strength': live_market_data['technical_signals']['trend_strength']
+    }
+    
+    # Also get bridge signals for comparison
     from signal_communication_bridge import signal_bridge
     unified_live_signals = signal_bridge.get_unified_live_signals(selected_symbol)
-    working_signals = unified_live_signals['signals']['working_signal']
     
     # Collect all platform signals for validation
     platform_signals = {
@@ -1688,6 +1698,70 @@ def main():
         else:
             st.success(f"💚 {position_rec}")
     
+    # === LIVE MARKET DATA DISPLAY ===
+    st.markdown("#### 📡 LIVE Market Intelligence")
+    
+    # Display live market data with high confidence
+    market_cols = st.columns(4)
+    
+    with market_cols[0]:
+        price_color = "success" if live_market_data['change'] > 0 else "error"
+        if price_color == "success":
+            st.success(f"${live_market_data['current_price']:.2f}")
+        else:
+            st.error(f"${live_market_data['current_price']:.2f}")
+        st.caption(f"{live_market_data['change']:+.2f} ({live_market_data['change_pct']:+.2f}%)")
+    
+    with market_cols[1]:
+        options_conf = live_market_data['options_confidence']
+        options_signal = live_market_data['options_signal']
+        
+        if options_conf >= 70:
+            st.success(f"OPTIONS: {options_conf:.0f}%")
+        elif options_conf >= 60:
+            st.warning(f"OPTIONS: {options_conf:.0f}%")
+        else:
+            st.info(f"OPTIONS: {options_conf:.0f}%")
+        st.caption(f"Signal: {options_signal}")
+    
+    with market_cols[2]:
+        tech_conf = live_market_data['technical_signals']['confidence']
+        tech_strength = live_market_data['technical_signals']['trend_strength']
+        
+        if tech_conf >= 70:
+            st.success(f"TECHNICAL: {tech_conf:.0f}%")
+        elif tech_conf >= 60:
+            st.warning(f"TECHNICAL: {tech_conf:.0f}%")
+        else:
+            st.info(f"TECHNICAL: {tech_conf:.0f}%")
+        st.caption(f"Trend: {tech_strength}")
+    
+    with market_cols[3]:
+        volume = live_market_data['volume']
+        market_status = live_market_data['market_status']
+        
+        if market_status == 'OPEN':
+            st.success(f"VOLUME: {volume:,}")
+            st.caption("Market OPEN")
+        else:
+            st.info(f"VOLUME: {volume:,}")
+            st.caption("Market CLOSED")
+    
+    # Show detailed signals if high confidence
+    if live_market_data['options_confidence'] >= 65 or live_market_data['technical_signals']['confidence'] >= 65:
+        st.markdown("**🎯 HIGH CONFIDENCE SIGNALS DETECTED**")
+        
+        signal_details = []
+        if live_market_data['options_confidence'] >= 65:
+            signal_details.append(f"Options: {live_market_data['options_signal']} ({live_market_data['options_confidence']:.0f}%)")
+        
+        if live_market_data['technical_signals']['confidence'] >= 65:
+            tech_signals = live_market_data['technical_signals']['signals']
+            signal_details.append(f"Technical: {', '.join(tech_signals[:2])}")
+        
+        for detail in signal_details:
+            st.info(f"• {detail}")
+    
     # === LIVE OPTIONS FEED WITH ZERO DELAYS ===
     st.markdown("#### 🚀 LIVE Options Feed - 0DTE Signals")
     
@@ -1768,19 +1842,30 @@ def main():
         else:
             st.caption("❌ Below 60% threshold")
         
-        # Show working signal for comparison
+        # Show live market signal with options confidence
         if working_signals and 'action' in working_signals:
             working_action = working_signals['action']
             working_conf = working_signals['confidence']
             
-            st.markdown("**📊 WORKING SIGNAL**")
+            st.markdown("**📊 LIVE OPTIONS SIGNAL**")
             if working_conf >= 70:
                 st.success(f"🎯 {working_action}")
             elif working_conf >= 60:
                 st.warning(f"⚡ {working_action}")
             else:
                 st.info(f"⚪ {working_action}")
-            st.caption(f"Live Analysis: {working_conf:.0f}%")
+            st.caption(f"Options Confidence: {working_conf:.0f}%")
+            
+            # Show technical confirmation
+            tech_strength = working_signals.get('strength', 'UNKNOWN')
+            tech_conf = live_market_data['technical_signals']['confidence']
+            
+            if tech_conf >= 70:
+                st.success(f"📈 Technical: {tech_strength} ({tech_conf:.0f}%)")
+            elif tech_conf >= 60:
+                st.warning(f"📊 Technical: {tech_strength} ({tech_conf:.0f}%)")
+            else:
+                st.info(f"📉 Technical: {tech_strength} ({tech_conf:.0f}%)")
             
         # Show consensus signal from bridge
         if unified_live_signals and 'consensus' in unified_live_signals:

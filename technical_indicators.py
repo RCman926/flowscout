@@ -52,9 +52,6 @@ class TechnicalAnalyzer:
         except Exception as e:
             print(f"Technical analysis error: {e}")
             return self._default_indicators()
-
-# Create global instance for easy import
-technical_indicators = TechnicalAnalyzer()
     
     def _default_indicators(self):
         """Return error indicators when calculation fails - NO FAKE NEUTRAL VALUES"""

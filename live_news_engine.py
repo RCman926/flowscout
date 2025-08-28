@@ -145,7 +145,6 @@ class LiveNewsEngine:
 
 # Global instance  
 live_news_engine = LiveNewsEngine()
-        """Fetch news from Alpha Vantage"""
         try:
             url = f"https://www.alphavantage.co/query"
             params = {
