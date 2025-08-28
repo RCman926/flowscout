@@ -1181,8 +1181,10 @@ def main():
     from signal_validation_engine import signal_validator
     from working_signal_generator import working_signal_generator
     
-    # Get live working signals first
-    working_signals = working_signal_generator.generate_live_signals(selected_symbol)
+    # Use signal communication bridge to get unified signals
+    from signal_communication_bridge import signal_bridge
+    unified_live_signals = signal_bridge.get_unified_live_signals(selected_symbol)
+    working_signals = unified_live_signals['signals']['working_signal']
     
     # Collect all platform signals for validation
     platform_signals = {
@@ -1779,6 +1781,23 @@ def main():
             else:
                 st.info(f"⚪ {working_action}")
             st.caption(f"Live Analysis: {working_conf:.0f}%")
+            
+        # Show consensus signal from bridge
+        if unified_live_signals and 'consensus' in unified_live_signals:
+            consensus = unified_live_signals['consensus']
+            st.markdown("**🎯 CONSENSUS SIGNAL**")
+            
+            if consensus['confidence'] >= 70:
+                st.success(f"💥 {consensus['action']}")
+                st.caption(f"High Confidence: {consensus['confidence']:.0f}%")
+            elif consensus['confidence'] >= 60:
+                st.warning(f"⚡ {consensus['action']}")
+                st.caption(f"Moderate Confidence: {consensus['confidence']:.0f}%")
+            else:
+                st.info(f"⚪ {consensus['action']}")
+                st.caption(f"Low Confidence: {consensus['confidence']:.0f}%")
+                
+            st.caption(f"Reasoning: {consensus.get('reasoning', 'Multi-factor analysis')}")
         
         # Recommended plays
         st.markdown("**🎯 Top Plays**")
@@ -1971,12 +1990,12 @@ def main():
     st.markdown("#### 🏛️ Institutional Analytics Dashboard")
     
     # Import advanced engines
-    from gamma_exposure_engine import gamma_engine
+    from gamma_exposure_engine import gamma_exposure_engine
     from institutional_flow_tracker import flow_tracker  
     from advanced_greeks_engine import greeks_engine
     
     # Get live institutional data
-    gex_data = gamma_engine.calculate_gamma_exposure(selected_symbol)
+    gex_data = gamma_exposure_engine.calculate_gamma_exposure(selected_symbol)
     flow_data = flow_tracker.detect_unusual_activity(selected_symbol)
     greeks_data = greeks_engine.calculate_greeks(selected_symbol)
     
