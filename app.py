@@ -1179,9 +1179,14 @@ def main():
     
     # === SIGNAL VALIDATION & COORDINATION ===
     from signal_validation_engine import signal_validator
+    from working_signal_generator import working_signal_generator
+    
+    # Get live working signals first
+    working_signals = working_signal_generator.generate_live_signals(selected_symbol)
     
     # Collect all platform signals for validation
     platform_signals = {
+        'working_signal': working_signals,
         'symbol_selector': {
             'signal_type': signal_type,
             'confidence': confidence,
@@ -1760,6 +1765,20 @@ def main():
             st.caption("✅ Meets 60% threshold")
         else:
             st.caption("❌ Below 60% threshold")
+        
+        # Show working signal for comparison
+        if working_signals and 'action' in working_signals:
+            working_action = working_signals['action']
+            working_conf = working_signals['confidence']
+            
+            st.markdown("**📊 WORKING SIGNAL**")
+            if working_conf >= 70:
+                st.success(f"🎯 {working_action}")
+            elif working_conf >= 60:
+                st.warning(f"⚡ {working_action}")
+            else:
+                st.info(f"⚪ {working_action}")
+            st.caption(f"Live Analysis: {working_conf:.0f}%")
         
         # Recommended plays
         st.markdown("**🎯 Top Plays**")

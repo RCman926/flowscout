@@ -145,17 +145,6 @@ class LiveNewsEngine:
 
 # Global instance  
 live_news_engine = LiveNewsEngine()
-            }
-            
-            # Cache result
-            self.news_cache[cache_key] = result
-            return result
-            
-        except Exception as e:
-            print(f"Error getting news sentiment for {symbol}: {e}")
-            return await self._generate_fallback_sentiment(symbol)
-    
-    async def _fetch_alpha_vantage_news(self, symbol: str) -> Dict:
         """Fetch news from Alpha Vantage"""
         try:
             url = f"https://www.alphavantage.co/query"

@@ -134,4 +134,4 @@ class GammaExposureEngine:
             'dealer_positioning': 'Short Gamma'
         }
 
-gamma_engine = GammaExposureEngine()
+gamma_exposure_engine = GammaExposureEngine()
