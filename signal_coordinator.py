@@ -21,12 +21,12 @@ class ProfessionalSignalCoordinator:
             'max_drawdown_limit': 0.15
         }
         
-        # Professional signal weights
+        # Enhanced signal weights with news sentiment influence
         self.signal_weights = {
-            'ai_ensemble': 0.40,       # AI prediction weight
+            'ai_ensemble': 0.35,       # AI prediction weight (reduced)
             'technical_analysis': 0.25, # Technical indicators weight  
             'volume_analysis': 0.15,    # Volume confirmation weight
-            'market_structure': 0.10,   # Market conditions weight
+            'market_structure': 0.35,   # Market conditions + NEWS weight (increased)
             'risk_assessment': 0.10     # Risk factors weight
         }
         
@@ -173,11 +173,32 @@ class ProfessionalSignalCoordinator:
             elif ema_20 < ema_50:  # Bearish MA cross
                 score -= 0.1
             
-            # Calculate confidence based on confirmations
-            max_confirmations = 3
-            confidence = 0.6 + (confirmations / max_confirmations) * 0.3
+            # Enhanced confidence calculation with divergence detection
+            max_confirmations = 4
+            base_confidence = 0.55 + (confirmations / max_confirmations) * 0.35
             
-            # Normalize score to -1 to 1
+            # Boost confidence for strong divergences (key reversal signals)
+            if (rsi < 30 and macd > 0) or (rsi > 70 and macd < 0):
+                base_confidence += 0.15  # Divergence bonus
+            
+            # Reduce confidence in choppy/uncertain conditions
+            if 45 <= rsi <= 55 and abs(macd_hist) < 0.02:
+                base_confidence -= 0.1  # Uncertainty penalty
+            
+            # Multi-timeframe confirmation bonus
+            trend_alignment = 0
+            if ema_20 > ema_50 and score > 0: trend_alignment += 1
+            elif ema_20 < ema_50 and score < 0: trend_alignment += 1
+            
+            if bb_percent < 20 and score > 0: trend_alignment += 1
+            elif bb_percent > 80 and score < 0: trend_alignment += 1
+            
+            base_confidence += trend_alignment * 0.05
+            
+            # Final confidence bounds
+            confidence = np.clip(base_confidence, 0.25, 0.95)
+            
+            # Normalize score to -1 to 1 
             final_score = np.clip(score, -1.0, 1.0)
             
             return final_score, confidence
@@ -232,43 +253,82 @@ class ProfessionalSignalCoordinator:
             return 0.0, 0.5
     
     def _analyze_market_structure(self, market_data: Dict) -> Tuple[float, float]:
-        """Analyze overall market conditions and structure"""
+        """Analyze overall market conditions with enhanced news sentiment integration"""
         try:
             market_trend = market_data.get('market_trend', 'neutral')
-            vix_level = market_data.get('vix', 20)
+            vix_level = market_data.get('vix_estimate', 20)
             market_breadth = market_data.get('breadth', 0)
             sector_rotation = market_data.get('sector_rotation', 'stable')
+            
+            # Enhanced news sentiment analysis
+            news_sentiment = market_data.get('news_sentiment', 0.0)
+            news_confidence = market_data.get('news_confidence', 0.5)
+            news_catalyst = market_data.get('news_catalyst', False)
+            market_phase = market_data.get('market_phase', 'neutral_trending')
             
             score = 0.0
             confidence = 0.6
             
-            # Market trend analysis
-            if market_trend == 'strong_bullish':
-                score += 0.3
-            elif market_trend == 'bullish':
-                score += 0.15
-            elif market_trend == 'strong_bearish':
-                score -= 0.3
+            # Enhanced market trend analysis with phase detection
+            if market_trend == 'bullish':
+                score += 0.2
+                if market_phase in ['early_uptrend', 'oversold_bounce']:
+                    score += 0.1  # Phase confirmation bonus
             elif market_trend == 'bearish':
-                score -= 0.15
+                score -= 0.2
+                if market_phase in ['early_downtrend', 'overbought_pullback']:
+                    score -= 0.1  # Phase confirmation bonus
             
-            # VIX analysis (fear/greed indicator)
+            # Enhanced VIX analysis with volatility regime
+            vol_regime = market_data.get('volatility_regime', 'normal')
             if vix_level < 15:  # Low volatility, complacency
                 score -= 0.1
+                if vol_regime == 'low':
+                    confidence += 0.05  # Low vol = higher confidence
             elif vix_level > 30:  # High volatility, fear
                 score += 0.15  # Often contrarian opportunity
+                confidence += 0.1  # High VIX signals reversals
             elif 20 <= vix_level <= 25:  # Normal range
                 confidence += 0.1
             
-            # Market breadth
+            # Market breadth with trend strength
+            trend_strength = market_data.get('trend_strength', 0.5)
             if market_breadth > 0.7:  # Broad market participation
-                score += 0.1
+                score += 0.1 * trend_strength
                 confidence += 0.1
             elif market_breadth < -0.7:  # Broad market weakness
-                score -= 0.1
+                score -= 0.1 * trend_strength
+            
+            # === NEWS SENTIMENT INTEGRATION - CRITICAL ENHANCEMENT ===
+            if abs(news_sentiment) > 0.1:  # Meaningful sentiment
+                sentiment_weight = news_confidence * 0.35  # Up to 35% influence
+                score += news_sentiment * sentiment_weight
+                
+                # Catalyst boost for high-impact news
+                if news_catalyst and news_confidence > 0.75:
+                    confidence += 0.2
+                    if abs(news_sentiment) > 0.5:  # Strong sentiment
+                        score += news_sentiment * 0.25  # Additional boost
+                
+                # News-technical alignment bonus
+                if (news_sentiment > 0.3 and score > 0) or (news_sentiment < -0.3 and score < 0):
+                    confidence += 0.15  # Strong alignment
+                elif (news_sentiment > 0.3 and score < -0.1) or (news_sentiment < -0.3 and score > 0.1):
+                    confidence -= 0.1  # Conflicting signals
+            
+            # Market phase confidence adjustments
+            if market_phase in ['oversold_bounce', 'overbought_pullback']:
+                confidence += 0.15  # High probability setups
+            elif market_phase == 'consolidation':
+                confidence -= 0.08  # Lower probability in ranges
+                score *= 0.75  # Dampen signals in consolidation
+            elif market_phase == 'high_volatility':
+                confidence -= 0.05  # Slight uncertainty in volatile conditions
+                if abs(news_sentiment) > 0.4:  # But news can drive volatility
+                    confidence += 0.1
             
             final_score = np.clip(score, -1.0, 1.0)
-            final_confidence = np.clip(confidence, 0.4, 0.8)
+            final_confidence = np.clip(confidence, 0.35, 0.95)
             
             return final_score, final_confidence
             
