@@ -216,8 +216,10 @@ class DataCommunicationEnhancer:
             return self.data_cache[cache_key]
         
         try:
-            from technical_indicators import technical_indicators
-            tech_data = technical_indicators.calculate_all_indicators(symbol)
+            from technical_indicators import TechnicalAnalyzer
+            analyzer = TechnicalAnalyzer()
+            # For now, use fallback as we need price/volume data arrays
+            tech_data = None
             
             if tech_data and 'rsi' in tech_data:
                 self._cache_data(cache_key, tech_data)

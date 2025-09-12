@@ -143,8 +143,8 @@ class LiveNewsEngine:
         except:
             return []
 
-# Global instance  
-live_news_engine = LiveNewsEngine()
+    async def _fetch_alpha_vantage_news(self, symbol: str) -> Dict:
+        """Fetch news from Alpha Vantage"""
         try:
             url = f"https://www.alphavantage.co/query"
             params = {
