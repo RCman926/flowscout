@@ -230,75 +230,101 @@ def main():
                 
                 # Generate coordinated signal using the advanced AI ensemble + flow system
                 import asyncio
-                try:
-                    # Use the professional signal coordination system - DIRECT FLOW BYPASS
-                    # Skip AI coordination temporarily - go straight to flow analysis
-                    ai_prediction = {'prediction': 0, 'confidence': 0.6}
+                # === INSTITUTIONAL FLOW ANALYZER WITH UNIFIED DATA HANDLING ===
+                def analyze_unified_flow_data(flow_data, symbol):
+                    """Bulletproof flow analyzer that handles multiple data formats"""
+                    total_calls = 0
+                    total_puts = 0
                     
-                    coordinated_signal = asyncio.run(st.session_state.signal_coordinator.generate_coordinated_signal(
-                        symbol=symbol,
-                        ai_prediction=ai_prediction,
-                        technical_indicators=symbol_tech_data,
-                        volume_data=symbol_flow_data,
-                        current_price=price,
-                        market_data=symbol_data
-                    ))
-                    
-                    signal_type = coordinated_signal.get('signal', 'NO_TRADE').replace('BUY_', '').replace('NO_TRADE', 'NEUTRAL')
-                    confidence = coordinated_signal.get('confidence', 0.5) * 100
-                    
-                    # Apply flow dominance override for index ETFs - ENHANCED
-                    if symbol in ['SPY', 'QQQ', 'IWM', 'DIA'] and symbol_flow_data.get('analysis'):
-                        total_calls = sum([exp.get('call_volume', 0) for exp in symbol_flow_data['analysis']])
-                        total_puts = sum([exp.get('put_volume', 0) for exp in symbol_flow_data['analysis']])
-                        total_volume = total_calls + total_puts
-                        
-                        if total_volume > 50000:  # Lower volume threshold for faster trigger
-                            put_dominance = (total_puts / total_volume) * 100
+                    try:
+                        # Format 1: Direct call_volume/put_volume fields (data_communication_enhancer)
+                        if 'call_volume' in flow_data and 'put_volume' in flow_data:
+                            total_calls = flow_data.get('call_volume', 0)
+                            total_puts = flow_data.get('put_volume', 0)
                             
-                            # AGGRESSIVE flow dominance override for index ETFs
-                            if put_dominance > 52:  # Even lower threshold - 52% instead of 55%
-                                signal_type = "PUTS"
-                                confidence = max(confidence, 75)  # Higher confidence boost
-                                print(f"🚨 FLOW OVERRIDE: {symbol} - {put_dominance:.1f}% put dominance -> PUTS signal")
-                            elif put_dominance < 48:  # Symmetric threshold
-                                signal_type = "CALLS" 
-                                confidence = max(confidence, 75)
-                    
-                except Exception as e:
-                    print(f"⚠️ Signal coordination failed for {symbol}: {e}")
-                    # Fallback with enhanced flow detection for index ETFs
-                    if symbol in ['SPY', 'QQQ', 'IWM', 'DIA'] and symbol_flow_data.get('analysis'):
-                        total_calls = sum([exp.get('call_volume', 0) for exp in symbol_flow_data['analysis']])
-                        total_puts = sum([exp.get('put_volume', 0) for exp in symbol_flow_data['analysis']])
+                        # Format 2: Analysis array with expiration data (dashboard_data_coordinator)  
+                        elif 'analysis' in flow_data and isinstance(flow_data['analysis'], list):
+                            for exp in flow_data['analysis']:
+                                total_calls += exp.get('call_volume', 0)
+                                total_puts += exp.get('put_volume', 0)
+                                
+                        # Format 3: Nested structure handling
+                        elif hasattr(flow_data, 'keys'):
+                            for key, value in flow_data.items():
+                                if isinstance(value, dict):
+                                    total_calls += value.get('call_volume', 0)
+                                    total_puts += value.get('put_volume', 0)
+                                    
                         total_volume = total_calls + total_puts
+                        put_dominance = (total_puts / total_volume * 100) if total_volume > 0 else 0
                         
-                        if total_volume > 50000:
-                            put_dominance = (total_puts / total_volume) * 100
-                            if put_dominance > 52:
-                                signal_type = "PUTS"
-                                confidence = 75
-                                print(f"🚨 FALLBACK FLOW: {symbol} - {put_dominance:.1f}% puts -> PUTS signal")
-                            elif put_dominance < 48:
-                                signal_type = "CALLS"
-                                confidence = 75
-                            else:
-                                signal_type = "NEUTRAL"
-                                confidence = 60
+                        return {
+                            'total_calls': total_calls,
+                            'total_puts': total_puts, 
+                            'total_volume': total_volume,
+                            'put_dominance': put_dominance,
+                            'call_dominance': 100 - put_dominance,
+                            'flow_detected': total_volume > 0
+                        }
+                        
+                    except Exception as e:
+                        print(f"⚠️ Flow analysis error for {symbol}: {e}")
+                        return {
+                            'total_calls': 0, 'total_puts': 0, 'total_volume': 0,
+                            'put_dominance': 0, 'call_dominance': 0, 'flow_detected': False
+                        }
+                
+                # Analyze flow data with unified system
+                flow_analysis = analyze_unified_flow_data(symbol_flow_data, symbol)
+                
+                # === UNCONDITIONAL INDEX ETF OVERRIDE SYSTEM ===
+                signal_type = "NEUTRAL"
+                confidence = 50
+                override_applied = False
+                
+                if symbol in ['SPY', 'QQQ', 'IWM', 'DIA']:
+                    # INSTITUTIONAL RULE: Index ETFs get unconditional flow override
+                    if flow_analysis['total_volume'] > 25000:  # Lower threshold for faster response
+                        put_dom = flow_analysis['put_dominance']
+                        
+                        if put_dom > 52.0:  # 52% put dominance threshold
+                            signal_type = "PUTS"
+                            confidence = max(80, min(95, put_dom * 1.5))  # Higher confidence for strong dominance
+                            override_applied = True
+                            print(f"🚨 INDEX OVERRIDE: {symbol} - {put_dom:.1f}% put dominance ({flow_analysis['total_puts']:,} puts vs {flow_analysis['total_calls']:,} calls)")
+                            
+                        elif put_dom < 48.0:  # 48% put dominance threshold (calls dominant)
+                            signal_type = "CALLS"
+                            confidence = max(80, min(95, (100-put_dom) * 1.5))
+                            override_applied = True
+                            print(f"🚨 INDEX OVERRIDE: {symbol} - {100-put_dom:.1f}% call dominance ({flow_analysis['total_calls']:,} calls vs {flow_analysis['total_puts']:,} puts)")
+                            
                         else:
                             signal_type = "NEUTRAL"
-                            confidence = 50
-                    else:
-                        # Standard price-based fallback
-                        if abs(change_pct) > 0.2:
-                            confidence = min(85, abs(change_pct) * 40)
-                            if change_pct > 0:
-                                signal_type = "CALLS" if confidence >= 60 else "NEUTRAL"
-                            else:
-                                signal_type = "PUTS" if confidence >= 60 else "NEUTRAL"
-                        else:
-                            signal_type = "NEUTRAL"
-                            confidence = 50
+                            confidence = 65  # Moderate confidence for mixed flow
+                            print(f"📊 INDEX BALANCED: {symbol} - {put_dom:.1f}% put dominance (balanced flow)")
+                
+                # Fallback to coordinated AI signal only if no override applied
+                if not override_applied:
+                    try:
+                        # SYNC call to signal coordinator (no asyncio.run)
+                        ai_prediction = {'prediction': 0, 'confidence': 0.6}
+                        
+                        # Direct sync call to coordination system
+                        coordinated_result = st.session_state.signal_coordinator._generate_professional_recommendation(
+                            {'signal': 'HOLD', 'confidence': 0.5}, price, symbol
+                        )
+                        
+                        if coordinated_result:
+                            signal_type = coordinated_result.get('signal', 'NEUTRAL').replace('BUY_', '').replace('NO_TRADE', 'NEUTRAL')
+                            confidence = coordinated_result.get('confidence', 50)
+                            
+                    except Exception as e:
+                        # Price-momentum fallback
+                        if abs(change_pct) > 0.3:
+                            confidence = min(85, abs(change_pct) * 35)
+                            signal_type = "CALLS" if change_pct > 0 else "PUTS"
+                        print(f"⚠️ Using price fallback for {symbol}: {e}")
                 
                 # Set emoji based on signal type
                 if signal_type == "CALLS":
@@ -382,17 +408,77 @@ def main():
                  "Overbought" if tech_data['rsi'] > 70 else "Oversold" if tech_data['rsi'] < 30 else "Normal")
     
     with overview_cols[3]:
-        # Show data freshness indicator instead of undefined signal_data
-        data_freshness = market_data.get('data_freshness', 'UNKNOWN')
-        if data_freshness == 'LIVE_SCRAPED':
-            st.success("✅ LIVE DATA")
-            st.caption("Real-time scraping")
-        elif data_freshness == 'LIVE_SCRAPED':
-            st.success("✅ LIVE DATA")
-            st.caption("Real-time authenticated")
+        # === INSTITUTIONAL FLOW DEBUG DISPLAY ===
+        if selected_symbol in ['SPY', 'QQQ', 'IWM', 'DIA']:
+            # Get flow data and analyze it
+            debug_flow_data = enhanced_data_communicator.get_reliable_flow_data(selected_symbol)
+            
+            # Use the same unified analyzer from the signaling system
+            def analyze_flow_for_debug(flow_data, symbol):
+                total_calls = 0
+                total_puts = 0
+                
+                try:
+                    # Format 1: Direct call_volume/put_volume fields
+                    if 'call_volume' in flow_data and 'put_volume' in flow_data:
+                        total_calls = flow_data.get('call_volume', 0)
+                        total_puts = flow_data.get('put_volume', 0)
+                        
+                    # Format 2: Analysis array with expiration data  
+                    elif 'analysis' in flow_data and isinstance(flow_data['analysis'], list):
+                        for exp in flow_data['analysis']:
+                            total_calls += exp.get('call_volume', 0)
+                            total_puts += exp.get('put_volume', 0)
+                            
+                    total_volume = total_calls + total_puts
+                    put_dominance = (total_puts / total_volume * 100) if total_volume > 0 else 0
+                    
+                    return {
+                        'total_calls': total_calls,
+                        'total_puts': total_puts, 
+                        'total_volume': total_volume,
+                        'put_dominance': put_dominance,
+                        'flow_detected': total_volume > 0
+                    }
+                    
+                except Exception as e:
+                    return {
+                        'total_calls': 0, 'total_puts': 0, 'total_volume': 0,
+                        'put_dominance': 0, 'flow_detected': False, 'error': str(e)
+                    }
+            
+            debug_analysis = analyze_flow_for_debug(debug_flow_data, selected_symbol)
+            
+            # Display flow dominance with signal reasoning
+            put_dom = debug_analysis['put_dominance']
+            total_vol = debug_analysis['total_volume']
+            
+            if total_vol > 25000:
+                if put_dom > 52.0:
+                    st.error("🔴 PUTS SIGNAL")
+                    st.caption(f"{put_dom:.1f}% put dominance")
+                    st.caption(f"Signal: ACTIVE ({put_dom:.1f}% > 52%)")
+                elif put_dom < 48.0:
+                    st.success("🟢 CALLS SIGNAL")
+                    st.caption(f"{100-put_dom:.1f}% call dominance")
+                    st.caption(f"Signal: ACTIVE ({put_dom:.1f}% < 48%)")
+                else:
+                    st.info("⚪ NEUTRAL")
+                    st.caption(f"{put_dom:.1f}% put dominance")
+                    st.caption("Signal: Balanced flow")
+            else:
+                st.warning("📊 LOW VOLUME")
+                st.caption(f"Vol: {total_vol:,} < 25K")
+                st.caption("No flow signal")
         else:
-            st.info("📊 DATA STATUS")
-            st.caption(f"{data_freshness}")
+            # Standard data freshness for non-index symbols
+            data_freshness = market_data.get('data_freshness', 'UNKNOWN')
+            if data_freshness == 'LIVE_SCRAPED':
+                st.success("✅ LIVE DATA")
+                st.caption("Real-time scraping")
+            else:
+                st.info("📊 DATA STATUS")
+                st.caption(f"{data_freshness}")
     
 
     
@@ -1284,19 +1370,14 @@ def main():
     from working_signal_generator import working_signal_generator
     
     # Ensure critical variables are defined with safe fallbacks
-    try:
-        signal_type = signal_type  # Check if it exists
-    except NameError:
+    # Initialize with defaults to prevent unbound variable errors
+    if 'signal_type' not in locals():
         signal_type = "NEUTRAL"
         
-    try:
-        confidence = confidence  # Check if it exists  
-    except NameError:
+    if 'confidence' not in locals():
         confidence = 50
         
-    try:
-        change_pct = change_pct  # Check if it exists
-    except NameError:
+    if 'change_pct' not in locals():
         change_pct = 0.0
     
     # Use live market data fix for better signals and confidence
