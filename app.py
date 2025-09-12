@@ -1178,8 +1178,25 @@ def main():
             st.error(f"🏛️ Institutional Grade: {institutional_score}%")
     
     # === SIGNAL VALIDATION & COORDINATION ===
-    from signal_validation_engine import signal_validator
+    from signal_validation_engine import SignalValidationEngine
+    signal_validator = SignalValidationEngine()
     from working_signal_generator import working_signal_generator
+    
+    # Ensure critical variables are defined with safe fallbacks
+    try:
+        signal_type = signal_type  # Check if it exists
+    except NameError:
+        signal_type = "NEUTRAL"
+        
+    try:
+        confidence = confidence  # Check if it exists  
+    except NameError:
+        confidence = 50
+        
+    try:
+        change_pct = change_pct  # Check if it exists
+    except NameError:
+        change_pct = 0.0
     
     # Use live market data fix for better signals and confidence
     from live_market_data_fix import live_market_fix
