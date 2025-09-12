@@ -59,14 +59,12 @@ def main():
         st.session_state.auto_refresh_enabled = True
         st.session_state.refresh_count = 0
     
-    # Auto-refresh every 7 seconds (professional trading speed)
+    # Auto-refresh every 15 seconds for WebSocket stability
     if st.session_state.auto_refresh_enabled:
-        refresh_count = st_autorefresh(interval=7000, key="trading_refresh")
+        refresh_count = st_autorefresh(interval=15000, key="trading_refresh")
         if refresh_count != st.session_state.refresh_count:
             st.session_state.refresh_count = refresh_count
-            # Clear cache to ensure fresh data
-            if hasattr(st, 'cache_data'):
-                st.cache_data.clear()
+            # Cache clearing removed - rely on TTL caching for performance
     
     # === SIDEBAR CONTROLS ===
     with st.sidebar:
@@ -75,6 +73,7 @@ def main():
         # Manual refresh button
         if st.button("🚀 INSTANT REFRESH", type="primary"):
             st.session_state.refresh_count += 1
+            # Only clear cache on manual refresh
             if hasattr(st, 'cache_data'):
                 st.cache_data.clear()
             st.rerun()
@@ -87,8 +86,8 @@ def main():
         
         # Refresh status display
         if st.session_state.auto_refresh_enabled:
-            st.caption("🔄 Auto-refreshing every 7s")
-            st.caption(f"📊 Mode: LIVE TRADING")
+            st.caption("🔄 Auto-refreshing every 15s")
+            st.caption(f"📊 Mode: LIVE TRADING (STABLE)")
         else:
             st.caption("⏸️ Auto-refresh: PAUSED")
             st.caption(f"📊 Mode: MANUAL ONLY")
@@ -108,10 +107,10 @@ def main():
     # Get selected symbol
     selected_symbol = st.session_state.get('selected_symbol', 'SPY')
     
-    # Get all data using enhanced communication system
-    from data_communication_enhancer import enhanced_data_communicator
+    # Get all data using CACHED communication system for performance
+    from data_communication_enhancer import get_cached_market_data, get_cached_flow_data, get_cached_technical_data, get_cached_news_data, get_cached_gex_data
     
-    market_data = enhanced_data_communicator.get_reliable_market_data(selected_symbol)
+    market_data = get_cached_market_data(selected_symbol)
     
     # === CRITICAL FIX: Remove fake authentication override ===
     # Instead, attempt fresh data fetch and mark data integrity properly
@@ -140,10 +139,10 @@ def main():
                 market_data['data_integrity'] = False
         except:
             market_data['data_integrity'] = False
-    flow_data = enhanced_data_communicator.get_reliable_flow_data(selected_symbol)
-    tech_data = enhanced_data_communicator.get_reliable_technical_data(selected_symbol, market_data)
-    gex_data = enhanced_data_communicator.get_reliable_gex_data(selected_symbol, market_data)
-    news_data = enhanced_data_communicator.get_reliable_news_data(selected_symbol)
+    flow_data = get_cached_flow_data(selected_symbol)
+    tech_data = get_cached_technical_data(selected_symbol, market_data.get('price', 150.0), market_data.get('change_pct', 0.0))
+    gex_data = get_cached_gex_data(selected_symbol, market_data.get('price', 150.0))
+    news_data = get_cached_news_data(selected_symbol)
     
     # Set defaults if data unavailable
     if not market_data:
@@ -173,74 +172,125 @@ def main():
         else:
             st.error(f"● {status_text}")
     
-    # === TIMESTAMP DISPLAY ===
-    refresh_cols = st.columns([2, 1])
+    # === ENHANCED TIMESTAMP AND DIAGNOSTICS DISPLAY ===
+    refresh_cols = st.columns([3, 2])
     with refresh_cols[0]:
+        # Enhanced data source diagnostics for debugging
+        data_source = market_data.get('data_source', 'unknown')
+        data_freshness = market_data.get('data_freshness', 'unknown')
+        quality_score = market_data.get('quality_score', 0)
+        
+        # Color-coded data source display
+        if data_source in ['live_scraper', 'yahoo_finance_authenticated']:
+            st.success(f"📡 {data_source.upper()} | Q: {quality_score}%")
+        elif data_source in ['yahoo_finance', 'statistical_model']:
+            st.warning(f"📊 {data_source.upper()} | Q: {quality_score}%")
+        else:
+            st.error(f"❌ {data_source.upper()} | Q: {quality_score}%")
+            
+        # Enhanced timestamp with data age
         if market_data and market_data.get('timestamp'):
             data_time = market_data['timestamp']
             if isinstance(data_time, datetime):
                 formatted_time = data_time.strftime("%H:%M:%S")
                 market_status = market_data.get('market_status', 'UNKNOWN')
                 
-                # Calculate data age safely
+                # Calculate data age safely with error handling
                 try:
                     if hasattr(data_time, 'tzinfo') and data_time.tzinfo is not None:
                         data_time_naive = data_time.replace(tzinfo=None)
                         minutes_ago = (datetime.now() - data_time_naive).total_seconds() / 60
                     else:
                         minutes_ago = (datetime.now() - data_time).total_seconds() / 60
-                except Exception:
+                except Exception as e:
                     minutes_ago = 0
+                    st.caption(f"⚠️ Time calc error: {e}")
                 
                 if minutes_ago < 60:
                     time_ago = f"{int(minutes_ago)}m ago"
                 else:
                     time_ago = f"{int(minutes_ago/60)}h ago"
                 
-                st.caption(f"Last Update: {formatted_time} ({market_status}) - {time_ago}")
+                st.caption(f"📅 {formatted_time} ({market_status}) - {time_ago}")
+                st.caption(f"🔄 Freshness: {data_freshness}")
             else:
-                st.caption(f"Last Update: {datetime.now().strftime('%H:%M:%S')}")
+                st.caption(f"📅 {datetime.now().strftime('%H:%M:%S')} (CURRENT)")
+                st.caption(f"🔄 Freshness: {data_freshness}")
         else:
-            st.caption(f"Last Update: {datetime.now().strftime('%H:%M:%S')}")
+            st.caption(f"📅 {datetime.now().strftime('%H:%M:%S')} (NO TIMESTAMP)")
+            st.caption(f"🔄 Freshness: ERROR - {data_freshness}")
     
     with refresh_cols[1]:
+        # Enhanced refresh status with error handling diagnostics
         if st.session_state.get('auto_refresh_enabled', True):
-            st.caption("Auto-refresh: 7s ⚡")
+            st.caption("🔄 Auto-refresh: 15s ⚡ (STABLE)")
         else:
-            st.caption("Auto-refresh: PAUSED")
+            st.caption("⏸️ Auto-refresh: PAUSED")
+            
+        # Data flow diagnostics for debugging
+        flow_quality = flow_data.get('quality_score', 0) if flow_data else 0
+        tech_quality = tech_data.get('quality_score', 0) if tech_data else 0
+        
+        if flow_quality > 70 and tech_quality > 70:
+            st.caption("✅ All systems: OPERATIONAL")
+        elif flow_quality > 50 or tech_quality > 50:
+            st.caption("⚠️ Partial data: DEGRADED")
+        else:
+            st.caption("❌ Data systems: ERROR")
     
     # === SYMBOL SELECTOR ===
     st.markdown("---")
     symbol_rows = [symbols[i:i+7] for i in range(0, len(symbols), 7)]
     
-    # Symbol selector with live data  
+    # Symbol selector with OPTIMIZED data fetching - only basic price data for buttons
     for row in symbol_rows:
         cols = st.columns(len(row))
         for i, symbol in enumerate(row):
-            # Get live data for each symbol with proper error handling
+            # PERFORMANCE FIX: Only get basic market data for symbol buttons (cached)
             try:
-                symbol_data = enhanced_data_communicator.get_reliable_market_data(symbol)
-                if not symbol_data:
-                    raise Exception("No symbol data")
+                symbol_data = get_cached_market_data(symbol) if symbol == selected_symbol else {}
+                
+                # For non-selected symbols, use lightweight price-only logic
+                if symbol != selected_symbol:
+                    # Use simplified approach for button display only
+                    import yfinance as yf
+                    ticker = yf.Ticker(symbol)
+                    hist = ticker.history(period="1d", interval="1m")
+                    if not hist.empty:
+                        current_price = float(hist['Close'].iloc[-1])
+                        prev_close = float(hist['Close'].iloc[0])
+                        change_pct = ((current_price - prev_close) / prev_close) * 100
+                        symbol_data = {
+                            'price': current_price,
+                            'change_pct': change_pct,
+                            'data_source': 'button_display_only',
+                            'lightweight': True
+                        }
+                    else:
+                        symbol_data = {'price': 150.0, 'change_pct': 0.0, 'lightweight': True}
+                        
                 price = symbol_data.get('price', 150.0)
                 change_pct = symbol_data.get('change_pct', 0.0)
-            except:
+                
+            except Exception as e:
                 # Fallback symbol data structure
                 symbol_data = {
                     'symbol': symbol,
                     'price': 150.0,
                     'change_pct': 0.0,
                     'data_source': 'fallback',
-                    'data_integrity': False
+                    'data_integrity': False,
+                    'lightweight': True
                 }
                 price = 150.0
                 change_pct = 0.0
             
-            # === CRITICAL FIX: Use coordinated signals instead of price-only logic ===
+            # === OPTIMIZED: Only generate full signals for selected symbol ===
             try:
-                # Get symbol-specific flow data for proper signal generation
-                symbol_flow_data = enhanced_data_communicator.get_reliable_flow_data(symbol)
-                symbol_tech_data = enhanced_data_communicator.get_reliable_technical_data(symbol, symbol_data)
+                if symbol == selected_symbol:
+                    # Full signal generation for selected symbol using cached flow data
+                    symbol_flow_data = flow_data  # Use already-fetched flow data
+                    symbol_tech_data = tech_data   # Use already-fetched tech data
                 
                 # Generate coordinated signal using the advanced AI ensemble + flow system
                 import asyncio
@@ -364,27 +414,35 @@ def main():
                             confidence = 65  # Moderate confidence for mixed flow
                             print(f"📊 INDEX BALANCED: {symbol} - {put_dom:.1f}% put dominance (balanced flow)")
                 
-                # Fallback to coordinated AI signal only if no override applied
-                if not override_applied:
-                    try:
-                        # SYNC call to signal coordinator (no asyncio.run)
-                        ai_prediction = {'prediction': 0, 'confidence': 0.6}
-                        
-                        # Direct sync call to coordination system
-                        coordinated_result = st.session_state.signal_coordinator._generate_professional_recommendation(
-                            {'signal': 'HOLD', 'confidence': 0.5}, price, symbol
-                        )
-                        
-                        if coordinated_result:
-                            signal_type = coordinated_result.get('signal', 'NEUTRAL').replace('BUY_', '').replace('NO_TRADE', 'NEUTRAL')
-                            confidence = coordinated_result.get('confidence', 50)
+                    # Fallback to coordinated AI signal only if no override applied
+                    if not override_applied:
+                        try:
+                            # SYNC call to signal coordinator (no asyncio.run)
+                            ai_prediction = {'prediction': 0, 'confidence': 0.6}
                             
-                    except Exception as e:
-                        # Price-momentum fallback
-                        if abs(change_pct) > 0.3:
-                            confidence = min(85, abs(change_pct) * 35)
-                            signal_type = "CALLS" if change_pct > 0 else "PUTS"
-                        print(f"⚠️ Using price fallback for {symbol}: {e}")
+                            # Direct sync call to coordination system
+                            coordinated_result = st.session_state.signal_coordinator._generate_professional_recommendation(
+                                {'signal': 'HOLD', 'confidence': 0.5}, price, symbol
+                            )
+                            
+                            if coordinated_result:
+                                signal_type = coordinated_result.get('signal', 'NEUTRAL').replace('BUY_', '').replace('NO_TRADE', 'NEUTRAL')
+                                confidence = coordinated_result.get('confidence', 50)
+                                
+                        except Exception as e:
+                            # Price-momentum fallback
+                            if abs(change_pct) > 0.3:
+                                confidence = min(85, abs(change_pct) * 35)
+                                signal_type = "CALLS" if change_pct > 0 else "PUTS"
+                            print(f"⚠️ Using price fallback for {symbol}: {e}")
+                else:
+                    # LIGHTWEIGHT: For non-selected symbols, use simple price-based signals
+                    if abs(change_pct) > 1.0:
+                        confidence = min(75, abs(change_pct) * 20)  # Lower confidence for lightweight
+                        signal_type = "CALLS" if change_pct > 0 else "PUTS"
+                    else:
+                        signal_type = "NEUTRAL"
+                        confidence = 50
                 
                 # Set emoji based on signal type
                 if signal_type == "CALLS":
@@ -393,6 +451,7 @@ def main():
                     signal_emoji = "🔴"
                 else:
                     signal_emoji = "⚪"
+                    
                     
             except Exception as e:
                 # Emergency fallback to simple price logic
@@ -471,7 +530,7 @@ def main():
         # === FIXED: USE SINGLE UNIFIED FLOW ANALYZER (NO DUPLICATES) ===
         if selected_symbol in ['SPY', 'QQQ', 'IWM', 'DIA']:
             # Get flow data and use the SAME analyzer from above (no duplication)
-            debug_flow_data = enhanced_data_communicator.get_reliable_flow_data(selected_symbol)
+            debug_flow_data = flow_data  # Use already-fetched cached flow data
             
             # CRITICAL FIX: Use the exact same function to prevent calculation discrepancies
             debug_analysis = analyze_unified_flow_data(debug_flow_data, selected_symbol)
@@ -532,8 +591,8 @@ def main():
         st.metric("Gamma Flip", f"${gamma_flip:.0f}", f"Bias {direction}")
     
     with gamma_cols[3]:
-        # Get volume from unified flow data
-        unified_flow = enhanced_data_communicator.get_reliable_flow_data(selected_symbol)
+        # Get volume from unified flow data (using cached data)
+        unified_flow = flow_data  # Use already-fetched cached flow data
         call_volume = unified_flow.get('call_volume', 0)
         put_volume = unified_flow.get('put_volume', 0)
         total_volume = call_volume + put_volume
@@ -1021,7 +1080,7 @@ def main():
     current_price = market_data.get('price', 100)
     
     # CRITICAL FIX: Use enhanced data communicator for reliable data flow
-    live_options_data = enhanced_data_communicator.get_reliable_flow_data(selected_symbol)
+    live_options_data = flow_data  # Use already-fetched cached flow data
     
     # CRITICAL FIX: Handle real data structure correctly
     live_strikes = []

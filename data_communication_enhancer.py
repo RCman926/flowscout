@@ -11,6 +11,7 @@ from datetime import datetime, timedelta
 import logging
 import yfinance as yf
 import numpy as np
+import streamlit as st
 from real_data_authenticator import real_data_authenticator
 
 class DataCommunicationEnhancer:
@@ -566,3 +567,34 @@ class DataCommunicationEnhancer:
 
 # Global enhanced data communicator
 enhanced_data_communicator = DataCommunicationEnhancer()
+
+# === CACHED WRAPPER FUNCTIONS FOR PERFORMANCE ===
+# These functions use st.cache_data for WebSocket stability and performance
+
+@st.cache_data(ttl=20, show_spinner=False)
+def get_cached_market_data(symbol: str) -> Dict:
+    """Cached wrapper for market data with 20-second TTL for performance"""
+    return enhanced_data_communicator.get_reliable_market_data(symbol)
+
+@st.cache_data(ttl=25, show_spinner=False)
+def get_cached_flow_data(symbol: str) -> Dict:
+    """Cached wrapper for options flow data with 25-second TTL"""
+    return enhanced_data_communicator.get_reliable_flow_data(symbol)
+
+@st.cache_data(ttl=30, show_spinner=False)
+def get_cached_technical_data(symbol: str, price: float, change_pct: float) -> Dict:
+    """Cached wrapper for technical data with 30-second TTL"""
+    # Create mock market_data for technical analysis
+    market_data = {'price': price, 'change_pct': change_pct, 'symbol': symbol}
+    return enhanced_data_communicator.get_reliable_technical_data(symbol, market_data)
+
+@st.cache_data(ttl=60, show_spinner=False)
+def get_cached_news_data(symbol: str) -> Dict:
+    """Cached wrapper for news data with 60-second TTL"""
+    return enhanced_data_communicator.get_reliable_news_data(symbol)
+
+@st.cache_data(ttl=45, show_spinner=False)  
+def get_cached_gex_data(symbol: str, price: float) -> Dict:
+    """Cached wrapper for GEX data with 45-second TTL"""
+    market_data = {'price': price, 'symbol': symbol}
+    return enhanced_data_communicator.get_reliable_gex_data(symbol, market_data)
