@@ -17,16 +17,16 @@ class ProfessionalSignalCoordinator:
         self.risk_limits = {
             'max_position_size': 0.05,  # 5% max position
             'max_daily_trades': 10,
-            'min_confidence_threshold': 0.75,
+            'min_confidence_threshold': 0.65,  # Lowered from 0.75 for index ETFs
             'max_drawdown_limit': 0.15
         }
         
-        # Advanced adaptive signal weights with network-aware optimization
+        # Advanced adaptive signal weights with enhanced flow analysis for index ETFs
         self.base_weights = {
             'ai_ensemble': 0.40,       # Enhanced AI prediction weight
-            'technical_analysis': 0.25, # Technical indicators weight  
-            'volume_analysis': 0.15,    # Volume confirmation weight
-            'market_structure': 0.30,   # Market conditions + NEWS weight
+            'technical_analysis': 0.20, # Technical indicators weight (reduced)
+            'volume_analysis': 0.25,    # Volume confirmation weight (INCREASED for flow dominance)
+            'market_structure': 0.25,   # Market conditions + NEWS weight
             'risk_assessment': 0.10     # Risk factors weight
         }
         

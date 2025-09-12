@@ -102,10 +102,33 @@ def main():
     
     market_data = enhanced_data_communicator.get_reliable_market_data(selected_symbol)
     
-    # Ensure market data has the authenticated source tag
+    # === CRITICAL FIX: Remove fake authentication override ===
+    # Instead, attempt fresh data fetch and mark data integrity properly
     if 'data_source' not in market_data or market_data['data_source'] == 'unknown':
-        market_data['data_source'] = 'yahoo_finance_authenticated'
-        market_data['data_freshness'] = 'LIVE_SCRAPED'
+        try:
+            # Attempt immediate fresh fetch for SPY
+            if selected_symbol in ['SPY', 'QQQ', 'IWM', 'DIA']:
+                import yfinance as yf
+                ticker = yf.Ticker(selected_symbol)
+                live_data = ticker.history(period="1d", interval="1m")
+                if not live_data.empty:
+                    current_price = float(live_data['Close'].iloc[-1])
+                    prev_close = float(live_data['Close'].iloc[0])
+                    change_pct = ((current_price - prev_close) / prev_close) * 100
+                    
+                    market_data.update({
+                        'price': current_price,
+                        'change_pct': change_pct,
+                        'data_source': 'yahoo_finance_authenticated',
+                        'data_freshness': 'LIVE_FRESH_FETCH',
+                        'data_integrity': True
+                    })
+                else:
+                    market_data['data_integrity'] = False
+            else:
+                market_data['data_integrity'] = False
+        except:
+            market_data['data_integrity'] = False
     flow_data = enhanced_data_communicator.get_reliable_flow_data(selected_symbol)
     tech_data = enhanced_data_communicator.get_reliable_technical_data(selected_symbol, market_data)
     gex_data = enhanced_data_communicator.get_reliable_gex_data(selected_symbol, market_data)
@@ -189,47 +212,78 @@ def main():
                 price = 150.0
                 change_pct = 0.0
             
-            # Generate signal based on price change - CONSISTENT WITH TRADING DECISION CENTER
-            if change_pct > 1.0:
-                confidence = min(85, abs(change_pct) * 30)
-                # Only show CALLS if confidence is >= 60%
-                if confidence >= 60:
+            # === CRITICAL FIX: Use coordinated signals instead of price-only logic ===
+            try:
+                # Get symbol-specific flow data for proper signal generation
+                symbol_flow_data = enhanced_data_communicator.get_reliable_flow_data(symbol)
+                symbol_tech_data = enhanced_data_communicator.get_reliable_technical_data(symbol, symbol_data)
+                
+                # Generate coordinated signal using the advanced AI ensemble + flow system
+                import asyncio
+                try:
+                    # Use the professional signal coordination system
+                    coordinated_signal = asyncio.run(st.session_state.signal_coordinator.generate_coordinated_signal(
+                        symbol=symbol,
+                        ai_prediction=st.session_state.professional_ai.generate_prediction(
+                            symbol_data, symbol_tech_data, symbol_flow_data
+                        ),
+                        technical_indicators=symbol_tech_data,
+                        volume_data=symbol_flow_data,
+                        current_price=price,
+                        market_data=symbol_data
+                    ))
+                    
+                    signal_type = coordinated_signal.get('signal', 'NO_TRADE').replace('BUY_', '').replace('NO_TRADE', 'NEUTRAL')
+                    confidence = coordinated_signal.get('confidence', 0.5) * 100
+                    
+                    # Apply flow dominance override for index ETFs
+                    if symbol in ['SPY', 'QQQ', 'IWM', 'DIA'] and symbol_flow_data.get('analysis'):
+                        total_calls = sum([exp.get('call_volume', 0) for exp in symbol_flow_data['analysis']])
+                        total_puts = sum([exp.get('put_volume', 0) for exp in symbol_flow_data['analysis']])
+                        total_volume = total_calls + total_puts
+                        
+                        if total_volume > 100000:  # High volume threshold
+                            put_dominance = (total_puts / total_volume) * 100
+                            
+                            # Flow dominance override - lower threshold for index ETFs
+                            if put_dominance > 55 and confidence > 50:  # Lowered from 75% to 50%
+                                signal_type = "PUTS"
+                                confidence = max(confidence, 70)  # Boost confidence for strong flow
+                                st.caption(f"⚠️ Flow Override: {put_dominance:.1f}% put dominance")
+                            elif put_dominance < 45 and confidence > 50:
+                                signal_type = "CALLS" 
+                                confidence = max(confidence, 70)
+                    
+                except Exception as e:
+                    # Fallback to price-based with flow boost
+                    if abs(change_pct) > 0.2:
+                        confidence = min(85, abs(change_pct) * 40)
+                        if change_pct > 0:
+                            signal_type = "CALLS" if confidence >= 60 else "NEUTRAL"
+                        else:
+                            signal_type = "PUTS" if confidence >= 60 else "NEUTRAL"
+                    else:
+                        signal_type = "NEUTRAL"
+                        confidence = 50
+                
+                # Set emoji based on signal type
+                if signal_type == "CALLS":
                     signal_emoji = "🟢"
-                    signal_type = "CALLS"
-                else:
-                    signal_emoji = "⚪"
-                    signal_type = "NEUTRAL"
-            elif change_pct > 0.2:
-                confidence = min(75, abs(change_pct) * 40)
-                # Only show CALLS if confidence is >= 60%
-                if confidence >= 60:
-                    signal_emoji = "🟢"
-                    signal_type = "CALLS"
-                else:
-                    signal_emoji = "⚪"
-                    signal_type = "NEUTRAL"
-            elif change_pct < -1.0:
-                confidence = min(85, abs(change_pct) * 30)
-                # Only show PUTS if confidence is >= 60%
-                if confidence >= 60:
+                elif signal_type == "PUTS":
                     signal_emoji = "🔴"
-                    signal_type = "PUTS"
                 else:
                     signal_emoji = "⚪"
-                    signal_type = "NEUTRAL"
-            elif change_pct < -0.2:
-                confidence = min(75, abs(change_pct) * 40)
-                # Only show PUTS if confidence is >= 60%
-                if confidence >= 60:
-                    signal_emoji = "🔴"
-                    signal_type = "PUTS"
+                    
+            except Exception as e:
+                # Emergency fallback to simple price logic
+                if abs(change_pct) > 1.0:
+                    confidence = min(85, abs(change_pct) * 30)
+                    signal_type = "CALLS" if change_pct > 0 else "PUTS"
+                    signal_emoji = "🟢" if change_pct > 0 else "🔴"
                 else:
-                    signal_emoji = "⚪"
                     signal_type = "NEUTRAL"
-            else:
-                signal_emoji = "⚪"
-                signal_type = "NEUTRAL"
-                confidence = 50
+                    signal_emoji = "⚪"
+                    confidence = 50
             
             with cols[i]:
                 is_selected = symbol == selected_symbol
