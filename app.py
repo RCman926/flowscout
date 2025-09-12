@@ -16,6 +16,19 @@ import random
 import warnings
 warnings.filterwarnings('ignore')
 
+# Initialize AI and advanced modules
+if 'professional_ai' not in st.session_state:
+    from advanced_prediction_engine import AdvancedPredictionEngine
+    st.session_state.professional_ai = AdvancedPredictionEngine()
+
+if 'signal_coordinator' not in st.session_state:
+    from signal_coordinator import ProfessionalSignalCoordinator
+    st.session_state.signal_coordinator = ProfessionalSignalCoordinator()
+
+if 'prediction_tracker' not in st.session_state:
+    from prediction_tracker import PredictionTracker
+    st.session_state.prediction_tracker = PredictionTracker()
+
 # Configure Streamlit
 st.set_page_config(
     page_title="Institutional Options Flow",
