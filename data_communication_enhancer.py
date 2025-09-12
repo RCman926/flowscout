@@ -28,8 +28,22 @@ class DataCommunicationEnhancer:
         self.last_successful_fetch = {}
         self.error_counts = {}
         self.max_errors = 3
-        self.cache_duration = 12  # Extended 12 seconds cache for reliability
-        self.lkg_cache_duration = 300  # LKG data valid for 5 minutes
+        self.cache_duration = 120  # EMERGENCY: Extended to 2 minutes to reduce API calls
+        self.lkg_cache_duration = 1800  # EMERGENCY: Extended to 30 minutes for rate limiting
+        
+        # CRITICAL: Circuit breaker for Yahoo Finance rate limiting
+        self.circuit_breaker = {
+            'state': 'CLOSED',  # CLOSED, OPEN, HALF_OPEN
+            'failure_count': 0,
+            'last_failure_time': 0,
+            'failure_threshold': 5,
+            'recovery_timeout': 300,  # 5 minutes before attempting recovery
+            'rate_limit_backoff': 600  # 10 minutes backoff for rate limiting
+        }
+        
+        # CRITICAL: Global request throttling
+        self.last_api_call = {}
+        self.min_api_interval = 10  # Minimum 10 seconds between API calls
         
         # Initialize optimized systems - DISABLED due to asyncio incompatibility
         self.use_optimized_cache = False
@@ -102,7 +116,7 @@ class DataCommunicationEnhancer:
             import random
             
             max_retries = 3
-            base_delay = 0.5
+            base_delay = 5.0  # EMERGENCY: Start with 5 seconds instead of 0.5
             
             for attempt in range(max_retries):
                 try:
@@ -114,8 +128,8 @@ class DataCommunicationEnhancer:
                     if attempt == max_retries - 1:
                         raise e  # Final attempt failed, re-raise
                     
-                    # Exponential backoff with jitter
-                    delay = base_delay * (2 ** attempt) + random.uniform(0, 0.5)
+                    # EMERGENCY: Extended exponential backoff with jitter
+                    delay = base_delay * (3 ** attempt) + random.uniform(0, 2.0)
                     logging.warning(f"YFinance attempt {attempt + 1} failed for {symbol}, retrying in {delay:.1f}s")
                     time.sleep(delay)
             

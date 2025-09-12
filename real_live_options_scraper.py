@@ -21,21 +21,49 @@ class RealLiveOptionsScraper:
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
         })
         self.cache = {}
-        self.cache_duration = 2  # 2 seconds cache for ultra-fast trading
+        self.cache_duration = 60  # EMERGENCY: Extended to 60 seconds to stop API abuse
+        
+        # CRITICAL: Circuit breaker for Yahoo Finance rate limiting
+        self.circuit_breaker_active = False
+        self.last_rate_limit_time = 0
+        self.rate_limit_backoff = 600  # 10 minutes backoff when rate limited
         
     def get_live_options_chain(self, symbol):
         """Get real live options chain data from Yahoo Finance"""
         cache_key = f"options_{symbol}"
         now = datetime.now()
+        current_time = time.time()
         
-        # Check cache
+        # CRITICAL: Check circuit breaker for rate limiting
+        if self.circuit_breaker_active:
+            if current_time - self.last_rate_limit_time < self.rate_limit_backoff:
+                print(f"🚨 CIRCUIT BREAKER ACTIVE - Using cached data for {symbol} (Rate limit backoff)")
+                # Return cached data with circuit breaker indication
+                if cache_key in self.cache:
+                    cached_data, cache_time = self.cache[cache_key]
+                    cached_data = cached_data.copy()
+                    cached_data['circuit_breaker_active'] = True
+                    cached_data['data_source'] = 'CIRCUIT_BREAKER_CACHE'
+                    return cached_data
+                return None
+            else:
+                # Try to reset circuit breaker
+                print(f"⚡ Attempting to reset circuit breaker for {symbol}")
+                self.circuit_breaker_active = False
+        
+        # Check cache - EXTENDED duration to reduce API calls
         if cache_key in self.cache:
             cached_data, cache_time = self.cache[cache_key]
-            if (now - cache_time).seconds < self.cache_duration:
+            cache_age_seconds = (now - cache_time).total_seconds()
+            if cache_age_seconds < self.cache_duration:
+                print(f"📊 Using {cache_age_seconds:.1f}s cached data for {symbol}")
                 return cached_data
         
         try:
-            print(f"Fetching REAL live options data for {symbol}...")
+            print(f"🌐 Making API call to Yahoo Finance for {symbol}...")
+            
+            # CRITICAL: Add delay between API calls to prevent rate limiting
+            time.sleep(2.0)  # 2 second delay between API calls
             
             # Use yfinance for REAL LIVE options data (bypasses 15min delay)
             ticker = yf.Ticker(symbol)
@@ -174,7 +202,24 @@ class RealLiveOptionsScraper:
             return live_options_data
             
         except Exception as e:
+            error_str = str(e).lower()
             print(f"❌ Error fetching live options for {symbol}: {e}")
+            
+            # CRITICAL: Detect rate limiting and trigger circuit breaker
+            if ('401' in error_str or 'too many requests' in error_str or 
+                'rate limit' in error_str or 'forbidden' in error_str):
+                print(f"🚨 RATE LIMITED by Yahoo Finance - Activating circuit breaker for {symbol}")
+                self.circuit_breaker_active = True
+                self.last_rate_limit_time = time.time()
+                
+                # Return cached data if available
+                if cache_key in self.cache:
+                    cached_data, cache_time = self.cache[cache_key]
+                    cached_data = cached_data.copy()
+                    cached_data['circuit_breaker_active'] = True
+                    cached_data['data_source'] = 'RATE_LIMITED_CACHE'
+                    return cached_data
+            
             return None
     
     def _identify_unusual_activity(self, options_data):
