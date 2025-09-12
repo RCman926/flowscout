@@ -9,12 +9,34 @@ import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
 import plotly.express as px
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, time as time_obj
+from zoneinfo import ZoneInfo
 import asyncio
 import time
 import random
 import warnings
 warnings.filterwarnings('ignore')
+
+# === TIMEZONE-AWARE MARKET HOURS HELPERS ===
+def is_market_open(dt=None, tz='America/New_York'):
+    """Check if US stock market is open (9:30 AM - 4:00 PM ET)"""
+    dt = dt or datetime.now(ZoneInfo(tz))
+    weekday = dt.weekday()  # 0=Monday, 6=Sunday
+    current_time = dt.time()
+    
+    # Market is closed on weekends
+    if weekday >= 5:  # Saturday or Sunday
+        return False
+    
+    # Market hours: 9:30 AM - 4:00 PM ET
+    market_open_time = time_obj(9, 30)
+    market_close_time = time_obj(16, 0)
+    
+    return market_open_time <= current_time <= market_close_time
+
+def now_et():
+    """Get current time in US/Eastern timezone"""
+    return datetime.now(ZoneInfo('America/New_York'))
 
 # Initialize AI and advanced modules
 if 'professional_ai' not in st.session_state:
@@ -162,17 +184,8 @@ def main():
         tech_data = {'rsi': 50, 'macd': 0, 'bb_upper': 650, 'bb_lower': 620, 'sma_20': 635}
     
     # === HEADER ===
-    # Use proper market hours: 9:30 AM - 4:00 PM EST on weekdays
-    now = datetime.now()
-    current_time = now.time()
-    weekday = now.weekday()  # 0=Monday, 6=Sunday
-    
-    # Market hours (9:30 AM - 4:00 PM EST)
-    market_open_time = pd.Timestamp("09:30:00").time()
-    market_close_time = pd.Timestamp("16:00:00").time()
-    
-    # Check if market is actually open
-    market_open = (weekday < 5 and market_open_time <= current_time <= market_close_time)
+    # Use timezone-aware market hours check
+    market_open = is_market_open()
     status_text = "MARKET OPEN" if market_open else "MARKET CLOSED"
     
     header_cols = st.columns([3, 1])
@@ -203,20 +216,14 @@ def main():
         else:
             st.error(f"❌ CONNECTION ERROR | Q: {quality_score}%")
             
-        # Enhanced timestamp with LIVE time display (FIXED)
-        current_time = datetime.now()
-        formatted_time = current_time.strftime("%H:%M:%S")
+        # Enhanced timestamp with LIVE time display (FIXED with timezone)
+        et_time = now_et()
+        formatted_time = et_time.strftime("%I:%M:%S %p ET")
         
-        # Determine market status based on current time (proper market hours)
-        current_time_obj = current_time.time()
-        weekday = current_time.weekday()
-        market_open_time = pd.Timestamp("09:30:00").time()
-        market_close_time = pd.Timestamp("16:00:00").time()
+        # Determine market status using timezone-aware helper
+        market_status = "MARKET OPEN" if is_market_open(et_time) else "MARKET CLOSED"
         
-        is_trading_hours = (weekday < 5 and market_open_time <= current_time_obj <= market_close_time)
-        market_status = "MARKET OPEN" if is_trading_hours else "MARKET CLOSED"
-        
-        # Always show current time for LIVE feel
+        # Always show current Eastern Time for LIVE feel
         st.caption(f"📅 {formatted_time} ({market_status}) - NOW")
         
         # Enhanced data freshness display
