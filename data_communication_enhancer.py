@@ -134,7 +134,7 @@ class DataCommunicationEnhancer:
         }
         
         # Cache error state briefly to prevent repeated attempts
-        self._cache_data(cache_key, error_data, duration=5)  # 5 second cache for errors
+        self._cache_data(cache_key, error_data)  # Cache error state
         return error_data
         
         # If all fails, return minimal data structure
@@ -162,10 +162,10 @@ class DataCommunicationEnhancer:
             from real_live_options_scraper import real_live_scraper
             flow_data = real_live_scraper.get_live_options_chain(symbol)
             
-            if flow_data and 'call_volume' in flow_data and 'put_volume' in flow_data:
-                # Enhance with calculated fields
-                call_vol = flow_data.get('call_volume', 0)
-                put_vol = flow_data.get('put_volume', 0)
+            if flow_data and ('total_call_volume' in flow_data and 'total_put_volume' in flow_data):
+                # CRITICAL FIX: Use correct field names from real_live_options_scraper
+                call_vol = flow_data.get('total_call_volume', 0)
+                put_vol = flow_data.get('total_put_volume', 0)
                 total_vol = call_vol + put_vol
                 
                 enhanced_data = {
