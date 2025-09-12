@@ -18,7 +18,7 @@ except ImportError:
 
 class AlertManager:
     def __init__(self):
-        self.telegram_bot_token = os.getenv("TELEGRAM_BOT_TOKEN", "8157079885:AAEgFRkDFwhlO4NQpxZ731iX_jLojGc29KY")
+        self.telegram_bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
         self.alert_history = []
         self.alert_cooldown = {}  # Prevent spam alerts
         self.cooldown_period = 300  # 5 minutes in seconds
