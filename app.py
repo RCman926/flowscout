@@ -64,8 +64,12 @@ st.set_page_config(
 
 # This section will be rebuilt inside main() function
 
-# === UNIFIED DATA SYSTEM ===
-from dashboard_data_coordinator import data_coordinator
+# === OPTIMIZED DATA SYSTEM ===
+from optimized_data_enhancer import (
+    get_cached_market_data, get_cached_flow_data, get_cached_technical_data,
+    get_cached_gex_data, get_cached_news_data, start_optimized_systems,
+    get_optimization_dashboard_stats
+)
 
 # === SYMBOL DEFINITIONS ===
 symbols = ['AAPL', 'TSLA', 'NVDA', 'MSFT', 'GOOGL', 'AMZN', 'META', 'NFLX', 'AMD', 'SPY', 'QQQ', 'IWM', 'DIA', 'XLF']
@@ -81,12 +85,20 @@ def main():
         st.session_state.auto_refresh_enabled = True
         st.session_state.refresh_count = 0
     
-    # Auto-refresh every 8 seconds for professional trading speed
+    # OPTIMIZED: Sub-5s refresh for critical data with smart caching
     if st.session_state.auto_refresh_enabled:
-        refresh_count = st_autorefresh(interval=8000, key="trading_refresh")
+        # Start optimization systems on first run
+        if 'optimization_started' not in st.session_state:
+            success = start_optimized_systems()
+            st.session_state.optimization_started = success
+            if success:
+                st.success("🚀 Optimization engine started!")
+        
+        # Faster refresh for professional trading (5s for critical data)
+        refresh_count = st_autorefresh(interval=5000, key="trading_refresh")
         if refresh_count != st.session_state.refresh_count:
             st.session_state.refresh_count = refresh_count
-            # Cache clearing removed - rely on TTL caching for performance
+            # Smart cache handles TTL automatically
     
     # === SIDEBAR CONTROLS ===
     with st.sidebar:
@@ -108,8 +120,8 @@ def main():
         
         # Refresh status display
         if st.session_state.auto_refresh_enabled:
-            st.caption("🔄 Auto-refreshing every 8s")
-            st.caption(f"📊 Mode: PROFESSIONAL TRADING (FAST)")
+            st.caption("⚡ Smart refresh: 5s critical data")
+            st.caption(f"🚀 Mode: OPTIMIZED PROFESSIONAL")
         else:
             st.caption("⏸️ Auto-refresh: PAUSED")
             st.caption(f"📊 Mode: MANUAL ONLY")
@@ -129,9 +141,7 @@ def main():
     # Get selected symbol
     selected_symbol = st.session_state.get('selected_symbol', 'SPY')
     
-    # Get all data using CACHED communication system for performance
-    from data_communication_enhancer import get_cached_market_data, get_cached_flow_data, get_cached_technical_data, get_cached_news_data, get_cached_gex_data
-    
+    # OPTIMIZED: Get all data using OPTIMIZED SMART CACHING system for maximum performance
     market_data = get_cached_market_data(selected_symbol)
     
     # === CRITICAL FIX: Remove fake authentication override ===
@@ -161,8 +171,9 @@ def main():
                 market_data['data_integrity'] = False
         except:
             market_data['data_integrity'] = False
+    # OPTIMIZED: All data fetches use smart cache with sub-5s performance
     flow_data = get_cached_flow_data(selected_symbol)
-    tech_data = get_cached_technical_data(selected_symbol, market_data.get('price', 150.0), market_data.get('change_pct', 0.0))
+    tech_data = get_cached_technical_data(selected_symbol, market_data)
     gex_data = get_cached_gex_data(selected_symbol, market_data.get('price', 150.0))
     news_data = get_cached_news_data(selected_symbol)
     
@@ -232,10 +243,20 @@ def main():
     
     with refresh_cols[1]:
         # Enhanced refresh status with error handling diagnostics
+        # OPTIMIZED: Display smart refresh performance
         if st.session_state.get('auto_refresh_enabled', True):
-            st.caption("🔄 Auto-refresh: 8s ⚡ (PROFESSIONAL)")
+            st.caption("⚡ Smart refresh: 5s critical ⚡ (OPTIMIZED)")
+            
+            # Show optimization stats if available
+            if st.session_state.get('optimization_started', False):
+                try:
+                    opt_stats = get_optimization_dashboard_stats()
+                    cache_hit_rate = opt_stats['cache_performance']['hit_rate_percent']
+                    st.caption(f"🎯 Cache hit rate: {cache_hit_rate:.1f}%")
+                except:
+                    pass
         else:
-            st.caption("⏸️ Auto-refresh: PAUSED")
+            st.caption("⏸️ Smart refresh: PAUSED")
             
         # Data flow diagnostics for debugging
         flow_quality = flow_data.get('quality_score', 0) if flow_data else 0

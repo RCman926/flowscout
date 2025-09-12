@@ -13,6 +13,8 @@ import yfinance as yf
 import numpy as np
 import streamlit as st
 from real_data_authenticator import real_data_authenticator
+from optimized_cache_manager import cache_manager
+from differential_refresh_coordinator import refresh_coordinator, DataPriority
 
 class DataCommunicationEnhancer:
     """
@@ -21,13 +23,18 @@ class DataCommunicationEnhancer:
     """
     
     def __init__(self):
-        self.data_cache = {}
+        self.data_cache = {}  # Legacy cache for backward compatibility
         self.lkg_cache = {}  # Last-Known-Good cache for reliability
         self.last_successful_fetch = {}
         self.error_counts = {}
         self.max_errors = 3
         self.cache_duration = 12  # Extended 12 seconds cache for reliability
         self.lkg_cache_duration = 300  # LKG data valid for 5 minutes
+        
+        # Initialize optimized systems - DISABLED due to asyncio incompatibility
+        self.use_optimized_cache = False
+        self.batch_requests = {}
+        self.request_counts = {'total': 0, 'cache_hits': 0, 'api_calls': 0}
         
         # Data source priorities (higher = more reliable)
         self.source_priorities = {
@@ -39,14 +46,25 @@ class DataCommunicationEnhancer:
         }
     
     def get_reliable_market_data(self, symbol: str) -> Dict:
-        """Get market data with REAL DATA AUTHENTICATION - rejects synthetic data"""
-        cache_key = f"market_data_{symbol}"
+        """Get market data with OPTIMIZED SMART CACHING and authentication"""
+        self.request_counts['total'] += 1
         
-        # Check cache first - FIXED: Don't re-authenticate to prevent cycles
+        # OPTIMIZED: Try smart cache first for maximum performance
+        if self.use_optimized_cache:
+            cached_data = cache_manager.get(f"{symbol}_market_data", tier='HOT')
+            if cached_data is not None:
+                self.request_counts['cache_hits'] += 1
+                return cached_data
+        
+        # Legacy cache check for backward compatibility  
+        cache_key = f"market_data_{symbol}"
         if self._is_cache_valid(cache_key):
             cached_data = self.data_cache[cache_key]
             # STABILITY FIX: Only re-authenticate if data was previously rejected
             if cached_data.get('authenticated', False) and cached_data.get('quality_score', 0) > 70:
+                # Promote to smart cache for future access
+                if self.use_optimized_cache:
+                    cache_manager.set(f"{symbol}_market_data", cached_data, 'HOT')
                 return cached_data
             elif not cached_data.get('authenticated', False):
                 # Only re-authenticate unverified data
@@ -134,7 +152,13 @@ class DataCommunicationEnhancer:
                         lkg_key = f"lkg_{symbol}"
                         self.lkg_cache[lkg_key] = data.copy()
                         logging.info(f"✅ CACHED LKG DATA for {symbol}: Q:{data['quality_score']}%")
+                        
+                        # OPTIMIZED: Store in smart cache system for better performance
+                        if self.use_optimized_cache:
+                            cache_manager.set(f"{symbol}_market_data", data, 'HOT')
+                        
                         self._cache_data(cache_key, data)
+                        self.request_counts['api_calls'] += 1
                         return data
                 else:
                     errors.append(f"Data authentication failed: {auth_result.rejection_reason}")
