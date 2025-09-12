@@ -162,8 +162,18 @@ def main():
         tech_data = {'rsi': 50, 'macd': 0, 'bb_upper': 650, 'bb_lower': 620, 'sma_20': 635}
     
     # === HEADER ===
-    market_open = datetime.now().weekday() < 5 and 9 <= datetime.now().hour <= 16
-    status_text = "LIVE TRADING" if market_open else "MARKET CLOSED"
+    # Use proper market hours: 9:30 AM - 4:00 PM EST on weekdays
+    now = datetime.now()
+    current_time = now.time()
+    weekday = now.weekday()  # 0=Monday, 6=Sunday
+    
+    # Market hours (9:30 AM - 4:00 PM EST)
+    market_open_time = pd.Timestamp("09:30:00").time()
+    market_close_time = pd.Timestamp("16:00:00").time()
+    
+    # Check if market is actually open
+    market_open = (weekday < 5 and market_open_time <= current_time <= market_close_time)
+    status_text = "MARKET OPEN" if market_open else "MARKET CLOSED"
     
     header_cols = st.columns([3, 1])
     with header_cols[0]:
@@ -197,9 +207,14 @@ def main():
         current_time = datetime.now()
         formatted_time = current_time.strftime("%H:%M:%S")
         
-        # Determine market status based on current time
-        is_trading_hours = current_time.weekday() < 5 and 9 <= current_time.hour <= 16
-        market_status = "LIVE TRADING" if is_trading_hours else "AFTER HOURS"
+        # Determine market status based on current time (proper market hours)
+        current_time_obj = current_time.time()
+        weekday = current_time.weekday()
+        market_open_time = pd.Timestamp("09:30:00").time()
+        market_close_time = pd.Timestamp("16:00:00").time()
+        
+        is_trading_hours = (weekday < 5 and market_open_time <= current_time_obj <= market_close_time)
+        market_status = "MARKET OPEN" if is_trading_hours else "MARKET CLOSED"
         
         # Always show current time for LIVE feel
         st.caption(f"📅 {formatted_time} ({market_status}) - NOW")
