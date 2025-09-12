@@ -138,27 +138,25 @@ def main():
     # Instead, attempt fresh data fetch and mark data integrity properly
     if 'data_source' not in market_data or market_data['data_source'] == 'unknown':
         try:
-            # Attempt immediate fresh fetch for SPY
-            if selected_symbol in ['SPY', 'QQQ', 'IWM', 'DIA']:
-                import yfinance as yf
-                ticker = yf.Ticker(selected_symbol)
-                live_data = ticker.history(period="1d", interval="1m")
-                if not live_data.empty:
-                    current_price = float(live_data['Close'].iloc[-1])
-                    prev_close = float(live_data['Close'].iloc[0])
-                    change_pct = ((current_price - prev_close) / prev_close) * 100
-                    
-                    market_data.update({
-                        'price': current_price,
-                        'change_pct': change_pct,
-                        'data_source': 'yahoo_finance_authenticated',
-                        'data_freshness': 'LIVE_FRESH_FETCH',
-                        'data_integrity': True,
-                        'quality_score': 95,
-                        'timestamp': datetime.now()
-                    })
-                else:
-                    market_data['data_integrity'] = False
+            # Attempt emergency fresh fetch for ALL symbols (not just ETFs)
+            # CRITICAL FIX: Extend to all symbols to prevent Q:0% drops
+            import yfinance as yf
+            ticker = yf.Ticker(selected_symbol)
+            live_data = ticker.history(period="1d", interval="1m")
+            if not live_data.empty:
+                current_price = float(live_data['Close'].iloc[-1])
+                prev_close = float(live_data['Close'].iloc[0])
+                change_pct = ((current_price - prev_close) / prev_close) * 100
+                
+                market_data.update({
+                    'price': current_price,
+                    'change_pct': change_pct,
+                    'data_source': 'yahoo_finance_authenticated',
+                    'data_freshness': 'LIVE_EMERGENCY_FETCH',
+                    'data_integrity': True,
+                    'quality_score': 90,  # High quality for emergency fetch
+                    'timestamp': datetime.now()
+                })
             else:
                 market_data['data_integrity'] = False
         except:
@@ -173,8 +171,8 @@ def main():
         market_data = {
             'symbol': selected_symbol, 'price': 587.45, 'change': -2.35, 
             'change_pct': -0.4, 'volume': 1000000, 'timestamp': datetime.now(),
-            'market_status': 'CLOSED', 'data_freshness': 'LIVE_API',
-            'data_source': 'yahoo_finance_authenticated', 'quality_score': 85
+            'market_status': 'CLOSED', 'data_freshness': 'FALLBACK_DEFAULT',
+            'data_source': 'system_fallback', 'quality_score': 50  # Honest fallback quality
         }
     
     if not flow_data:
