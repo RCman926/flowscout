@@ -1,6 +1,6 @@
 """
-Professional Options Trading Platform - Fixed Version
-Real-time market data with unified data coordinator
+Professional Options Trading Platform - Enhanced Accuracy Version
+Real-time market data with institutional-grade accuracy improvements
 """
 
 import streamlit as st
@@ -16,6 +16,17 @@ import time
 import random
 import warnings
 warnings.filterwarnings('ignore')
+
+# === ENHANCED ACCURACY IMPORTS ===
+try:
+    from enhanced_cross_validation_engine import enhanced_cross_validator
+    from real_time_quality_monitor import real_time_quality_monitor
+    from enhanced_options_flow_calculator import enhanced_options_flow_calculator
+    from data_quality_visualization_system import data_quality_visualizer
+    ACCURACY_MODULES_LOADED = True
+except ImportError as e:
+    st.warning(f"Accuracy modules not loaded: {e}")
+    ACCURACY_MODULES_LOADED = False
 
 # === TIMEZONE-AWARE MARKET HOURS HELPERS ===
 def is_market_open(dt=None, tz='America/New_York'):
@@ -510,6 +521,28 @@ def main():
                     st.session_state.selected_symbol = symbol
                     st.rerun()
     
+    # === ENHANCED ACCURACY DASHBOARD ===
+    if ACCURACY_MODULES_LOADED:
+        try:
+            # Create enhanced accuracy dashboard with fetch timing
+            fetch_start_time = time.time()
+            
+            # Run enhanced accuracy analysis with SYNCHRONOUS methods only
+            quality_summary = data_quality_visualizer.render_quality_dashboard(
+                selected_symbol, market_data, flow_data, fetch_start_time
+            )
+            
+            # Log accuracy insights
+            if quality_summary and 'combined_confidence' in quality_summary:
+                confidence = quality_summary['combined_confidence']
+                print(f"🎯 ACCURACY ANALYSIS {selected_symbol}: Combined confidence {confidence}%")
+                
+        except Exception as e:
+            st.error(f"⚠️ Accuracy Dashboard Error: {str(e)}")
+            print(f"Accuracy dashboard error: {e}")
+    else:
+        st.info("💡 Enhanced accuracy modules not loaded - using standard analysis")
+
     # === MAIN DASHBOARD ===
     st.markdown("---")
     st.markdown("#### 📊 Live Market Data")
