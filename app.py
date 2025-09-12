@@ -1025,40 +1025,8 @@ def main():
         st.metric("Time Frame", time_horizon)
         st.caption("For tracking accuracy")
     
-    # === LIVE OPTIONS BATTLE (1-SECOND UPDATES) ===
-    st.markdown("#### ⚡ Live Options Battle")
-    
-    # Use the same data as above but with 1-second refresh simulation
-    import random
-    current_timestamp = datetime.now().strftime("%H:%M:%S")
-    
-    # Simulate 1-second updates with small variations
-    call_update = random.randint(-200, 300)
-    put_update = random.randint(-150, 250)
-    
-    battle_cols = st.columns(3)
-    
-    with battle_cols[0]:
-        updated_calls = call_volume + call_update
-        st.metric("🟢 CALLS LIVE", f"{updated_calls:,}", f"+{call_update}")
-        st.caption(f"Updated: {current_timestamp}")
-    
-    with battle_cols[1]:
-        updated_puts = put_volume + put_update
-        st.metric("🔴 PUTS LIVE", f"{updated_puts:,}", f"+{put_update}")
-        st.caption(f"Updated: {current_timestamp}")
-    
-    with battle_cols[2]:
-        live_net_flow = updated_calls - updated_puts
-        if live_net_flow > 0:
-            st.success("📈 CALLS WINNING")
-            st.caption(f"Lead: +{live_net_flow:,}")
-        else:
-            st.error("📉 PUTS WINNING") 
-            st.caption(f"Lead: {live_net_flow:,}")
-        # Remove undefined live_predictions reference
-    
-    # Removed live alerts section - flow_alerts not defined
+    # === DUPLICATE SECTION REMOVED ===
+    # User prefers main visual dashboard - duplicate "Live Options Battle" removed
     
     # === LIVE OPTIONS CHAIN ===
     st.markdown("#### 📋 Live Options by Volume - Constantly Updating")
