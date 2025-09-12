@@ -455,5 +455,10 @@ class LiveNewsEngine:
             return {'overall_sentiment': 'NEUTRAL', 'sentiment_score': 0.0, 'symbols_analyzed': 0}
 
 
+    def get_market_sentiment(self, symbol: str) -> Dict:
+        """Wrapper method for backward compatibility"""
+        return asyncio.run(self.get_comprehensive_news_sentiment(symbol))
+
+
 # Global news engine instance
 live_news_engine = LiveNewsEngine()

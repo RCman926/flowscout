@@ -482,10 +482,10 @@ def main():
         call_dominance = (battle_call_volume / max(battle_total_volume, 1)) * 100
         put_dominance = 100 - call_dominance
         
-        if call_dominance > 60:
+        if call_dominance > 52:
             winner = "🟢 CALLS WINNING"
             color = "#00ff00"
-        elif put_dominance > 60:
+        elif put_dominance > 52:
             winner = "🔴 PUTS WINNING"
             color = "#ff0000"
         else:
