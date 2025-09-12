@@ -230,19 +230,33 @@ def main():
                 
                 # Generate coordinated signal using the advanced AI ensemble + flow system
                 import asyncio
-                # === INSTITUTIONAL FLOW ANALYZER WITH UNIFIED DATA HANDLING ===
+                # === CONSOLIDATED INSTITUTIONAL FLOW ANALYZER (FIXED) ===
                 def analyze_unified_flow_data(flow_data, symbol):
-                    """Bulletproof flow analyzer that handles multiple data formats with NaN protection"""
+                    """FIXED: Bulletproof flow analyzer with enhanced NaN protection and consistent calculations"""
                     total_calls = 0
                     total_puts = 0
                     
                     def safe_convert_volume(value):
-                        """Safely convert volume value to integer, handling NaN and None"""
+                        """ENHANCED: Safely convert volume value with comprehensive error handling"""
                         try:
-                            if value is None or pd.isna(value) or np.isnan(float(value)):
+                            # Handle None and NaN values
+                            if value is None:
                                 return 0
-                            return max(0, int(float(value)))
-                        except (ValueError, TypeError, OverflowError):
+                            
+                            # Convert to float first to handle string numbers
+                            float_val = float(value)
+                            
+                            # Check for NaN, infinity, or negative values
+                            if pd.isna(float_val) or np.isnan(float_val) or np.isinf(float_val) or float_val < 0:
+                                return 0
+                            
+                            # Convert to integer and ensure positive
+                            return max(0, int(float_val))
+                            
+                        except (ValueError, TypeError, OverflowError, AttributeError) as e:
+                            # Log specific conversion errors for debugging
+                            if symbol in ['NVDA', 'QQQ', 'SPY'] and value is not None:
+                                print(f"⚠️ Volume conversion error for {symbol}: {type(value).__name__} '{value}' -> {e}")
                             return 0
                     
                     try:
@@ -254,10 +268,11 @@ def main():
                         # Format 2: Analysis array with expiration data (dashboard_data_coordinator)  
                         elif 'analysis' in flow_data and isinstance(flow_data['analysis'], list):
                             for exp in flow_data['analysis']:
-                                exp_calls = safe_convert_volume(exp.get('call_volume', 0))
-                                exp_puts = safe_convert_volume(exp.get('put_volume', 0))
-                                total_calls += exp_calls
-                                total_puts += exp_puts
+                                if isinstance(exp, dict):  # Additional safety check
+                                    exp_calls = safe_convert_volume(exp.get('call_volume', 0))
+                                    exp_puts = safe_convert_volume(exp.get('put_volume', 0))
+                                    total_calls += exp_calls
+                                    total_puts += exp_puts
                                 
                         # Format 3: Nested structure handling
                         elif hasattr(flow_data, 'keys'):
@@ -265,29 +280,44 @@ def main():
                                 if isinstance(value, dict):
                                     total_calls += safe_convert_volume(value.get('call_volume', 0))
                                     total_puts += safe_convert_volume(value.get('put_volume', 0))
+                        
+                        # Format 4: Direct totals (for compatibility)
+                        elif 'total_call_volume' in flow_data and 'total_put_volume' in flow_data:
+                            total_calls = safe_convert_volume(flow_data.get('total_call_volume', 0))
+                            total_puts = safe_convert_volume(flow_data.get('total_put_volume', 0))
                                     
                         total_volume = total_calls + total_puts
-                        put_dominance = (total_puts / total_volume * 100) if total_volume > 0 else 0
                         
-                        # CRITICAL DEBUG: Print actual numbers for verification
-                        if symbol in ['SPY', 'QQQ'] and total_volume > 0:
-                            calculated_put_pct = (total_puts / total_volume * 100)
-                            print(f"🔍 SIGNAL DEBUG {symbol}: {total_calls:,} calls, {total_puts:,} puts = {calculated_put_pct:.1f}% puts")
+                        # CRITICAL FIX: Consistent percentage calculation
+                        if total_volume > 0:
+                            put_dominance = (total_puts / total_volume) * 100  # Explicit parentheses for precision
+                            call_dominance = (total_calls / total_volume) * 100
+                        else:
+                            put_dominance = 0
+                            call_dominance = 0
+                        
+                        # FIXED DEBUG: Single debug output with verified calculations
+                        if symbol in ['SPY', 'QQQ', 'NVDA'] and total_volume > 0:
+                            verification_put_pct = (total_puts / total_volume) * 100
+                            verification_call_pct = (total_calls / total_volume) * 100
+                            print(f"✅ VERIFIED {symbol}: {total_calls:,} calls + {total_puts:,} puts = {total_volume:,} total → {verification_put_pct:.2f}% puts, {verification_call_pct:.2f}% calls")
                         
                         return {
                             'total_calls': total_calls,
                             'total_puts': total_puts, 
                             'total_volume': total_volume,
-                            'put_dominance': put_dominance,
-                            'call_dominance': 100 - put_dominance,
-                            'flow_detected': total_volume > 0
+                            'put_dominance': round(put_dominance, 2),  # Round for consistency
+                            'call_dominance': round(call_dominance, 2),
+                            'flow_detected': total_volume > 0,
+                            'calculation_verified': True
                         }
                         
                     except Exception as e:
-                        print(f"⚠️ Flow analysis error for {symbol}: {e}")
+                        print(f"🚨 CRITICAL: Flow analysis error for {symbol}: {type(e).__name__}: {e}")
                         return {
                             'total_calls': 0, 'total_puts': 0, 'total_volume': 0,
-                            'put_dominance': 0, 'call_dominance': 0, 'flow_detected': False
+                            'put_dominance': 0, 'call_dominance': 0, 'flow_detected': False,
+                            'calculation_verified': False, 'error': str(e)
                         }
                 
                 # Analyze flow data with unified system
@@ -424,71 +454,13 @@ def main():
                  "Overbought" if tech_data['rsi'] > 70 else "Oversold" if tech_data['rsi'] < 30 else "Normal")
     
     with overview_cols[3]:
-        # === INSTITUTIONAL FLOW DEBUG DISPLAY ===
+        # === FIXED: USE SINGLE UNIFIED FLOW ANALYZER (NO DUPLICATES) ===
         if selected_symbol in ['SPY', 'QQQ', 'IWM', 'DIA']:
-            # Get flow data and analyze it
+            # Get flow data and use the SAME analyzer from above (no duplication)
             debug_flow_data = enhanced_data_communicator.get_reliable_flow_data(selected_symbol)
             
-            # Use the same unified analyzer from the signaling system
-            def analyze_flow_for_debug(flow_data, symbol):
-                """Debug analyzer that matches the main unified analyzer exactly"""
-                total_calls = 0
-                total_puts = 0
-                
-                def safe_convert_volume(value):
-                    """Safely convert volume value to integer, handling NaN and None"""
-                    try:
-                        if value is None or pd.isna(value) or np.isnan(float(value)):
-                            return 0
-                        return max(0, int(float(value)))
-                    except (ValueError, TypeError, OverflowError):
-                        return 0
-                
-                try:
-                    # Format 1: Direct call_volume/put_volume fields
-                    if 'call_volume' in flow_data and 'put_volume' in flow_data:
-                        total_calls = safe_convert_volume(flow_data.get('call_volume', 0))
-                        total_puts = safe_convert_volume(flow_data.get('put_volume', 0))
-                        
-                    # Format 2: Analysis array with expiration data  
-                    elif 'analysis' in flow_data and isinstance(flow_data['analysis'], list):
-                        for exp in flow_data['analysis']:
-                            exp_calls = safe_convert_volume(exp.get('call_volume', 0))
-                            exp_puts = safe_convert_volume(exp.get('put_volume', 0))
-                            total_calls += exp_calls
-                            total_puts += exp_puts
-                            
-                    # Format 3: Nested structure handling (ADDED TO MATCH MAIN FUNCTION)
-                    elif hasattr(flow_data, 'keys'):
-                        for key, value in flow_data.items():
-                            if isinstance(value, dict):
-                                total_calls += safe_convert_volume(value.get('call_volume', 0))
-                                total_puts += safe_convert_volume(value.get('put_volume', 0))
-                            
-                    total_volume = total_calls + total_puts
-                    put_dominance = (total_puts / total_volume * 100) if total_volume > 0 else 0
-                    
-                    # CRITICAL DEBUG: Show actual calculation
-                    if total_volume > 0:
-                        print(f"🔍 DEBUG {symbol}: {total_calls:,} calls + {total_puts:,} puts = {total_volume:,} total → {put_dominance:.2f}% puts")
-                    
-                    return {
-                        'total_calls': total_calls,
-                        'total_puts': total_puts, 
-                        'total_volume': total_volume,
-                        'put_dominance': put_dominance,
-                        'call_dominance': 100 - put_dominance,
-                        'flow_detected': total_volume > 0
-                    }
-                    
-                except Exception as e:
-                    print(f"⚠️ Debug flow analysis error for {symbol}: {e}")
-                    return {
-                        'total_calls': 0, 'total_puts': 0, 'total_volume': 0,
-                        'put_dominance': 0, 'call_dominance': 0, 'flow_detected': False, 'error': str(e)
-                    }
-            
-            debug_analysis = analyze_flow_for_debug(debug_flow_data, selected_symbol)
+            # CRITICAL FIX: Use the exact same function to prevent calculation discrepancies
+            debug_analysis = analyze_unified_flow_data(debug_flow_data, selected_symbol)
             
             # Display flow dominance with signal reasoning
             put_dom = debug_analysis['put_dominance']

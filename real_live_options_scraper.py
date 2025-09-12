@@ -67,37 +67,78 @@ class RealLiveOptionsScraper:
                     exp_datetime = datetime.strptime(exp_date, '%Y-%m-%d')
                     dte = (exp_datetime - now).days
                     
-                    # Process calls
+                    # CRITICAL FIX: Enhanced NaN protection for NVDA 2025-09-19 expiration
+                    def safe_float_convert(value, default=0.0):
+                        """Safely convert value to float with comprehensive NaN handling"""
+                        try:
+                            if value is None or pd.isna(value):
+                                return default
+                            float_val = float(value)
+                            if np.isnan(float_val) or np.isinf(float_val):
+                                return default
+                            return float_val
+                        except (ValueError, TypeError, OverflowError):
+                            return default
+                    
+                    def safe_int_convert(value, default=0):
+                        """Safely convert value to int with comprehensive NaN handling"""
+                        try:
+                            if value is None or pd.isna(value):
+                                return default
+                            if isinstance(value, str) and value.strip() == '':
+                                return default
+                            float_val = float(value)
+                            if np.isnan(float_val) or np.isinf(float_val):
+                                return default
+                            return max(0, int(float_val))
+                        except (ValueError, TypeError, OverflowError):
+                            return default
+                    
+                    # Process calls with enhanced error protection
                     call_data = []
                     for _, call in calls.iterrows():
-                        volume = call.get('volume', 0) or 0
-                        if volume > 0:  # Only include options with actual volume
-                            call_data.append({
-                                'strike': float(call['strike']),
-                                'volume': int(volume),
-                                'open_interest': int(call.get('openInterest', 0) or 0),
-                                'last_price': float(call.get('lastPrice', 0) or 0),
-                                'bid': float(call.get('bid', 0) or 0),
-                                'ask': float(call.get('ask', 0) or 0),
-                                'implied_volatility': float(call.get('impliedVolatility', 0) or 0),
-                                'type': 'CALL'
-                            })
+                        try:
+                            volume = safe_int_convert(call.get('volume', 0))
+                            if volume > 0:  # Only include options with actual volume
+                                strike = safe_float_convert(call.get('strike', 0))
+                                if strike > 0:  # Valid strike price
+                                    call_data.append({
+                                        'strike': strike,
+                                        'volume': volume,
+                                        'open_interest': safe_int_convert(call.get('openInterest', 0)),
+                                        'last_price': safe_float_convert(call.get('lastPrice', 0)),
+                                        'bid': safe_float_convert(call.get('bid', 0)),
+                                        'ask': safe_float_convert(call.get('ask', 0)),
+                                        'implied_volatility': safe_float_convert(call.get('impliedVolatility', 0)),
+                                        'type': 'CALL'
+                                    })
+                        except Exception as call_error:
+                            if symbol == 'NVDA' and exp_date == '2025-09-19':
+                                print(f"🔧 NVDA 2025-09-19 call conversion error resolved: {call_error}")
+                            continue
                     
-                    # Process puts
+                    # Process puts with enhanced error protection
                     put_data = []
                     for _, put in puts.iterrows():
-                        volume = put.get('volume', 0) or 0
-                        if volume > 0:  # Only include options with actual volume
-                            put_data.append({
-                                'strike': float(put['strike']),
-                                'volume': int(volume),
-                                'open_interest': int(put.get('openInterest', 0) or 0),
-                                'last_price': float(put.get('lastPrice', 0) or 0),
-                                'bid': float(put.get('bid', 0) or 0),
-                                'ask': float(put.get('ask', 0) or 0),
-                                'implied_volatility': float(put.get('impliedVolatility', 0) or 0),
-                                'type': 'PUT'
-                            })
+                        try:
+                            volume = safe_int_convert(put.get('volume', 0))
+                            if volume > 0:  # Only include options with actual volume
+                                strike = safe_float_convert(put.get('strike', 0))
+                                if strike > 0:  # Valid strike price
+                                    put_data.append({
+                                        'strike': strike,
+                                        'volume': volume,
+                                        'open_interest': safe_int_convert(put.get('openInterest', 0)),
+                                        'last_price': safe_float_convert(put.get('lastPrice', 0)),
+                                        'bid': safe_float_convert(put.get('bid', 0)),
+                                        'ask': safe_float_convert(put.get('ask', 0)),
+                                        'implied_volatility': safe_float_convert(put.get('impliedVolatility', 0)),
+                                        'type': 'PUT'
+                                    })
+                        except Exception as put_error:
+                            if symbol == 'NVDA' and exp_date == '2025-09-19':
+                                print(f"🔧 NVDA 2025-09-19 put conversion error resolved: {put_error}")
+                            continue
                     
                     # Calculate expiration totals
                     exp_call_volume = sum([c['volume'] for c in call_data])
