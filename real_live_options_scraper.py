@@ -21,7 +21,7 @@ class RealLiveOptionsScraper:
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
         })
         self.cache = {}
-        self.cache_duration = 30  # 30 seconds cache
+        self.cache_duration = 2  # 2 seconds cache for ultra-fast trading
         
     def get_live_options_chain(self, symbol):
         """Get real live options chain data from Yahoo Finance"""

@@ -24,7 +24,7 @@ class DataCommunicationEnhancer:
         self.last_successful_fetch = {}
         self.error_counts = {}
         self.max_errors = 3
-        self.cache_duration = 15  # 15 seconds cache
+        self.cache_duration = 3  # 3 seconds cache for ultra-fast trading
         
         # Data source priorities (higher = more reliable)
         self.source_priorities = {

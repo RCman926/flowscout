@@ -12,7 +12,7 @@ import threading
 class AutoRefreshSystem:
     """Manages automatic dashboard refreshes and data updates"""
     
-    def __init__(self, refresh_interval: int = 15):
+    def __init__(self, refresh_interval: int = 5):
         self.refresh_interval = refresh_interval
         self.last_refresh = time.time()
         self.is_active = True
@@ -202,4 +202,4 @@ class AutoRefreshSystem:
                 st.caption("Reduced frequency")
 
 # Global auto-refresh system
-auto_refresh_system = AutoRefreshSystem(refresh_interval=15)
+auto_refresh_system = AutoRefreshSystem(refresh_interval=5)
