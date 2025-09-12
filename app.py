@@ -37,61 +37,10 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# PROFESSIONAL AUTO-REFRESH SYSTEM (5-SECOND INTERVALS)
-import time
+# === PROFESSIONAL AUTO-REFRESH SYSTEM ===
+# Robust auto-refresh using streamlit-autorefresh for live trading updates
 
-# Initialize session state for ultra-fast refresh
-if 'ultra_refresh_start' not in st.session_state:
-    st.session_state.ultra_refresh_start = time.time()
-    st.session_state.ultra_refresh_count = 0
-
-# CRITICAL: 5-second auto-refresh for professional trading feel
-current_time = time.time()
-if 'last_ultra_refresh' not in st.session_state:
-    st.session_state.last_ultra_refresh = current_time
-
-# Check if 5 seconds have passed (professional trading speed)
-time_since_last = current_time - st.session_state.last_ultra_refresh
-if time_since_last >= 5:  # 5 seconds instead of 15
-    st.session_state.last_ultra_refresh = current_time
-    st.session_state.ultra_refresh_count += 1
-    # Clear any data caches to force fresh data
-    if hasattr(st, 'cache_data'):
-        st.cache_data.clear()
-    st.rerun()
-
-# Professional trading dashboard controls
-with st.sidebar:
-    st.markdown("### ⚡ LIVE TRADING FEED")
-    
-    # Ultra-fast refresh button
-    if st.button("🚀 INSTANT REFRESH", type="primary"):
-        st.session_state.last_ultra_refresh = time.time()
-        st.session_state.ultra_refresh_count += 1
-        # Force cache clear
-        if hasattr(st, 'cache_data'):
-            st.cache_data.clear()
-        st.rerun()
-    
-    # Live refresh status
-    time_since_refresh = int(time_since_last)
-    next_refresh = 5 - time_since_refresh
-    
-    if next_refresh > 0:
-        st.caption(f"⏱️ Next refresh: {next_refresh}s")
-    else:
-        st.caption("🔄 Refreshing NOW...")
-    
-    st.caption(f"📊 Updates: Every 5s (Professional)")
-    st.caption(f"🔄 Total: {st.session_state.ultra_refresh_count} refreshes")
-    
-    # Live data indicators
-    st.markdown("### 📡 REAL-TIME STATUS")
-    st.success("🟢 Market Data: ULTRA-FAST")
-    st.success("🟢 Options Flow: STREAMING") 
-    st.success("🟢 News Feed: LIVE")
-    st.success("🟢 Alerts: INSTANT")
-    st.info("⚡ Mode: PROFESSIONAL TRADING")
+# This section will be rebuilt inside main() function
 
 # === UNIFIED DATA SYSTEM ===
 from dashboard_data_coordinator import data_coordinator
@@ -102,18 +51,59 @@ symbols = ['AAPL', 'TSLA', 'NVDA', 'MSFT', 'GOOGL', 'AMZN', 'META', 'NFLX', 'AMD
 # === MAIN APP LOGIC ===
 def main():
     from datetime import datetime, timedelta
-    from auto_refresh_system import auto_refresh_system
+    from streamlit_autorefresh import st_autorefresh
     
-    # Initialize auto-refresh system
-    should_refresh = auto_refresh_system.initialize_refresh_system()
+    # === PROFESSIONAL AUTO-REFRESH SYSTEM ===
+    # Initialize refresh settings
+    if 'auto_refresh_enabled' not in st.session_state:
+        st.session_state.auto_refresh_enabled = True
+        st.session_state.refresh_count = 0
     
-    if should_refresh:
-        st.rerun()
+    # Auto-refresh every 7 seconds (professional trading speed)
+    if st.session_state.auto_refresh_enabled:
+        refresh_count = st_autorefresh(interval=7000, key="trading_refresh")
+        if refresh_count != st.session_state.refresh_count:
+            st.session_state.refresh_count = refresh_count
+            # Clear cache to ensure fresh data
+            if hasattr(st, 'cache_data'):
+                st.cache_data.clear()
     
-    # Add refresh controls and indicators
-    auto_refresh_system.add_refresh_controls()
-    auto_refresh_system.add_live_indicators()
-    auto_refresh_system.add_performance_metrics()
+    # === SIDEBAR CONTROLS ===
+    with st.sidebar:
+        st.markdown("### ⚡ LIVE TRADING FEED")
+        
+        # Manual refresh button
+        if st.button("🚀 INSTANT REFRESH", type="primary"):
+            st.session_state.refresh_count += 1
+            if hasattr(st, 'cache_data'):
+                st.cache_data.clear()
+            st.rerun()
+        
+        # Auto-refresh toggle
+        auto_enabled = st.toggle("Auto-Refresh", value=st.session_state.auto_refresh_enabled)
+        if auto_enabled != st.session_state.auto_refresh_enabled:
+            st.session_state.auto_refresh_enabled = auto_enabled
+            st.rerun()
+        
+        # Refresh status display
+        if st.session_state.auto_refresh_enabled:
+            st.caption("🔄 Auto-refreshing every 7s")
+            st.caption(f"📊 Mode: LIVE TRADING")
+        else:
+            st.caption("⏸️ Auto-refresh: PAUSED")
+            st.caption(f"📊 Mode: MANUAL ONLY")
+        
+        st.caption(f"🔄 Total refreshes: {st.session_state.refresh_count}")
+        
+        # Status indicators
+        st.markdown("### 📡 REAL-TIME STATUS")
+        if st.session_state.auto_refresh_enabled:
+            st.success("🟢 Auto-Refresh: ACTIVE")
+        else:
+            st.warning("🟡 Auto-Refresh: PAUSED")
+        st.success("🟢 Market Data: LIVE")
+        st.success("🟢 Options Flow: STREAMING")
+        st.info("⚡ Mode: PROFESSIONAL TRADING")
     
     # Get selected symbol
     selected_symbol = st.session_state.get('selected_symbol', 'SPY')
@@ -214,7 +204,10 @@ def main():
             st.caption(f"Last Update: {datetime.now().strftime('%H:%M:%S')}")
     
     with refresh_cols[1]:
-        st.caption("Auto-refresh: 15s")
+        if st.session_state.get('auto_refresh_enabled', True):
+            st.caption("Auto-refresh: 7s ⚡")
+        else:
+            st.caption("Auto-refresh: PAUSED")
     
     # === SYMBOL SELECTOR ===
     st.markdown("---")
