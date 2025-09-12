@@ -232,31 +232,47 @@ def main():
                 import asyncio
                 # === INSTITUTIONAL FLOW ANALYZER WITH UNIFIED DATA HANDLING ===
                 def analyze_unified_flow_data(flow_data, symbol):
-                    """Bulletproof flow analyzer that handles multiple data formats"""
+                    """Bulletproof flow analyzer that handles multiple data formats with NaN protection"""
                     total_calls = 0
                     total_puts = 0
+                    
+                    def safe_convert_volume(value):
+                        """Safely convert volume value to integer, handling NaN and None"""
+                        try:
+                            if value is None or pd.isna(value) or np.isnan(float(value)):
+                                return 0
+                            return max(0, int(float(value)))
+                        except (ValueError, TypeError, OverflowError):
+                            return 0
                     
                     try:
                         # Format 1: Direct call_volume/put_volume fields (data_communication_enhancer)
                         if 'call_volume' in flow_data and 'put_volume' in flow_data:
-                            total_calls = flow_data.get('call_volume', 0)
-                            total_puts = flow_data.get('put_volume', 0)
+                            total_calls = safe_convert_volume(flow_data.get('call_volume', 0))
+                            total_puts = safe_convert_volume(flow_data.get('put_volume', 0))
                             
                         # Format 2: Analysis array with expiration data (dashboard_data_coordinator)  
                         elif 'analysis' in flow_data and isinstance(flow_data['analysis'], list):
                             for exp in flow_data['analysis']:
-                                total_calls += exp.get('call_volume', 0)
-                                total_puts += exp.get('put_volume', 0)
+                                exp_calls = safe_convert_volume(exp.get('call_volume', 0))
+                                exp_puts = safe_convert_volume(exp.get('put_volume', 0))
+                                total_calls += exp_calls
+                                total_puts += exp_puts
                                 
                         # Format 3: Nested structure handling
                         elif hasattr(flow_data, 'keys'):
                             for key, value in flow_data.items():
                                 if isinstance(value, dict):
-                                    total_calls += value.get('call_volume', 0)
-                                    total_puts += value.get('put_volume', 0)
+                                    total_calls += safe_convert_volume(value.get('call_volume', 0))
+                                    total_puts += safe_convert_volume(value.get('put_volume', 0))
                                     
                         total_volume = total_calls + total_puts
                         put_dominance = (total_puts / total_volume * 100) if total_volume > 0 else 0
+                        
+                        # CRITICAL DEBUG: Print actual numbers for verification
+                        if symbol in ['SPY', 'QQQ'] and total_volume > 0:
+                            calculated_put_pct = (total_puts / total_volume * 100)
+                            print(f"🔍 SIGNAL DEBUG {symbol}: {total_calls:,} calls, {total_puts:,} puts = {calculated_put_pct:.1f}% puts")
                         
                         return {
                             'total_calls': total_calls,
@@ -415,36 +431,61 @@ def main():
             
             # Use the same unified analyzer from the signaling system
             def analyze_flow_for_debug(flow_data, symbol):
+                """Debug analyzer that matches the main unified analyzer exactly"""
                 total_calls = 0
                 total_puts = 0
+                
+                def safe_convert_volume(value):
+                    """Safely convert volume value to integer, handling NaN and None"""
+                    try:
+                        if value is None or pd.isna(value) or np.isnan(float(value)):
+                            return 0
+                        return max(0, int(float(value)))
+                    except (ValueError, TypeError, OverflowError):
+                        return 0
                 
                 try:
                     # Format 1: Direct call_volume/put_volume fields
                     if 'call_volume' in flow_data and 'put_volume' in flow_data:
-                        total_calls = flow_data.get('call_volume', 0)
-                        total_puts = flow_data.get('put_volume', 0)
+                        total_calls = safe_convert_volume(flow_data.get('call_volume', 0))
+                        total_puts = safe_convert_volume(flow_data.get('put_volume', 0))
                         
                     # Format 2: Analysis array with expiration data  
                     elif 'analysis' in flow_data and isinstance(flow_data['analysis'], list):
                         for exp in flow_data['analysis']:
-                            total_calls += exp.get('call_volume', 0)
-                            total_puts += exp.get('put_volume', 0)
+                            exp_calls = safe_convert_volume(exp.get('call_volume', 0))
+                            exp_puts = safe_convert_volume(exp.get('put_volume', 0))
+                            total_calls += exp_calls
+                            total_puts += exp_puts
+                            
+                    # Format 3: Nested structure handling (ADDED TO MATCH MAIN FUNCTION)
+                    elif hasattr(flow_data, 'keys'):
+                        for key, value in flow_data.items():
+                            if isinstance(value, dict):
+                                total_calls += safe_convert_volume(value.get('call_volume', 0))
+                                total_puts += safe_convert_volume(value.get('put_volume', 0))
                             
                     total_volume = total_calls + total_puts
                     put_dominance = (total_puts / total_volume * 100) if total_volume > 0 else 0
+                    
+                    # CRITICAL DEBUG: Show actual calculation
+                    if total_volume > 0:
+                        print(f"🔍 DEBUG {symbol}: {total_calls:,} calls + {total_puts:,} puts = {total_volume:,} total → {put_dominance:.2f}% puts")
                     
                     return {
                         'total_calls': total_calls,
                         'total_puts': total_puts, 
                         'total_volume': total_volume,
                         'put_dominance': put_dominance,
+                        'call_dominance': 100 - put_dominance,
                         'flow_detected': total_volume > 0
                     }
                     
                 except Exception as e:
+                    print(f"⚠️ Debug flow analysis error for {symbol}: {e}")
                     return {
                         'total_calls': 0, 'total_puts': 0, 'total_volume': 0,
-                        'put_dominance': 0, 'flow_detected': False, 'error': str(e)
+                        'put_dominance': 0, 'call_dominance': 0, 'flow_detected': False, 'error': str(e)
                     }
             
             debug_analysis = analyze_flow_for_debug(debug_flow_data, selected_symbol)
