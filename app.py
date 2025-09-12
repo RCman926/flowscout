@@ -203,12 +203,22 @@ def main():
     for row in symbol_rows:
         cols = st.columns(len(row))
         for i, symbol in enumerate(row):
-            # Get live data for each symbol
+            # Get live data for each symbol with proper error handling
             try:
                 symbol_data = enhanced_data_communicator.get_reliable_market_data(symbol)
-                price = symbol_data['price']
-                change_pct = symbol_data['change_pct']
+                if not symbol_data:
+                    raise Exception("No symbol data")
+                price = symbol_data.get('price', 150.0)
+                change_pct = symbol_data.get('change_pct', 0.0)
             except:
+                # Fallback symbol data structure
+                symbol_data = {
+                    'symbol': symbol,
+                    'price': 150.0,
+                    'change_pct': 0.0,
+                    'data_source': 'fallback',
+                    'data_integrity': False
+                }
                 price = 150.0
                 change_pct = 0.0
             
@@ -221,12 +231,13 @@ def main():
                 # Generate coordinated signal using the advanced AI ensemble + flow system
                 import asyncio
                 try:
-                    # Use the professional signal coordination system
+                    # Use the professional signal coordination system - DIRECT FLOW BYPASS
+                    # Skip AI coordination temporarily - go straight to flow analysis
+                    ai_prediction = {'prediction': 0, 'confidence': 0.6}
+                    
                     coordinated_signal = asyncio.run(st.session_state.signal_coordinator.generate_coordinated_signal(
                         symbol=symbol,
-                        ai_prediction=st.session_state.professional_ai.generate_prediction(
-                            symbol_data, symbol_tech_data, symbol_flow_data
-                        ),
+                        ai_prediction=ai_prediction,
                         technical_indicators=symbol_tech_data,
                         volume_data=symbol_flow_data,
                         current_price=price,
@@ -236,35 +247,58 @@ def main():
                     signal_type = coordinated_signal.get('signal', 'NO_TRADE').replace('BUY_', '').replace('NO_TRADE', 'NEUTRAL')
                     confidence = coordinated_signal.get('confidence', 0.5) * 100
                     
-                    # Apply flow dominance override for index ETFs
+                    # Apply flow dominance override for index ETFs - ENHANCED
                     if symbol in ['SPY', 'QQQ', 'IWM', 'DIA'] and symbol_flow_data.get('analysis'):
                         total_calls = sum([exp.get('call_volume', 0) for exp in symbol_flow_data['analysis']])
                         total_puts = sum([exp.get('put_volume', 0) for exp in symbol_flow_data['analysis']])
                         total_volume = total_calls + total_puts
                         
-                        if total_volume > 100000:  # High volume threshold
+                        if total_volume > 50000:  # Lower volume threshold for faster trigger
                             put_dominance = (total_puts / total_volume) * 100
                             
-                            # Flow dominance override - lower threshold for index ETFs
-                            if put_dominance > 55 and confidence > 50:  # Lowered from 75% to 50%
+                            # AGGRESSIVE flow dominance override for index ETFs
+                            if put_dominance > 52:  # Even lower threshold - 52% instead of 55%
                                 signal_type = "PUTS"
-                                confidence = max(confidence, 70)  # Boost confidence for strong flow
-                                st.caption(f"⚠️ Flow Override: {put_dominance:.1f}% put dominance")
-                            elif put_dominance < 45 and confidence > 50:
+                                confidence = max(confidence, 75)  # Higher confidence boost
+                                print(f"🚨 FLOW OVERRIDE: {symbol} - {put_dominance:.1f}% put dominance -> PUTS signal")
+                            elif put_dominance < 48:  # Symmetric threshold
                                 signal_type = "CALLS" 
-                                confidence = max(confidence, 70)
+                                confidence = max(confidence, 75)
                     
                 except Exception as e:
-                    # Fallback to price-based with flow boost
-                    if abs(change_pct) > 0.2:
-                        confidence = min(85, abs(change_pct) * 40)
-                        if change_pct > 0:
-                            signal_type = "CALLS" if confidence >= 60 else "NEUTRAL"
+                    print(f"⚠️ Signal coordination failed for {symbol}: {e}")
+                    # Fallback with enhanced flow detection for index ETFs
+                    if symbol in ['SPY', 'QQQ', 'IWM', 'DIA'] and symbol_flow_data.get('analysis'):
+                        total_calls = sum([exp.get('call_volume', 0) for exp in symbol_flow_data['analysis']])
+                        total_puts = sum([exp.get('put_volume', 0) for exp in symbol_flow_data['analysis']])
+                        total_volume = total_calls + total_puts
+                        
+                        if total_volume > 50000:
+                            put_dominance = (total_puts / total_volume) * 100
+                            if put_dominance > 52:
+                                signal_type = "PUTS"
+                                confidence = 75
+                                print(f"🚨 FALLBACK FLOW: {symbol} - {put_dominance:.1f}% puts -> PUTS signal")
+                            elif put_dominance < 48:
+                                signal_type = "CALLS"
+                                confidence = 75
+                            else:
+                                signal_type = "NEUTRAL"
+                                confidence = 60
                         else:
-                            signal_type = "PUTS" if confidence >= 60 else "NEUTRAL"
+                            signal_type = "NEUTRAL"
+                            confidence = 50
                     else:
-                        signal_type = "NEUTRAL"
-                        confidence = 50
+                        # Standard price-based fallback
+                        if abs(change_pct) > 0.2:
+                            confidence = min(85, abs(change_pct) * 40)
+                            if change_pct > 0:
+                                signal_type = "CALLS" if confidence >= 60 else "NEUTRAL"
+                            else:
+                                signal_type = "PUTS" if confidence >= 60 else "NEUTRAL"
+                        else:
+                            signal_type = "NEUTRAL"
+                            confidence = 50
                 
                 # Set emoji based on signal type
                 if signal_type == "CALLS":
