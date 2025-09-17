@@ -88,66 +88,62 @@ symbols = ['AAPL', 'TSLA', 'NVDA', 'MSFT', 'GOOGL', 'AMZN', 'META', 'NFLX', 'AMD
 # === MAIN APP LOGIC ===
 def main():
     from datetime import datetime, timedelta
-    from streamlit_autorefresh import st_autorefresh
+    from seamless_update_system import seamless_updater
     
-    # === PROFESSIONAL AUTO-REFRESH SYSTEM ===
-    # Initialize refresh settings
+    # === SEAMLESS UPDATE SYSTEM ===
+    # Initialize seamless updates without page flashing
     if 'auto_refresh_enabled' not in st.session_state:
         st.session_state.auto_refresh_enabled = True
         st.session_state.refresh_count = 0
     
-    # OPTIMIZED: Sub-5s refresh for critical data with smart caching
+    # Start seamless mode for professional trading
+    seamless_updater.start_seamless_mode()
+    
+    # Initialize optimization systems on first run (no visible success message)
     if st.session_state.auto_refresh_enabled:
-        # Start optimization systems on first run
         if 'optimization_started' not in st.session_state:
             success = start_optimized_systems()
             st.session_state.optimization_started = success
-            if success:
-                st.success("🚀 Optimization engine started!")
         
-        # Faster refresh for professional trading (5s for critical data)
-        refresh_count = st_autorefresh(interval=5000, key="trading_refresh")
-        if refresh_count != st.session_state.refresh_count:
-            st.session_state.refresh_count = refresh_count
-            # Smart cache handles TTL automatically
+        # Create invisible refresh trigger - NO page flashing
+        seamless_updater.create_invisible_refresh_trigger()
     
     # === SIDEBAR CONTROLS ===
     with st.sidebar:
         st.markdown("### ⚡ LIVE TRADING FEED")
         
-        # Manual refresh button
+        # Manual refresh button - seamless update only
         if st.button("🚀 INSTANT REFRESH", type="primary"):
             st.session_state.refresh_count += 1
-            # Only clear cache on manual refresh
-            if hasattr(st, 'cache_data'):
-                st.cache_data.clear()
-            st.rerun()
+            # Force update all containers seamlessly
+            for container_id in ['price_display', 'options_flow', 'technical_indicators']:
+                seamless_updater.update_container(container_id, None, force_update=True)
         
-        # Auto-refresh toggle
+        # Auto-refresh toggle - seamless state update
         auto_enabled = st.toggle("Auto-Refresh", value=st.session_state.auto_refresh_enabled)
         if auto_enabled != st.session_state.auto_refresh_enabled:
             st.session_state.auto_refresh_enabled = auto_enabled
-            st.rerun()
+            # No st.rerun() - seamless state change
         
-        # Refresh status display
+        # Seamless status display - no visual disruption
         if st.session_state.auto_refresh_enabled:
-            st.caption("⚡ Smart refresh: 5s critical data")
-            st.caption(f"🚀 Mode: OPTIMIZED PROFESSIONAL")
+            st.caption("⚡ Seamless updates: 5s intervals")
+            st.caption(f"🚀 Mode: PROFESSIONAL TRADING")
         else:
-            st.caption("⏸️ Auto-refresh: PAUSED")
+            st.caption("⏸️ Seamless updates: PAUSED")
             st.caption(f"📊 Mode: MANUAL ONLY")
         
-        st.caption(f"🔄 Total refreshes: {st.session_state.refresh_count}")
+        st.caption(f"🔄 Live updates: {st.session_state.refresh_count}")
         
-        # Status indicators
-        st.markdown("### 📡 REAL-TIME STATUS")
+        # Seamless status indicators - no layout changes
+        st.markdown("### 📡 LIVE STATUS")
         if st.session_state.auto_refresh_enabled:
-            st.success("🟢 Auto-Refresh: ACTIVE")
+            st.success("🟢 Seamless Updates: ACTIVE")
         else:
-            st.warning("🟡 Auto-Refresh: PAUSED")
+            st.warning("🟡 Seamless Updates: PAUSED")
         st.success("🟢 Market Data: LIVE")
         st.success("🟢 Options Flow: STREAMING")
-        st.info("⚡ Mode: PROFESSIONAL TRADING")
+        st.info("⚡ Mode: NO-FLASH TRADING")
     
     # Get selected symbol
     selected_symbol = st.session_state.get('selected_symbol', 'SPY')
@@ -253,21 +249,20 @@ def main():
             st.caption(f"🔄 Freshness: {data_freshness}")
     
     with refresh_cols[1]:
-        # Enhanced refresh status with error handling diagnostics
-        # OPTIMIZED: Display smart refresh performance
+        # Seamless performance status display
         if st.session_state.get('auto_refresh_enabled', True):
-            st.caption("⚡ Smart refresh: 5s critical ⚡ (OPTIMIZED)")
+            st.caption("⚡ Seamless: 5s intervals ⚡")
             
-            # Show optimization stats if available
+            # Show optimization stats seamlessly
             if st.session_state.get('optimization_started', False):
                 try:
                     opt_stats = get_optimization_dashboard_stats()
                     cache_hit_rate = opt_stats['cache_performance']['hit_rate_percent']
-                    st.caption(f"🎯 Cache hit rate: {cache_hit_rate:.1f}%")
+                    st.caption(f"🎯 Cache: {cache_hit_rate:.1f}%")
                 except:
                     pass
         else:
-            st.caption("⏸️ Smart refresh: PAUSED")
+            st.caption("⏸️ Seamless: PAUSED")
             
         # Data flow diagnostics for debugging
         flow_quality = flow_data.get('quality_score', 0) if flow_data else 0
@@ -519,7 +514,9 @@ def main():
                 
                 if st.button(button_label, key=f"select_{symbol}", use_container_width=True, type=button_type):
                     st.session_state.selected_symbol = symbol
-                    st.rerun()
+                    # Seamless symbol change without page refresh
+                    if 'selected_symbol' in st.session_state.seamless_data:
+                        st.session_state.seamless_data['selected_symbol'] = symbol
     
     # === ENHANCED ACCURACY DASHBOARD ===
     if ACCURACY_MODULES_LOADED:
@@ -543,21 +540,17 @@ def main():
     else:
         st.info("💡 Enhanced accuracy modules not loaded - using standard analysis")
 
-    # === MAIN DASHBOARD ===
+    # === SEAMLESS MAIN DASHBOARD ===
     st.markdown("---")
     st.markdown("#### 📊 Live Market Data")
     
-    # Market overview
+    # Create seamless update containers for market overview
+    price_container = seamless_updater.create_container('price_display')
     overview_cols = st.columns(4)
+    
     with overview_cols[0]:
-        current_price = market_data['price']
-        change_pct = market_data['change_pct']
-        
-        st.metric(
-            "Price", 
-            f"${current_price:.2f}",
-            f"{change_pct:+.2f}%"
-        )
+        # Update price display seamlessly
+        seamless_updater.update_price_display('price_metric', market_data)
         
         # Add pre/after market pricing display
         # Calculate estimated pre/after market prices (would come from real data in production)
@@ -591,44 +584,22 @@ def main():
                  "Overbought" if tech_data['rsi'] > 70 else "Oversold" if tech_data['rsi'] < 30 else "Normal")
     
     with overview_cols[3]:
-        # === FIXED: USE SINGLE UNIFIED FLOW ANALYZER (NO DUPLICATES) ===
+        # Seamless options flow update container
         if selected_symbol in ['SPY', 'QQQ', 'IWM', 'DIA']:
-            # Get flow data and use the SAME analyzer from above (no duplication)
-            debug_flow_data = flow_data  # Use already-fetched cached flow data
-            
-            # CRITICAL FIX: Use the exact same function to prevent calculation discrepancies
-            debug_analysis = analyze_unified_flow_data(debug_flow_data, selected_symbol)
-            
-            # Display flow dominance with signal reasoning
-            put_dom = debug_analysis['put_dominance']
-            total_vol = debug_analysis['total_volume']
-            
-            if total_vol > 25000:
-                if put_dom > 52.0:
-                    st.error("🔴 PUTS SIGNAL")
-                    st.caption(f"{put_dom:.1f}% put dominance")
-                    st.caption(f"Signal: ACTIVE ({put_dom:.1f}% > 52%)")
-                elif put_dom < 48.0:
-                    st.success("🟢 CALLS SIGNAL")
-                    st.caption(f"{100-put_dom:.1f}% call dominance")
-                    st.caption(f"Signal: ACTIVE ({put_dom:.1f}% < 48%)")
-                else:
-                    st.info("⚪ NEUTRAL")
-                    st.caption(f"{put_dom:.1f}% put dominance")
-                    st.caption("Signal: Balanced flow")
-            else:
-                st.warning("📊 LOW VOLUME")
-                st.caption(f"Vol: {total_vol:,} < 25K")
-                st.caption("No flow signal")
+            # Update options flow seamlessly
+            seamless_updater.update_options_flow('options_flow_signal', {
+                'call_volume': flow_data.get('call_volume', 0),
+                'put_volume': flow_data.get('put_volume', 0),
+                'symbol': selected_symbol
+            })
         else:
-            # Standard data freshness for non-index symbols
+            # Seamless data status display
             data_freshness = market_data.get('data_freshness', 'UNKNOWN')
-            if data_freshness == 'LIVE_SCRAPED':
-                st.success("✅ LIVE DATA")
-                st.caption("Real-time scraping")
-            else:
-                st.info("📊 DATA STATUS")
-                st.caption(f"{data_freshness}")
+            seamless_updater.update_container('data_status', f"""
+            {'✅ LIVE DATA' if data_freshness == 'LIVE_SCRAPED' else '📊 DATA STATUS'}
+            
+            {data_freshness}
+            """)
     
 
     

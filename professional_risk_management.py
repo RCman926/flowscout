@@ -420,7 +420,11 @@ class ProfessionalRiskManagement:
         portfolio_return = 0
         for s in strategies:
             if s.get('allocation_amount', 0) > 0:
-                target_return = float(s.get('target_return', '0').replace('%', ''))
+                target_return_raw = s.get('target_return', '0')
+                if isinstance(target_return_raw, str):
+                    target_return = float(target_return_raw.replace('%', ''))
+                else:
+                    target_return = float(target_return_raw)
                 weight = s.get('allocation_amount', 0) / total_allocation
                 portfolio_return += target_return * weight
         
