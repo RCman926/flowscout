@@ -713,6 +713,16 @@ def main():
     # Extract call/put volumes for chart
     current_price = market_data['price']
     
+    # Get call/put volumes from unified flow data (moved from below)
+    try:
+        live_flow_metrics = unified_flow
+        call_volume = int(live_flow_metrics.get('call_volume', 615631))
+        put_volume = int(live_flow_metrics.get('put_volume', 858405))
+    except Exception as e:
+        # Fallback values if unified_flow is not available
+        call_volume = 615631
+        put_volume = 858405
+    
     # Create trading levels data for the bar chart
     trading_levels = []
     for i in range(-3, 4):  # 7 strikes around current price
@@ -755,7 +765,7 @@ def main():
     # Add calls bars
     fig_levels.add_trace(go.Bar(
         name='Calls',
-        x=levels_df['Strike'],
+        x=levels_df['Strike_Price'],
         y=levels_df['Calls'],
         marker_color=levels_df['Call_Color'],
         text=levels_df['Calls'].apply(lambda x: f"{x:,}"),
@@ -766,7 +776,7 @@ def main():
     # Add puts bars
     fig_levels.add_trace(go.Bar(
         name='Puts',
-        x=levels_df['Strike'],
+        x=levels_df['Strike_Price'],
         y=levels_df['Puts'],
         marker_color=levels_df['Put_Color'],
         text=levels_df['Puts'].apply(lambda x: f"{x:,}"),
@@ -779,7 +789,7 @@ def main():
     if not atm_strikes.empty:
         for _, atm in atm_strikes.iterrows():
             fig_levels.add_vline(
-                x=atm['Strike'], 
+                x=atm['Strike_Price'], 
                 line_dash="dash", 
                 line_color="gold", 
                 line_width=2,
@@ -810,12 +820,7 @@ def main():
     st.plotly_chart(fig_levels, use_container_width=True)
     
     # === COMPACT CALL/PUT ANALYSIS ===
-    # Use unified data source for call/put metrics
-    live_flow_metrics = unified_flow
-    
-    # Extract call/put volumes from live flow data
-    call_volume = int(live_flow_metrics.get('call_volume', 615631))
-    put_volume = int(live_flow_metrics.get('put_volume', 858405))
+    # Use unified data source for call/put metrics (variables already defined above)
     total_volume = call_volume + put_volume
     
     # Compact call/put display (smaller boxes as requested)
@@ -2459,7 +2464,7 @@ def main():
     
     # Calculate VaR using professional risk management
     try:
-        var_analysis = professional_risk.calculate_portfolio_metrics(strategies)
+        var_analysis = professional_risk.calculate_portfolio_metrics(sample_positions)
         
         # Create sample positions for demo
         sample_positions = [
