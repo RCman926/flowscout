@@ -520,50 +520,50 @@ def main():
 
     # === MAIN DASHBOARD ===
     st.markdown("---")
-    st.markdown("#### 📊 Live Market Data")
+    st.markdown("#### 📊 Live Market Data & Gamma Exposure")
     
-    # Market overview columns
-    overview_cols = st.columns(4)
+    # Combined market data and gamma exposure in one unified section
+    unified_cols = st.columns(4)
     
-    with overview_cols[0]:
-        # Price display
+    with unified_cols[0]:
+        # Price display with gamma info
         color = "green" if change_pct >= 0 else "red"
         arrow = "▲" if change_pct >= 0 else "▼"
         st.metric(selected_symbol, f"${current_price:.2f}", f"{arrow} {change_pct:.2f}%")
         
-        # Add pre/after market pricing display
-        # Calculate estimated pre/after market prices (would come from real data in production)
-        premarket_price = current_price * (1 + (change_pct * 0.3) / 100)  # Partial of daily move
-        aftermarket_price = current_price * (1 + (change_pct * 0.15) / 100)  # Smaller extension
-        
-        # Show pre/after market data in smaller text
-        market_status = "MARKET OPEN" if datetime.now().weekday() < 5 and 9 <= datetime.now().hour <= 16 else "MARKET CLOSED"
-        
-        if market_status == "MARKET OPEN":
-            if current_price > 0:
-                st.caption(f"Pre-market: ${premarket_price:.2f} ({(premarket_price-current_price)/current_price*100:+.1f}%)")
-            else:
-                st.caption(f"Pre-market: ${premarket_price:.2f}")
-        else:
-            if current_price > 0:
-                st.caption(f"After-hours: ${aftermarket_price:.2f} ({(aftermarket_price-current_price)/current_price*100:+.1f}%)")
-            else:
-                st.caption(f"After-hours: ${aftermarket_price:.2f}")
+        # Pin risk display instead of pre/after market
+        pin_strike = round(current_price / 5) * 5
+        distance = abs(current_price - pin_strike)
+        pin_risk = "HIGH" if distance < 2 else "MEDIUM" if distance < 5 else "LOW"
+        st.caption(f"Pin Risk: {pin_risk} @ ${pin_strike:.0f}")
     
-    with overview_cols[1]:
+    with unified_cols[1]:
+        # Volume with MM pressure
         avg_volume = market_data.get('avg_volume', market_data.get('volume', 1000000))
         if avg_volume > 0:
             volume_ratio = market_data['volume'] / avg_volume
         else:
             volume_ratio = 1.0
         st.metric("Volume", f"{market_data['volume']/1e6:.1f}M", f"{volume_ratio:.1f}x avg")
+        
+        # MM pressure calculation
+        unified_flow = flow_data
+        total_volume = unified_flow.get('call_volume', 0) + unified_flow.get('put_volume', 0)
+        pressure = "HIGH" if total_volume > 100000 else "MEDIUM" if total_volume > 50000 else "LOW"
+        st.caption(f"MM Pressure: {pressure}")
     
-    with overview_cols[2]:
+    with unified_cols[2]:
+        # RSI with gamma flip
         st.metric("RSI", f"{tech_data['rsi']:.1f}", 
                  "Overbought" if tech_data['rsi'] > 70 else "Oversold" if tech_data['rsi'] < 30 else "Normal")
+        
+        # Gamma flip
+        gamma_flip = round(current_price / 5) * 5
+        direction = "UP" if current_price > gamma_flip else "DOWN"
+        st.caption(f"Gamma Flip: ${gamma_flip:.0f} ({direction})")
     
-    with overview_cols[3]:
-        # Options flow display
+    with unified_cols[3]:
+        # Unified options flow and data quality
         if selected_symbol in ['SPY', 'QQQ', 'IWM', 'DIA']:
             call_vol = flow_data.get('call_volume', 0)
             put_vol = flow_data.get('put_volume', 0)
@@ -571,47 +571,18 @@ def main():
             if total_vol > 0:
                 call_pct = (call_vol / total_vol) * 100
                 put_pct = (put_vol / total_vol) * 100
-                st.metric("Call/Put", f"{call_pct:.0f}%/{put_pct:.0f}%", f"{total_vol/1000:.0f}K vol")
+                st.metric("Call/Put Flow", f"{call_pct:.0f}%/{put_pct:.0f}%", f"{total_vol/1000:.0f}K vol")
             else:
-                st.metric("Call/Put", "Loading...", "0K vol")
+                st.metric("Call/Put Flow", "Loading...", "0K vol")
         else:
-            # Data status display
+            # Data status display for non-index symbols
             data_freshness = market_data.get('data_freshness', 'UNKNOWN')
             quality_score = market_data.get('quality_score', 0)
             st.metric("Data Quality", f"Q:{quality_score}%", data_freshness)
     
 
     
-    # === GAMMA EXPOSURE ===
-    st.markdown("#### ⚡ Gamma Exposure & Key Strikes")
-    
-    gamma_cols = st.columns(4)
-    current_price = market_data['price']
-    
-    with gamma_cols[0]:
-        st.metric("Current Price", f"${current_price:.2f}", 
-                 f"{market_data['change_pct']:+.1f}%")
-    
-    with gamma_cols[1]:
-        # Estimate pin risk
-        pin_strike = round(current_price / 5) * 5
-        distance = abs(current_price - pin_strike)
-        pin_risk = "HIGH" if distance < 2 else "MEDIUM" if distance < 5 else "LOW"
-        st.metric("Pin Risk", pin_risk, f"${pin_strike:.0f} level")
-    
-    with gamma_cols[2]:
-        gamma_flip = round(current_price / 5) * 5
-        direction = "UP" if current_price > gamma_flip else "DOWN"
-        st.metric("Gamma Flip", f"${gamma_flip:.0f}", f"Bias {direction}")
-    
-    with gamma_cols[3]:
-        # Get volume from unified flow data (using cached data)
-        unified_flow = flow_data  # Use already-fetched cached flow data
-        call_volume = unified_flow.get('call_volume', 0)
-        put_volume = unified_flow.get('put_volume', 0)
-        total_volume = call_volume + put_volume
-        pressure = "HIGH" if total_volume > 100000 else "MEDIUM" if total_volume > 50000 else "LOW"
-        st.metric("MM Pressure", pressure, f"{total_volume/1000:.0f}K vol")
+    # Gamma exposure info is now integrated above
     
     # Get signal data for Trading Decision Center (but don't display the redundant section)
     from highest_level_signal_system import highest_level_signal_system
@@ -1903,38 +1874,111 @@ def main():
         for play in live_predictions['recommended_plays'][:2]:
             st.caption(f"• {play['play_type']}: ${play['strike']} ({play['profit_potential']})")
     
-    # === COMPREHENSIVE OPTIONS CHAIN ===
-    st.markdown("#### 🎯 High-Profit Options Chain")
+    # === 0DTE PRIORITY OPTIONS CHAIN ===
+    st.markdown("#### 🎯 0DTE Options (Priority) + Options Chain")
     
     try:
         ticker = yf.Ticker(selected_symbol)
         if ticker.options and len(ticker.options) > 0:
             
-            # Get multiple expirations for maximum profit opportunities
-            available_exps = list(ticker.options[:4])  # Get first 4 expirations
+            # Get all available expirations
+            available_exps = list(ticker.options[:4])
             
-            exp_tabs = st.tabs([f"📅 {exp}" for exp in available_exps])
+            # Check for 0DTE options first - PRIORITY DISPLAY
+            today_date = datetime.now().strftime('%Y-%m-%d')
+            zero_dte_exp = None
+            other_exps = []
             
-            for i, exp_date in enumerate(available_exps):
-                with exp_tabs[i]:
-                    try:
-                        chain = ticker.option_chain(exp_date)
+            for exp in available_exps:
+                exp_datetime = datetime.strptime(exp, '%Y-%m-%d')
+                days_to_exp = (exp_datetime.date() - datetime.now().date()).days
+                if days_to_exp == 0:
+                    zero_dte_exp = exp
+                else:
+                    other_exps.append(exp)
+            
+            # PRIORITY: Show 0DTE options at top if available
+            if zero_dte_exp:
+                st.markdown("### 🚀 0DTE OPTIONS - MAXIMUM LEVERAGE (TODAY EXPIRY)")
+                st.warning("⚠️ High Risk, High Reward - Expires Today!")
+            
+                # Display 0DTE options with priority layout
+                try:
+                    chain = ticker.option_chain(zero_dte_exp)
+                    
+                    # Special 0DTE display with buy/sell prices and resistance levels
+                    st.markdown(f"**🎯 0DTE Strikes with Buy/Sell Prices - Expires: {zero_dte_exp}**")
+                    
+                    # Show resistance levels for 0DTE
+                    atm_strike = round(current_price / 5) * 5
+                    st.info(f"🏆 Key Levels: Support ${atm_strike-5} | ATM ${atm_strike} | Resistance ${atm_strike+5}")
+                    
+                    # Tighter strike range for 0DTE focus
+                    strikes_to_show = []
+                    for offset in [-5, 0, 5]:  # Focus on close strikes for 0DTE
+                        strike = atm_strike + offset
+                        if strike > 0:
+                            strikes_to_show.append(strike)
+                    
+                    # 0DTE Options table with buy/sell prices
+                    options_data = []
+                    for strike in strikes_to_show:
+                        call_row = chain.calls[chain.calls['strike'] == strike]
+                        put_row = chain.puts[chain.puts['strike'] == strike]
                         
-                        # Calculate strikes around current price for maximum leverage
-                        atm_strike = round(current_price / 5) * 5
+                        if not call_row.empty and not put_row.empty:
+                            call_data = call_row.iloc[0]
+                            put_data = put_row.iloc[0]
+                            
+                            call_ask = float(call_data['ask']) if call_data['ask'] > 0 else 0.01
+                            put_ask = float(put_data['ask']) if put_data['ask'] > 0 else 0.01
+                            distance = ((strike - current_price) / current_price) * 100
+                            
+                            options_data.append({
+                                'Strike': f"${strike:.0f}",
+                                'Distance': f"{distance:+.1f}%",
+                                'Call Buy': f"${call_ask:.2f}",
+                                'Call Volume': f"{int(call_data['volume']):,}" if call_data['volume'] > 0 else "0",
+                                'Put Buy': f"${put_ask:.2f}",
+                                'Put Volume': f"{int(put_data['volume']):,}" if put_data['volume'] > 0 else "0",
+                                'Profit Potential': "500-2000%" if abs(distance) > 1 else "200-800%"
+                            })
+                    
+                    if options_data:
+                        df = pd.DataFrame(options_data)
+                        st.dataframe(df, use_container_width=True, hide_index=True)
                         
-                        # Get strike range for high-profit opportunities
-                        strikes_to_show = []
-                        for offset in [-20, -15, -10, -5, 0, 5, 10, 15, 20]:
-                            strike = atm_strike + offset
-                            if strike > 0:
-                                strikes_to_show.append(strike)
+                        st.success("🚀 0DTE trades expire TODAY - Maximum leverage, maximum risk!")
                         
-                        st.markdown(f"**Profit Opportunities - Expires: {exp_date}**")
-                        
-                        # Calculate days to expiration
-                        exp_datetime = datetime.strptime(exp_date, '%Y-%m-%d')
-                        days_to_exp = (exp_datetime.date() - datetime.now().date()).days
+                except Exception as e:
+                    st.error(f"Error loading 0DTE data: {str(e)}")
+            
+            # Then show other expirations below
+            if other_exps:
+                st.markdown("---")
+                st.markdown("### 📅 Other Expirations (Non-0DTE)")
+                
+                exp_tabs = st.tabs([f"📅 {exp}" for exp in other_exps])
+                
+                for i, exp_date in enumerate(other_exps):
+                    with exp_tabs[i]:
+                        try:
+                            chain = ticker.option_chain(exp_date)
+                            
+                            # Calculate days to expiration
+                            exp_datetime = datetime.strptime(exp_date, '%Y-%m-%d')
+                            days_to_exp = (exp_datetime.date() - datetime.now().date()).days
+                            
+                            # Standard display for non-0DTE
+                            st.markdown(f"**Profit Opportunities - Expires: {exp_date}**")
+                            
+                            # Calculate strikes around current price
+                            atm_strike = round(current_price / 5) * 5
+                            strikes_to_show = []
+                            for offset in [-20, -15, -10, -5, 0, 5, 10, 15, 20]:
+                                strike = atm_strike + offset
+                                if strike > 0:
+                                    strikes_to_show.append(strike)
                         
                         if days_to_exp == 0:
                             exp_label = "0DTE - MAXIMUM LEVERAGE"
