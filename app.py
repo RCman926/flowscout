@@ -515,36 +515,6 @@ def main():
         signal_emoji = "🔴"
     else:
         signal_emoji = "⚪"
-                if abs(change_pct) > 1.0:
-                    confidence = min(85, abs(change_pct) * 30)
-                    signal_type = "CALLS" if change_pct > 0 else "PUTS"
-                    signal_emoji = "🟢" if change_pct > 0 else "🔴"
-                else:
-                    signal_type = "NEUTRAL"
-                    signal_emoji = "⚪"
-                    confidence = 50
-            
-            with cols[i]:
-                is_selected = symbol == selected_symbol
-                
-                # Single line button with all info and proper color coding
-                if is_selected:
-                    button_label = f"✓ {symbol} ${price:.0f} {change_pct:+.1f}% | {signal_emoji} {signal_type} {confidence:.0f}%"
-                else:
-                    button_label = f"{symbol} ${price:.0f} {change_pct:+.1f}% | {signal_emoji} {signal_type} {confidence:.0f}%"
-                
-                button_type = "primary" if is_selected else "secondary"
-                
-                if st.button(button_label, key=f"select_{symbol}", use_container_width=True, type=button_type):
-                    st.session_state.selected_symbol = symbol
-                    # Seamless symbol change without page refresh
-                    if 'selected_symbol' in st.session_state.seamless_data:
-                        st.session_state.seamless_data['selected_symbol'] = symbol
-        
-        # Fill remaining columns with empty containers for consistent structure
-        for i in range(len(row), 7):
-            with cols[i]:
-                st.empty()
     
     # Enhanced accuracy logging only
     if ACCURACY_MODULES_LOADED:
