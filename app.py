@@ -1329,10 +1329,6 @@ def main():
     
     unified_consensus = signal_validator.integrate_ml_prediction(ml_prediction, unified_consensus)
     
-    # Signal validation moved to bottom for cleaner UI
-            • **This is CORRECT behavior** - protects against conflicting low-quality signals
-            """)
-    
     # === TRADING DECISION CENTER (MASTER AUTHORITY) ===
     st.markdown("#### 🎯 Trading Decision Center - MASTER SIGNALS")
     st.caption("🏛️ INSTITUTIONAL GRADE - Final trading authority with signal validation")
