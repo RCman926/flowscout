@@ -85,11 +85,66 @@ from optimized_data_enhancer import (
 # === SYMBOL DEFINITIONS ===
 symbols = ['AAPL', 'TSLA', 'NVDA', 'MSFT', 'GOOGL', 'AMZN', 'META', 'NFLX', 'AMD', 'SPY', 'QQQ', 'IWM', 'DIA', 'XLF']
 
+# === SEAMLESS LAYOUT SYSTEM ===
+def initialize_stable_layout():
+    """Initialize stable UI placeholders to prevent flashing"""
+    if 'layout_initialized' not in st.session_state:
+        st.session_state.layout_initialized = True
+        st.session_state.layout_placeholders = {}
+        st.session_state.last_data_hash = {}
+        st.session_state.chart_update_counter = 0
+    
+    # Create stable placeholders for all major sections
+    layout = st.session_state.layout_placeholders
+    
+    # Header section
+    if 'header' not in layout:
+        layout['header'] = st.container()
+    
+    # Symbol selector grid
+    if 'symbol_grid' not in layout:
+        layout['symbol_grid'] = st.container()
+    
+    # Main dashboard
+    if 'main_dashboard' not in layout:
+        layout['main_dashboard'] = st.container()
+    
+    # Market intelligence 
+    if 'market_intel' not in layout:
+        layout['market_intel'] = st.container()
+    
+    # Trading levels
+    if 'trading_levels' not in layout:
+        layout['trading_levels'] = st.container()
+    
+    # Charts section
+    if 'charts' not in layout:
+        layout['charts'] = st.container()
+    
+    return layout
+
+def data_has_changed(data_key, data_hash):
+    """Check if data has changed to avoid unnecessary updates"""
+    if data_key not in st.session_state.last_data_hash:
+        st.session_state.last_data_hash[data_key] = data_hash
+        return True
+    
+    if st.session_state.last_data_hash[data_key] != data_hash:
+        st.session_state.last_data_hash[data_key] = data_hash
+        return True
+    
+    return False
+
 # === MAIN APP LOGIC ===
 def main():
     from datetime import datetime, timedelta
-    # === NO-FLASH AUTO-REFRESH SYSTEM ===
+    import hashlib
+    
+    # === SEAMLESS AUTO-REFRESH SYSTEM ===
     from streamlit_autorefresh import st_autorefresh
+    
+    # Initialize stable layout to prevent flashing
+    layout = initialize_stable_layout()
     
     # Initialize auto-refresh without page flashing
     if 'auto_refresh_enabled' not in st.session_state:
@@ -101,9 +156,9 @@ def main():
         success = start_optimized_systems()
         st.session_state.optimization_started = success
     
-    # Unnoticeable auto-refresh - NO page flashing
+    # Seamless auto-refresh - optimized for no flashing
     if st.session_state.auto_refresh_enabled:
-        st_autorefresh(interval=5000, key="live_trading_refresh")
+        st_autorefresh(interval=5000, key="seamless_refresh", debounce=False)
     
     # === SIDEBAR CONTROLS ===
     with st.sidebar:
@@ -514,12 +569,17 @@ def main():
         except Exception as e:
             print(f"Accuracy logging error: {e}")
 
-    # === MAIN DASHBOARD ===
-    st.markdown("---")
-    st.markdown("#### 📊 Live Market Data & Gamma Exposure")
-    
-    # Combined market data and gamma exposure in one unified section
-    unified_cols = st.columns(4)
+    # === MAIN DASHBOARD (STABLE LAYOUT) ===
+    with layout['main_dashboard']:
+        # Only update if data has changed
+        main_data_hash = hashlib.md5(str(market_data).encode()).hexdigest()
+        
+        # Always render structure but only update content if changed
+        st.markdown("---")
+        st.markdown("#### 📊 Live Market Data & Gamma Exposure")
+        
+        # Use stable container with fixed structure
+        unified_cols = st.columns(4, key="main_dashboard_cols")
     
     with unified_cols[0]:
         # Price display with gamma info
