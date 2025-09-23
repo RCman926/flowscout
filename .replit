@@ -26,7 +26,7 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "streamlit run app_test.py --server.port 5000"
+args = "streamlit run app.py --server.port 5000"
 waitForPort = 5000
 
 [workflows.workflow.metadata]
@@ -37,7 +37,7 @@ localPort = 5000
 externalPort = 80
 
 [[ports]]
-localPort = 42587
+localPort = 34283
 externalPort = 3000
 
 [agent]
