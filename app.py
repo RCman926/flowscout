@@ -151,6 +151,9 @@ def main():
     put_volume = 0
     current_price = 0.0
     change_pct = 0.0
+    price = 0.0  # Fix unbound variable errors
+    total_volume = 0
+    cp_ratio = 1.0
     
     # Initialize auto-refresh without page flashing
     if 'auto_refresh_enabled' not in st.session_state:
@@ -232,9 +235,12 @@ def main():
     
     # Update global variables from fetched data (critical for preventing UnboundLocalError)
     current_price = market_data.get('price', 0.0)
+    price = current_price  # Fix unbound price variable
     change_pct = market_data.get('change_pct', 0.0)
     call_volume = int(flow_data.get('call_volume', 0)) if flow_data else 0
     put_volume = int(flow_data.get('put_volume', 0)) if flow_data else 0
+    total_volume = call_volume + put_volume
+    cp_ratio = call_volume / put_volume if put_volume > 0 else 1.0
     
     # Initialize other critical variables to prevent unbound errors
     symbol_flow_data = flow_data  # Fix unbound variable at line 477
@@ -331,69 +337,29 @@ def main():
         else:
             st.caption("❌ Data systems: ERROR")
     
-    # === SYMBOL SELECTOR ===
+    # === SYMBOL SELECTOR - STABLE STRUCTURE ===
     st.markdown("---")
     
-    # Fixed symbol selector - always 7 columns to prevent layout shifts
-    symbol_rows = [symbols[i:i+7] for i in range(0, len(symbols), 7)]
+    # Use simple dropdown to prevent dynamic UI structure issues
+    selected_symbol_new = st.selectbox(
+        "📊 Select Trading Symbol:",
+        symbols, 
+        index=symbols.index(st.session_state.selected_symbol),
+        key="stable_symbol_selector"
+    )
     
-    # Symbol selector with OPTIMIZED data fetching - only basic price data for buttons
-    for row in symbol_rows:
-        # Always create exactly 7 columns to maintain consistent structure
-        cols = st.columns(7)
-        for i, symbol in enumerate(row):
-            if i < len(cols):  # Safety check
-                with cols[i]:
-                    # PERFORMANCE FIX: Only get basic market data for symbol buttons (cached)
-                    try:
-                        symbol_data = get_cached_market_data(symbol) if symbol == selected_symbol else {}
-                        
-                        # For non-selected symbols, use lightweight price-only logic
-                        if symbol != selected_symbol:
-                            # Use simplified approach for button display only
-                            import yfinance as yf
-                            ticker = yf.Ticker(symbol)
-                            hist = ticker.history(period="1d", interval="1m")
-                            if not hist.empty:
-                                current_price = float(hist['Close'].iloc[-1])
-                                prev_close = float(hist['Close'].iloc[0])
-                                change_pct = ((current_price - prev_close) / prev_close) * 100
-                                symbol_data = {
-                                    'price': current_price,
-                                    'change_pct': change_pct,
-                                    'data_source': 'button_display_only',
-                                    'lightweight': True
-                                }
-                            else:
-                                symbol_data = {'price': 150.0, 'change_pct': 0.0, 'lightweight': True}
-                                
-                        price = symbol_data.get('price', 150.0)
-                        change_pct = symbol_data.get('change_pct', 0.0)
-                
-                    except Exception as e:
-                        # Fallback symbol data structure
-                        symbol_data = {
-                            'symbol': symbol,
-                            'price': 150.0,
-                            'change_pct': 0.0,
-                            'data_source': 'fallback',
-                            'data_integrity': False,
-                            'lightweight': True
-                        }
-                        price = 150.0
-                        change_pct = 0.0
-            
-            # === OPTIMIZED: Only generate full signals for selected symbol ===
-            try:
-                if symbol == selected_symbol:
-                    # Full signal generation for selected symbol using cached flow data
-                    symbol_flow_data = flow_data  # Use already-fetched flow data
-                    symbol_tech_data = tech_data   # Use already-fetched tech data
-                
-                # Generate coordinated signal using the advanced AI ensemble + flow system
-                import asyncio
-                # === CONSOLIDATED INSTITUTIONAL FLOW ANALYZER (FIXED) ===
-                def analyze_unified_flow_data(flow_data, symbol):
+    if selected_symbol_new != st.session_state.selected_symbol:
+        st.session_state.selected_symbol = selected_symbol_new
+        st.rerun()
+    
+    # Update selected_symbol variable for rest of code
+    selected_symbol = st.session_state.selected_symbol
+    
+    # Generate coordinated signal using the advanced AI ensemble + flow system
+    import asyncio
+    
+    # === CONSOLIDATED INSTITUTIONAL FLOW ANALYZER (FIXED) ===
+    def analyze_unified_flow_data(flow_data, symbol):
                     """FIXED: Bulletproof flow analyzer with enhanced NaN protection and consistent calculations"""
                     total_calls = 0
                     total_puts = 0
@@ -482,77 +448,73 @@ def main():
                             'calculation_verified': False, 'error': str(e)
                         }
                 
-                # Analyze flow data with unified system
-                flow_analysis = analyze_unified_flow_data(symbol_flow_data, symbol)
+    # Analyze flow data with unified system
+    flow_analysis = analyze_unified_flow_data(symbol_flow_data, symbol)
+    
+    # === UNCONDITIONAL INDEX ETF OVERRIDE SYSTEM ===
+    signal_type = "NEUTRAL"
+    confidence = 50
+    override_applied = False
+    
+    if symbol in ['SPY', 'QQQ', 'IWM', 'DIA']:
+        # INSTITUTIONAL RULE: Index ETFs get unconditional flow override
+        if flow_analysis['total_volume'] > 25000:  # Lower threshold for faster response
+            put_dom = flow_analysis['put_dominance']
+            
+            if put_dom > 52.0:  # 52% put dominance threshold
+                signal_type = "PUTS"
+                confidence = max(80, min(95, put_dom * 1.5))  # Higher confidence for strong dominance
+                override_applied = True
+                print(f"🚨 INDEX OVERRIDE: {symbol} - {put_dom:.1f}% put dominance ({flow_analysis['total_puts']:,} puts vs {flow_analysis['total_calls']:,} calls)")
                 
-                # === UNCONDITIONAL INDEX ETF OVERRIDE SYSTEM ===
+            elif put_dom < 48.0:  # 48% put dominance threshold (calls dominant)
+                signal_type = "CALLS"
+                confidence = max(80, min(95, (100-put_dom) * 1.5))
+                override_applied = True
+                print(f"🚨 INDEX OVERRIDE: {symbol} - {100-put_dom:.1f}% call dominance ({flow_analysis['total_calls']:,} calls vs {flow_analysis['total_puts']:,} puts)")
+                
+            else:
                 signal_type = "NEUTRAL"
-                confidence = 50
-                override_applied = False
+                confidence = 65  # Moderate confidence for mixed flow
+                print(f"📊 INDEX BALANCED: {symbol} - {put_dom:.1f}% put dominance (balanced flow)")
+        
+        # Fallback to coordinated AI signal only if no override applied
+        if not override_applied:
+            try:
+                # SYNC call to signal coordinator (no asyncio.run)
+                ai_prediction = {'prediction': 0, 'confidence': 0.6}
                 
-                if symbol in ['SPY', 'QQQ', 'IWM', 'DIA']:
-                    # INSTITUTIONAL RULE: Index ETFs get unconditional flow override
-                    if flow_analysis['total_volume'] > 25000:  # Lower threshold for faster response
-                        put_dom = flow_analysis['put_dominance']
-                        
-                        if put_dom > 52.0:  # 52% put dominance threshold
-                            signal_type = "PUTS"
-                            confidence = max(80, min(95, put_dom * 1.5))  # Higher confidence for strong dominance
-                            override_applied = True
-                            print(f"🚨 INDEX OVERRIDE: {symbol} - {put_dom:.1f}% put dominance ({flow_analysis['total_puts']:,} puts vs {flow_analysis['total_calls']:,} calls)")
-                            
-                        elif put_dom < 48.0:  # 48% put dominance threshold (calls dominant)
-                            signal_type = "CALLS"
-                            confidence = max(80, min(95, (100-put_dom) * 1.5))
-                            override_applied = True
-                            print(f"🚨 INDEX OVERRIDE: {symbol} - {100-put_dom:.1f}% call dominance ({flow_analysis['total_calls']:,} calls vs {flow_analysis['total_puts']:,} puts)")
-                            
-                        else:
-                            signal_type = "NEUTRAL"
-                            confidence = 65  # Moderate confidence for mixed flow
-                            print(f"📊 INDEX BALANCED: {symbol} - {put_dom:.1f}% put dominance (balanced flow)")
+                # Direct sync call to coordination system
+                coordinated_result = st.session_state.signal_coordinator._generate_professional_recommendation(
+                    {'signal': 'HOLD', 'confidence': 0.5}, price, symbol
+                )
                 
-                    # Fallback to coordinated AI signal only if no override applied
-                    if not override_applied:
-                        try:
-                            # SYNC call to signal coordinator (no asyncio.run)
-                            ai_prediction = {'prediction': 0, 'confidence': 0.6}
-                            
-                            # Direct sync call to coordination system
-                            coordinated_result = st.session_state.signal_coordinator._generate_professional_recommendation(
-                                {'signal': 'HOLD', 'confidence': 0.5}, price, symbol
-                            )
-                            
-                            if coordinated_result:
-                                signal_type = coordinated_result.get('signal', 'NEUTRAL').replace('BUY_', '').replace('NO_TRADE', 'NEUTRAL')
-                                confidence = coordinated_result.get('confidence', 50)
-                                
-                        except Exception as e:
-                            # Price-momentum fallback
-                            if abs(change_pct) > 0.3:
-                                confidence = min(85, abs(change_pct) * 35)
-                                signal_type = "CALLS" if change_pct > 0 else "PUTS"
-                            print(f"⚠️ Using price fallback for {symbol}: {e}")
-                else:
-                    # LIGHTWEIGHT: For non-selected symbols, use simple price-based signals
-                    if abs(change_pct) > 1.0:
-                        confidence = min(75, abs(change_pct) * 20)  # Lower confidence for lightweight
-                        signal_type = "CALLS" if change_pct > 0 else "PUTS"
-                    else:
-                        signal_type = "NEUTRAL"
-                        confidence = 50
-                
-                # Set emoji based on signal type
-                if signal_type == "CALLS":
-                    signal_emoji = "🟢"
-                elif signal_type == "PUTS":
-                    signal_emoji = "🔴"
-                else:
-                    signal_emoji = "⚪"
-                    
+                if coordinated_result:
+                    signal_type = coordinated_result.get('signal', 'NEUTRAL').replace('BUY_', '').replace('NO_TRADE', 'NEUTRAL')
+                    confidence = coordinated_result.get('confidence', 50)
                     
             except Exception as e:
-                # Emergency fallback to simple price logic
+                # Price-momentum fallback
+                if abs(change_pct) > 0.3:
+                    confidence = min(85, abs(change_pct) * 35)
+                    signal_type = "CALLS" if change_pct > 0 else "PUTS"
+                print(f"⚠️ Using price fallback for {symbol}: {e}")
+    else:
+        # LIGHTWEIGHT: For non-selected symbols, use simple price-based signals
+        if abs(change_pct) > 1.0:
+            confidence = min(75, abs(change_pct) * 20)  # Lower confidence for lightweight
+            signal_type = "CALLS" if change_pct > 0 else "PUTS"
+        else:
+            signal_type = "NEUTRAL"
+            confidence = 50
+    
+    # Set emoji based on signal type
+    if signal_type == "CALLS":
+        signal_emoji = "🟢"
+    elif signal_type == "PUTS":
+        signal_emoji = "🔴"
+    else:
+        signal_emoji = "⚪"
                 if abs(change_pct) > 1.0:
                     confidence = min(85, abs(change_pct) * 30)
                     signal_type = "CALLS" if change_pct > 0 else "PUTS"
@@ -2728,11 +2690,14 @@ def main():
             else:
                 st.warning(f"⏱️ {signal_age}s")
         
-        # Show conflicts if any (compact format)
+        # Always show conflict section to maintain stable UI structure
+        st.markdown("📋 **Signal Status:**")
         if not validation_report['is_consistent']:
-            st.warning("📋 **Signal Conflicts:**")
             for conflict in validation_report['conflicts'][:2]:  # Show only first 2
-                st.caption(f"• {conflict}")
+                st.caption(f"⚠️ {conflict}")
+        else:
+            st.caption("✅ All signals aligned")
+            st.caption("✅ No conflicts detected")
     
     # === END OF MAIN PLATFORM ===
 
