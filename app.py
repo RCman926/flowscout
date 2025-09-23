@@ -146,6 +146,12 @@ def main():
     # Initialize stable layout to prevent flashing
     layout = initialize_stable_layout()
     
+    # === CRITICAL: Initialize all variables with safe defaults ===
+    call_volume = 0
+    put_volume = 0
+    current_price = 0.0
+    change_pct = 0.0
+    
     # Initialize auto-refresh without page flashing
     if 'auto_refresh_enabled' not in st.session_state:
         st.session_state.auto_refresh_enabled = True
@@ -156,9 +162,9 @@ def main():
         success = start_optimized_systems()
         st.session_state.optimization_started = success
     
-    # Seamless auto-refresh - optimized for no flashing
-    if st.session_state.auto_refresh_enabled:
-        st_autorefresh(interval=5000, key="seamless_refresh", debounce=False)
+    # Always render auto-refresh with fixed key (no conditional mounting/unmounting)
+    refresh_interval = 5000 if st.session_state.auto_refresh_enabled else 0
+    st_autorefresh(interval=refresh_interval, key="seamless_refresh", debounce=False)
     
     # === SIDEBAR CONTROLS ===
     with st.sidebar:
@@ -223,6 +229,12 @@ def main():
     tech_data = get_cached_technical_data(selected_symbol, market_data)
     gex_data = get_cached_gex_data(selected_symbol, market_data.get('price', 150.0))
     news_data = get_cached_news_data(selected_symbol)
+    
+    # Update global variables from fetched data (critical for preventing UnboundLocalError)
+    current_price = market_data.get('price', 0.0)
+    change_pct = market_data.get('change_pct', 0.0)
+    call_volume = int(flow_data.get('call_volume', 0)) if flow_data else 0
+    put_volume = int(flow_data.get('put_volume', 0)) if flow_data else 0
     
     # Set high-quality defaults if data unavailable
     if not market_data:
@@ -782,15 +794,19 @@ def main():
             # Extract call/put volumes for chart
             current_price = market_data['price']
     
-            # Get call/put volumes from unified flow data (moved from below)
+            # Use pre-defined volumes (no local redefinition to prevent scoping issues)
             try:
                 live_flow_metrics = unified_flow
-                call_volume = int(live_flow_metrics.get('call_volume', 615631))
-                put_volume = int(live_flow_metrics.get('put_volume', 858405))
+                # Update existing variables safely, don't create new local ones
+                temp_call_volume = int(live_flow_metrics.get('call_volume', call_volume))
+                temp_put_volume = int(live_flow_metrics.get('put_volume', put_volume))
+                # Use temp variables for chart only, keep global variables intact
+                chart_call_volume = temp_call_volume
+                chart_put_volume = temp_put_volume
             except Exception as e:
-                # Fallback values if unified_flow is not available
-                call_volume = 615631
-                put_volume = 858405
+                # Use global variables as fallback
+                chart_call_volume = call_volume
+                chart_put_volume = put_volume
             
             # Create trading levels data for the bar chart
             trading_levels = []
@@ -798,8 +814,8 @@ def main():
                 strike = round((current_price + (i * 5)) / 5) * 5
                 
                 # Get call and put volumes for this strike (sample data for visualization)
-                call_vol = max(0, int(call_volume * (0.8 + 0.4 * abs(i)) / 7))
-                put_vol = max(0, int(put_volume * (0.8 + 0.4 * abs(i)) / 7))
+                call_vol = max(0, int(chart_call_volume * (0.8 + 0.4 * abs(i)) / 7))
+                put_vol = max(0, int(chart_put_volume * (0.8 + 0.4 * abs(i)) / 7))
                 
                 # Determine flow direction based on volume
                 if call_vol > put_vol * 1.2:
@@ -893,18 +909,8 @@ def main():
             st.plotly_chart(fig_levels, use_container_width=True, key="stable_levels_chart")
     
     # === COMPACT CALL/PUT ANALYSIS ===
-    # Use live flow metrics from chart data (already processed above)
-    try:
-        # Get the volumes from the chart calculation
-        live_flow_metrics = unified_flow
-        chart_call_volume = int(live_flow_metrics.get('call_volume', 615631))
-        chart_put_volume = int(live_flow_metrics.get('put_volume', 858405))
-        total_volume = chart_call_volume + chart_put_volume
-    except:
-        # Fallback if chart data not available
-        chart_call_volume = 615631
-        chart_put_volume = 858405
-        total_volume = chart_call_volume + chart_put_volume
+    # Use global variables (already defined at top of main function)
+    total_volume = call_volume + put_volume
     
     # Compact call/put display (smaller boxes as requested)
     cp_cols = st.columns(2)
@@ -928,7 +934,8 @@ def main():
         """, unsafe_allow_html=True)
     
     # Simple total volume display only  
-    st.caption(f"Total Volume: {total_volume:,} | C/P Ratio: {live_flow_metrics.get('cp_ratio', 1.0):.2f}")
+    cp_ratio = call_volume / put_volume if put_volume > 0 else 1.0
+    st.caption(f"Total Volume: {total_volume:,} | C/P Ratio: {cp_ratio:.2f}")
     
     # === COMPACT NEWS & CALENDAR SIDEBAR ===
     with st.sidebar:
