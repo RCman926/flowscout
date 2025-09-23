@@ -610,6 +610,7 @@ class InstitutionalPatternDetector:
         try:
             # Try to load from saved backtest results
             import os
+            import json
             if os.path.exists('backtest_results.json'):
                 with open('backtest_results.json', 'r') as f:
                     backtest_data = json.load(f)
@@ -652,6 +653,7 @@ class InstitutionalPatternDetector:
             
             # Save updated results
             import os
+            import json
             with open('backtest_results.json', 'w') as f:
                 json.dump(backtest_results, f, indent=2)
             
