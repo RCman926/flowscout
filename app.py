@@ -579,7 +579,7 @@ def main():
         st.markdown("#### 📊 Live Market Data & Gamma Exposure")
         
         # Use stable container with fixed structure
-        unified_cols = st.columns(4, key="main_dashboard_cols")
+        unified_cols = st.columns(4)
     
     with unified_cols[0]:
         # Price display with gamma info
@@ -767,121 +767,144 @@ def main():
         vol_regime = "HIGH" if daily_range > 2 else "NORMAL" if daily_range > 0.5 else "LOW"
         st.metric("Vol Regime", vol_regime, f"{daily_range:.1f}% today")
     
-    # === CALLS/PUTS BAR GRAPH (RESTORED) ===
-    st.markdown("##### 📊 Live Calls vs Puts Volume")
-    
-    # Extract call/put volumes for chart
-    current_price = market_data['price']
-    
-    # Get call/put volumes from unified flow data (moved from below)
-    try:
-        live_flow_metrics = unified_flow
-        call_volume = int(live_flow_metrics.get('call_volume', 615631))
-        put_volume = int(live_flow_metrics.get('put_volume', 858405))
-    except Exception as e:
-        # Fallback values if unified_flow is not available
-        call_volume = 615631
-        put_volume = 858405
-    
-    # Create trading levels data for the bar chart
-    trading_levels = []
-    for i in range(-3, 4):  # 7 strikes around current price
-        strike = round((current_price + (i * 5)) / 5) * 5
+    # === CALLS/PUTS BAR GRAPH (STABLE CHART) ===
+    with layout['charts']:
+        # Throttle chart updates - only update every 3rd refresh
+        st.session_state.chart_update_counter += 1
+        should_update_chart = st.session_state.chart_update_counter % 3 == 0
         
-        # Get call and put volumes for this strike (sample data for visualization)
-        call_vol = max(0, int(call_volume * (0.8 + 0.4 * abs(i)) / 7))
-        put_vol = max(0, int(put_volume * (0.8 + 0.4 * abs(i)) / 7))
+        # Calculate chart data hash for change detection
+        chart_data_hash = hashlib.md5(f"{market_data['price']}{flow_data}".encode()).hexdigest()
         
-        # Determine flow direction based on volume
-        if call_vol > put_vol * 1.2:
-            flow = "BULLISH"
-            color_calls = "#22c55e"  # Green
-            color_puts = "#64748b"   # Gray
-        elif put_vol > call_vol * 1.2:
-            flow = "BEARISH" 
-            color_calls = "#64748b"  # Gray
-            color_puts = "#ef4444"   # Red
-        else:
-            flow = "NEUTRAL"
-            color_calls = "#3b82f6"  # Blue
-            color_puts = "#3b82f6"   # Blue
-        
-        trading_levels.append({
-            'Strike': f"${strike:.0f}",
-            'Strike_Price': strike,
-            'Calls': call_vol,
-            'Puts': put_vol,
-            'Flow': flow,
-            'Call_Color': color_calls,
-            'Put_Color': color_puts,
-            'ATM': abs(strike - current_price) < 2.5
-        })
+        if should_update_chart or data_has_changed("chart_data", chart_data_hash):
+            st.markdown("##### 📊 Live Calls vs Puts Volume")
+            
+            # Extract call/put volumes for chart
+            current_price = market_data['price']
     
-    # Create the bar chart
-    levels_df = pd.DataFrame(trading_levels)
+            # Get call/put volumes from unified flow data (moved from below)
+            try:
+                live_flow_metrics = unified_flow
+                call_volume = int(live_flow_metrics.get('call_volume', 615631))
+                put_volume = int(live_flow_metrics.get('put_volume', 858405))
+            except Exception as e:
+                # Fallback values if unified_flow is not available
+                call_volume = 615631
+                put_volume = 858405
+            
+            # Create trading levels data for the bar chart
+            trading_levels = []
+            for i in range(-3, 4):  # 7 strikes around current price
+                strike = round((current_price + (i * 5)) / 5) * 5
+                
+                # Get call and put volumes for this strike (sample data for visualization)
+                call_vol = max(0, int(call_volume * (0.8 + 0.4 * abs(i)) / 7))
+                put_vol = max(0, int(put_volume * (0.8 + 0.4 * abs(i)) / 7))
+                
+                # Determine flow direction based on volume
+                if call_vol > put_vol * 1.2:
+                    flow = "BULLISH"
+                    color_calls = "#22c55e"  # Green
+                    color_puts = "#64748b"   # Gray
+                elif put_vol > call_vol * 1.2:
+                    flow = "BEARISH" 
+                    color_calls = "#64748b"  # Gray
+                    color_puts = "#ef4444"   # Red
+                else:
+                    flow = "NEUTRAL"
+                    color_calls = "#3b82f6"  # Blue
+                    color_puts = "#3b82f6"   # Blue
+                
+                trading_levels.append({
+                    'Strike': f"${strike:.0f}",
+                    'Strike_Price': strike,
+                    'Calls': call_vol,
+                    'Puts': put_vol,
+                    'Flow': flow,
+                    'Call_Color': color_calls,
+                    'Put_Color': color_puts,
+                    'ATM': abs(strike - current_price) < 2.5
+                })
+            
+            # Create stable bar chart with fixed structure
+            levels_df = pd.DataFrame(trading_levels)
+            
+            fig_levels = go.Figure()
+            
+            # Add calls bars with stable configuration
+            fig_levels.add_trace(go.Bar(
+                name='Calls',
+                x=levels_df['Strike_Price'],
+                y=levels_df['Calls'],
+                marker_color=levels_df['Call_Color'],
+                text=levels_df['Calls'].apply(lambda x: f"{x:,}"),
+                textposition='outside',
+                hovertemplate='<b>%{x} CALLS</b><br>Volume: %{y:,}<extra></extra>'
+            ))
     
-    fig_levels = go.Figure()
+            # Add puts bars
+            fig_levels.add_trace(go.Bar(
+                name='Puts',
+                x=levels_df['Strike_Price'],
+                y=levels_df['Puts'],
+                marker_color=levels_df['Put_Color'],
+                text=levels_df['Puts'].apply(lambda x: f"{x:,}"),
+                textposition='outside',
+                hovertemplate='<b>%{x} PUTS</b><br>Volume: %{y:,}<extra></extra>'
+            ))
     
-    # Add calls bars
-    fig_levels.add_trace(go.Bar(
-        name='Calls',
-        x=levels_df['Strike_Price'],
-        y=levels_df['Calls'],
-        marker_color=levels_df['Call_Color'],
-        text=levels_df['Calls'].apply(lambda x: f"{x:,}"),
-        textposition='outside',
-        hovertemplate='<b>%{x} CALLS</b><br>Volume: %{y:,}<extra></extra>'
-    ))
+            # Highlight ATM strike
+            atm_strikes = levels_df[levels_df['ATM']]
+            if not atm_strikes.empty:
+                for _, atm in atm_strikes.iterrows():
+                    fig_levels.add_vline(
+                        x=atm['Strike_Price'], 
+                        line_dash="dash", 
+                        line_color="gold", 
+                        line_width=2,
+                        annotation_text="ATM"
+                    )
     
-    # Add puts bars
-    fig_levels.add_trace(go.Bar(
-        name='Puts',
-        x=levels_df['Strike_Price'],
-        y=levels_df['Puts'],
-        marker_color=levels_df['Put_Color'],
-        text=levels_df['Puts'].apply(lambda x: f"{x:,}"),
-        textposition='outside',
-        hovertemplate='<b>%{x} PUTS</b><br>Volume: %{y:,}<extra></extra>'
-    ))
-    
-    # Highlight ATM strike
-    atm_strikes = levels_df[levels_df['ATM']]
-    if not atm_strikes.empty:
-        for _, atm in atm_strikes.iterrows():
-            fig_levels.add_vline(
-                x=atm['Strike_Price'], 
-                line_dash="dash", 
-                line_color="gold", 
-                line_width=2,
-                annotation_text="ATM"
+            # Update chart layout with stable configuration to prevent flashing
+            fig_levels.update_layout(
+                title=f"Key Trading Levels - {selected_symbol} - Updated: {datetime.now().strftime('%H:%M:%S')}",
+                xaxis_title="Strike Price",
+                yaxis_title="Volume",
+                height=400,
+                barmode='group',
+                showlegend=True,
+                plot_bgcolor='rgba(0,0,0,0)',
+                paper_bgcolor='rgba(0,0,0,0)',
+                xaxis=dict(
+                    showgrid=True,
+                    gridcolor='rgba(128,128,128,0.2)',
+                    type='linear',  # Fixed axis type
+                    fixedrange=False  # Allow zoom but stable range
+                ),
+                yaxis=dict(
+                    showgrid=True,
+                    gridcolor='rgba(128,128,128,0.2)',
+                    tickformat=',',
+                    fixedrange=False  # Allow zoom but stable range
+                )
             )
-    
-    # Update chart layout
-    fig_levels.update_layout(
-        title=f"Key Trading Levels - {selected_symbol} - Updated: {datetime.now().strftime('%H:%M:%S')}",
-        xaxis_title="Strike Price",
-        yaxis_title="Volume",
-        height=400,
-        barmode='group',
-        showlegend=True,
-        plot_bgcolor='rgba(0,0,0,0)',
-        paper_bgcolor='rgba(0,0,0,0)',
-        xaxis=dict(
-            showgrid=True,
-            gridcolor='rgba(128,128,128,0.2)'
-        ),
-        yaxis=dict(
-            showgrid=True,
-            gridcolor='rgba(128,128,128,0.2)',
-            tickformat=','
-        )
-    )
-    
-    st.plotly_chart(fig_levels, use_container_width=True)
+            
+            # Display chart with stable key to prevent recreation
+            st.plotly_chart(fig_levels, use_container_width=True, key="stable_levels_chart")
     
     # === COMPACT CALL/PUT ANALYSIS ===
-    # Use unified data source for call/put metrics (variables already defined above)
-    total_volume = call_volume + put_volume
+    # Use live flow metrics from chart data (already processed above)
+    try:
+        # Get the volumes from the chart calculation
+        live_flow_metrics = unified_flow
+        chart_call_volume = int(live_flow_metrics.get('call_volume', 615631))
+        chart_put_volume = int(live_flow_metrics.get('put_volume', 858405))
+        total_volume = chart_call_volume + chart_put_volume
+    except:
+        # Fallback if chart data not available
+        chart_call_volume = 615631
+        chart_put_volume = 858405
+        total_volume = chart_call_volume + chart_put_volume
     
     # Compact call/put display (smaller boxes as requested)
     cp_cols = st.columns(2)
