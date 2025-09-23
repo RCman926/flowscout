@@ -27,7 +27,7 @@ class InstitutionalPatternDetector:
             'cross_validation': True           # Cross-validate patterns
         }
         
-        # Advanced pattern library
+        # Pattern library - success rates will be populated by real backtesting
         self.institutional_patterns = {
             # Accumulation/Distribution Patterns
             'institutional_accumulation': {
@@ -37,7 +37,7 @@ class InstitutionalPatternDetector:
                 'volume_profile': 'increasing_on_dips',
                 'price_action': 'higher_lows_consolidation',
                 'flow_signature': 'call_volume_dominance',
-                'success_rate': 87.3
+                'success_rate': 0  # Will be updated by backtest results
             },
             'institutional_distribution': {
                 'name': 'Institutional Distribution', 
@@ -46,7 +46,7 @@ class InstitutionalPatternDetector:
                 'volume_profile': 'increasing_on_rallies',
                 'price_action': 'lower_highs_consolidation',
                 'flow_signature': 'put_volume_dominance',
-                'success_rate': 84.1
+                'success_rate': 0  # Will be updated by backtest results
             },
             
             # Smart Money Patterns
@@ -57,7 +57,7 @@ class InstitutionalPatternDetector:
                 'volume_profile': 'contrary_to_price',
                 'price_action': 'momentum_divergence',
                 'flow_signature': 'dark_pool_activity',
-                'success_rate': 89.7
+                'success_rate': 0  # Will be updated by backtest results
             },
             'institutional_breakout': {
                 'name': 'Institutional Breakout',
@@ -66,7 +66,7 @@ class InstitutionalPatternDetector:
                 'volume_profile': 'explosive_volume',
                 'price_action': 'clean_breakout',
                 'flow_signature': 'sweep_orders',
-                'success_rate': 91.2
+                'success_rate': 0  # Will be updated by backtest results
             },
             
             # Flow-Based Patterns
@@ -77,7 +77,7 @@ class InstitutionalPatternDetector:
                 'volume_profile': 'call_volume_spike',
                 'price_action': 'approaching_resistance',
                 'flow_signature': 'otm_call_buying',
-                'success_rate': 82.9
+                'success_rate': 0  # Will be updated by backtest results
             },
             'put_wall_breakdown': {
                 'name': 'Put Wall Breakdown',
@@ -86,7 +86,7 @@ class InstitutionalPatternDetector:
                 'volume_profile': 'put_volume_concentration',
                 'price_action': 'support_level_test',
                 'flow_signature': 'protective_put_buying',
-                'success_rate': 78.6
+                'success_rate': 0  # Will be updated by backtest results
             },
             
             # Advanced Institutional Patterns
@@ -97,7 +97,7 @@ class InstitutionalPatternDetector:
                 'volume_profile': 'consistent_buying',
                 'price_action': 'sideways_compression',
                 'flow_signature': 'iceberg_orders',
-                'success_rate': 94.1
+                'success_rate': 0  # Will be updated by backtest results
             },
             'institutional_rotation': {
                 'name': 'Institutional Rotation',
@@ -106,9 +106,12 @@ class InstitutionalPatternDetector:
                 'volume_profile': 'cross_asset_flows',
                 'price_action': 'relative_strength_shift',
                 'flow_signature': 'sector_flow_divergence',
-                'success_rate': 76.8
+                'success_rate': 0  # Will be updated by backtest results
             }
         }
+        
+        # Initialize backtesting engine for real performance measurement
+        self.backtesting_engine = None
         
         # Pattern detection history
         self.detected_patterns = []
