@@ -1979,58 +1979,58 @@ def main():
                                 strike = atm_strike + offset
                                 if strike > 0:
                                     strikes_to_show.append(strike)
-                        
-                        if days_to_exp == 0:
-                            exp_label = "0DTE - MAXIMUM LEVERAGE"
-                            leverage_multiplier = 10
-                        elif days_to_exp <= 7:
-                            exp_label = f"{days_to_exp}DTE - HIGH LEVERAGE"
-                            leverage_multiplier = 5
-                        else:
-                            exp_label = f"{days_to_exp}DTE - STEADY GAINS"
-                            leverage_multiplier = 2
-                        
-                        st.info(f"⚡ {exp_label}")
-                        
-                        # Create balanced options table with all risk levels
-                        options_data = []
-                        
-                        for strike in strikes_to_show:
-                            # Find call and put data for this strike
-                            call_row = chain.calls[chain.calls['strike'] == strike]
-                            put_row = chain.puts[chain.puts['strike'] == strike]
                             
-                            # Categorize option by risk level
-                            distance_from_atm = abs(strike - current_price) / current_price
+                            if days_to_exp == 0:
+                                exp_label = "0DTE - MAXIMUM LEVERAGE"
+                                leverage_multiplier = 10
+                            elif days_to_exp <= 7:
+                                exp_label = f"{days_to_exp}DTE - HIGH LEVERAGE"
+                                leverage_multiplier = 5
+                            else:
+                                exp_label = f"{days_to_exp}DTE - STEADY GAINS"
+                                leverage_multiplier = 2
                             
-                            if distance_from_atm <= 0.02:  # Within 2% of current price
-                                risk_category = "🛡️ CONSERVATIVE"
-                                risk_color = "success"
-                                win_rate = "70-80%"
-                                target_return = "25-50%"
-                            elif distance_from_atm <= 0.05:  # Within 5% of current price
-                                risk_category = "📈 MODERATE"
-                                risk_color = "info"
-                                win_rate = "50-60%"
-                                target_return = "50-150%"
-                            elif distance_from_atm <= 0.10:  # Within 10% of current price
-                                risk_category = "🚀 AGGRESSIVE"
-                                risk_color = "warning"
-                                win_rate = "35-45%"
-                                target_return = "150-400%"
-                            else:  # Far OTM
-                                risk_category = "🎰 SPECULATION"
-                                risk_color = "error"
-                                win_rate = "15-25%"
-                                target_return = "400-2000%"
-                            
-                            if not call_row.empty and not put_row.empty:
-                                call_data = call_row.iloc[0]
-                                put_data = put_row.iloc[0]
+                            st.info(f"⚡ {exp_label}")
+                        
+                            # Create balanced options table with all risk levels
+                            options_data = []
+                        
+                            for strike in strikes_to_show:
+                                # Find call and put data for this strike
+                                call_row = chain.calls[chain.calls['strike'] == strike]
+                                put_row = chain.puts[chain.puts['strike'] == strike]
                                 
-                                # Calculate potential profits
-                                call_ask = float(call_data['ask']) if call_data['ask'] > 0 else 0.01
-                                put_ask = float(put_data['ask']) if put_data['ask'] > 0 else 0.01
+                                # Categorize option by risk level
+                                distance_from_atm = abs(strike - current_price) / current_price
+                                
+                                if distance_from_atm <= 0.02:  # Within 2% of current price
+                                    risk_category = "🛡️ CONSERVATIVE"
+                                    risk_color = "success"
+                                    win_rate = "70-80%"
+                                    target_return = "25-50%"
+                                elif distance_from_atm <= 0.05:  # Within 5% of current price
+                                    risk_category = "📈 MODERATE"
+                                    risk_color = "info"
+                                    win_rate = "50-60%"
+                                    target_return = "50-150%"
+                                elif distance_from_atm <= 0.10:  # Within 10% of current price
+                                    risk_category = "🚀 AGGRESSIVE"
+                                    risk_color = "warning"
+                                    win_rate = "35-45%"
+                                    target_return = "150-400%"
+                                else:  # Far OTM
+                                    risk_category = "🎰 SPECULATION"
+                                    risk_color = "error"
+                                    win_rate = "15-25%"
+                                    target_return = "400-2000%"
+                                
+                                if not call_row.empty and not put_row.empty:
+                                    call_data = call_row.iloc[0]
+                                    put_data = put_row.iloc[0]
+                                    
+                                    # Calculate potential profits
+                                    call_ask = float(call_data['ask']) if call_data['ask'] > 0 else 0.01
+                                    put_ask = float(put_data['ask']) if put_data['ask'] > 0 else 0.01
                                 
                                 # Distance from current price
                                 distance = ((strike - current_price) / current_price) * 100
@@ -2057,35 +2057,35 @@ def main():
                                     'Risk': risk_level
                                 })
                         
-                        if options_data:
-                            # Display as interactive table
-                            df = pd.DataFrame(options_data)
-                            st.dataframe(df, use_container_width=True, hide_index=True)
-                            
-                            # Highlight best opportunities
-                            st.markdown("**🔥 Top Profit Opportunities:**")
-                            
-                            opportunity_cols = st.columns(3)
-                            
-                            with opportunity_cols[0]:
-                                if days_to_exp == 0:
-                                    st.error("🚀 0DTE CALLS - 500%+ possible")
-                                    st.caption(f"${atm_strike + 5} calls at ${options_data[6]['Call Ask'] if len(options_data) > 6 else '0.10'}")
-                                else:
-                                    st.success("📈 OTM CALLS - 200%+ possible")
-                                    st.caption(f"${atm_strike + 10} calls")
-                            
-                            with opportunity_cols[1]:
-                                if days_to_exp == 0:
-                                    st.error("🚀 0DTE PUTS - 500%+ possible") 
-                                    st.caption(f"${atm_strike - 5} puts at ${options_data[2]['Put Ask'] if len(options_data) > 2 else '0.10'}")
-                                else:
-                                    st.success("📉 OTM PUTS - 200%+ possible")
-                                    st.caption(f"${atm_strike - 10} puts")
-                            
-                            with opportunity_cols[2]:
-                                st.warning("⚡ STRADDLES - 300%+ possible")
-                                st.caption(f"ATM ${atm_strike} straddle")
+                            if options_data:
+                                # Display as interactive table
+                                df = pd.DataFrame(options_data)
+                                st.dataframe(df, use_container_width=True, hide_index=True)
+                                
+                                # Highlight best opportunities
+                                st.markdown("**🔥 Top Profit Opportunities:**")
+                                
+                                opportunity_cols = st.columns(3)
+                                
+                                with opportunity_cols[0]:
+                                    if days_to_exp == 0:
+                                        st.error("🚀 0DTE CALLS - 500%+ possible")
+                                        st.caption(f"${atm_strike + 5} calls at ${options_data[6]['Call Ask'] if len(options_data) > 6 else '0.10'}")
+                                    else:
+                                        st.success("📈 OTM CALLS - 200%+ possible")
+                                        st.caption(f"${atm_strike + 10} calls")
+                                
+                                with opportunity_cols[1]:
+                                    if days_to_exp == 0:
+                                        st.error("🚀 0DTE PUTS - 500%+ possible") 
+                                        st.caption(f"${atm_strike - 5} puts at ${options_data[2]['Put Ask'] if len(options_data) > 2 else '0.10'}")
+                                    else:
+                                        st.success("📉 OTM PUTS - 200%+ possible")
+                                        st.caption(f"${atm_strike - 10} puts")
+                                
+                                with opportunity_cols[2]:
+                                    st.warning("⚡ STRADDLES - 300%+ possible")
+                                    st.caption(f"ATM ${atm_strike} straddle")
                                 
                     except Exception as e:
                         st.warning(f"Data unavailable for {exp_date}")
