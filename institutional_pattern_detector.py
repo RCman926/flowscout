@@ -112,6 +112,7 @@ class InstitutionalPatternDetector:
         
         # Initialize backtesting engine for real performance measurement
         self.backtesting_engine = None
+        self.real_performance_loaded = False
         
         # Pattern detection history
         self.detected_patterns = []
@@ -122,6 +123,9 @@ class InstitutionalPatternDetector:
         
         logging.basicConfig(level=logging.INFO)
         self.logger = logging.getLogger(__name__)
+        
+        # Load real performance metrics if available
+        self._load_real_performance_metrics()
     
     def detect_institutional_patterns(self, market_data: Dict, flow_data: Dict, 
                                     historical_data: Dict) -> Dict:
@@ -599,4 +603,123 @@ class InstitutionalPatternDetector:
             'pattern_alerts': ['⚠️ Pattern detection system error'],
             'model_version': 'FALLBACK_V1.0',
             'timestamp': datetime.now().isoformat()
+        }
+    
+    def _load_real_performance_metrics(self) -> None:
+        """Load real backtested performance metrics"""
+        try:
+            # Try to load from saved backtest results
+            import os
+            if os.path.exists('backtest_results.json'):
+                with open('backtest_results.json', 'r') as f:
+                    backtest_data = json.load(f)
+                    
+                    # Update success rates with real data
+                    for pattern_id in self.institutional_patterns:
+                        if pattern_id in backtest_data:
+                            pattern_result = backtest_data[pattern_id]
+                            if pattern_result.get('statistical_significance', False):
+                                success_rate = pattern_result['overall_metrics']['success_rate']
+                                self.institutional_patterns[pattern_id]['success_rate'] = success_rate
+                                self.logger.info(f"Loaded real success rate for {pattern_id}: {success_rate:.1f}%")
+                    
+                    self.real_performance_loaded = True
+                    self.logger.info("Real backtested performance metrics loaded successfully")
+            else:
+                self.logger.info("No backtest results found - will run backtesting")
+                
+        except Exception as e:
+            self.logger.warning(f"Could not load real performance metrics: {e}")
+    
+    def update_pattern_success_rates(self, backtest_results: Dict) -> None:
+        """Update pattern success rates with real backtested data"""
+        try:
+            updated_patterns = 0
+            
+            for pattern_id, result in backtest_results.items():
+                if pattern_id in self.institutional_patterns:
+                    if result.get('statistical_significance', False):
+                        # Use real backtested success rate
+                        success_rate = result['overall_metrics']['success_rate']
+                        self.institutional_patterns[pattern_id]['success_rate'] = success_rate
+                        updated_patterns += 1
+                        self.logger.info(f"Updated {pattern_id} success rate to {success_rate:.1f}% (REAL DATA)")
+                    else:
+                        # Mark as insufficient data
+                        self.institutional_patterns[pattern_id]['success_rate'] = 0
+                        self.institutional_patterns[pattern_id]['insufficient_data'] = True
+                        self.logger.warning(f"Insufficient data for {pattern_id} - success rate set to 0")
+            
+            # Save updated results
+            import os
+            with open('backtest_results.json', 'w') as f:
+                json.dump(backtest_results, f, indent=2)
+            
+            self.real_performance_loaded = True
+            self.logger.info(f"Updated {updated_patterns} patterns with real performance data")
+            
+        except Exception as e:
+            self.logger.error(f"Error updating pattern success rates: {e}")
+    
+    def run_pattern_backtesting(self, symbol: str = 'SPY') -> Dict:
+        """Run comprehensive backtesting for all patterns"""
+        try:
+            # Import and initialize backtesting engine
+            from real_backtesting_engine import RealBacktestingEngine
+            
+            if self.backtesting_engine is None:
+                self.backtesting_engine = RealBacktestingEngine()
+            
+            self.logger.info(f"Starting comprehensive pattern backtesting for {symbol}")
+            
+            # Run backtesting for all patterns
+            backtest_results = self.backtesting_engine.get_all_pattern_performance(symbol)
+            
+            # Update our pattern success rates with real data
+            if 'all_pattern_results' in backtest_results:
+                self.update_pattern_success_rates(backtest_results['all_pattern_results'])
+            
+            return {
+                'backtesting_completed': True,
+                'symbol': symbol,
+                'results': backtest_results,
+                'patterns_updated': len([p for p in self.institutional_patterns.values() if p['success_rate'] > 0]),
+                'real_data_available': self.real_performance_loaded,
+                'timestamp': datetime.now().isoformat()
+            }
+            
+        except Exception as e:
+            self.logger.error(f"Pattern backtesting failed: {e}")
+            return {
+                'backtesting_completed': False,
+                'error': str(e),
+                'real_data_available': False,
+                'timestamp': datetime.now().isoformat()
+            }
+    
+    def get_pattern_data_quality(self) -> Dict:
+        """Get data quality information for all patterns"""
+        
+        patterns_with_real_data = 0
+        patterns_with_insufficient_data = 0
+        patterns_without_data = 0
+        
+        for pattern_id, pattern_info in self.institutional_patterns.items():
+            if pattern_info['success_rate'] > 0:
+                patterns_with_real_data += 1
+            elif pattern_info.get('insufficient_data', False):
+                patterns_with_insufficient_data += 1
+            else:
+                patterns_without_data += 1
+        
+        data_quality = 'REAL_BACKTESTED' if self.real_performance_loaded else 'NOT_BACKTESTED'
+        
+        return {
+            'data_quality': data_quality,
+            'patterns_with_real_data': patterns_with_real_data,
+            'patterns_with_insufficient_data': patterns_with_insufficient_data,
+            'patterns_without_data': patterns_without_data,
+            'total_patterns': len(self.institutional_patterns),
+            'real_data_percentage': (patterns_with_real_data / len(self.institutional_patterns)) * 100,
+            'backtesting_required': not self.real_performance_loaded
         }

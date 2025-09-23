@@ -319,6 +319,135 @@ class SignalValidator:
         
         return recommendations
     
+    def validate_signal_with_real_data(self, signal_id: str, hours_elapsed: int = 4) -> Dict:
+        """Validate signal using real market price data instead of simulation"""
+        try:
+            # Load signal data
+            with open(self.signals_file, 'r') as f:
+                signals = json.load(f)
+            
+            signal_data = None
+            for signal in signals:
+                if signal['id'] == signal_id:
+                    signal_data = signal
+                    break
+            
+            if not signal_data:
+                return {'error': 'Signal not found', 'validation_type': 'REAL_DATA_FAILED'}
+            
+            # Get real market data for validation
+            import yfinance as yf
+            from datetime import datetime, timedelta
+            
+            symbol = signal_data['symbol']
+            signal_time = datetime.fromisoformat(signal_data['timestamp'])
+            
+            # Fetch real price data
+            end_time = signal_time + timedelta(hours=hours_elapsed + 1)
+            ticker = yf.Ticker(symbol)
+            
+            # Get hourly data around signal time
+            price_data = ticker.history(start=signal_time - timedelta(hours=1), 
+                                      end=end_time, interval='1h')
+            
+            if price_data.empty:
+                return {'error': 'No real market data available', 'validation_type': 'REAL_DATA_UNAVAILABLE'}
+            
+            # Find closest prices to signal time and validation time
+            signal_price = signal_data['current_price']
+            
+            # Get actual market price at validation time
+            target_time = signal_time + timedelta(hours=hours_elapsed)
+            closest_price_row = price_data.iloc[-1]  # Use last available price
+            actual_price = float(closest_price_row['Close'])
+            
+            # Calculate real performance
+            if signal_data['signal_type'] in ['BUY_CALLS', 'LEAN_CALLS']:
+                # For calls, profit if price went up
+                price_change_pct = (actual_price - signal_price) / signal_price * 100
+                success = price_change_pct > 0.5  # Threshold for success
+            elif signal_data['signal_type'] in ['BUY_PUTS', 'LEAN_PUTS']:
+                # For puts, profit if price went down
+                price_change_pct = (signal_price - actual_price) / signal_price * 100
+                success = price_change_pct > 0.5  # Threshold for success
+            else:
+                price_change_pct = 0
+                success = False
+            
+            # Update signal with real validation results
+            signal_data['actual_outcome'] = {
+                'signal_price': signal_price,
+                'actual_price': actual_price,
+                'price_change_pct': price_change_pct,
+                'hours_elapsed': hours_elapsed,
+                'data_source': 'YAHOO_FINANCE_REAL'
+            }
+            signal_data['success'] = success
+            signal_data['status'] = 'validated_real'
+            signal_data['validation_time'] = datetime.now().isoformat()
+            signal_data['validation_type'] = 'REAL_MARKET_DATA'
+            
+            # Save updated signal
+            with open(self.signals_file, 'w') as f:
+                json.dump(signals, f, indent=2)
+            
+            return {
+                'signal_id': signal_id,
+                'validation_successful': True,
+                'validation_type': 'REAL_MARKET_DATA',
+                'success': success,
+                'price_change_pct': price_change_pct,
+                'signal_price': signal_price,
+                'actual_price': actual_price,
+                'data_source': 'Yahoo Finance',
+                'timestamp': datetime.now().isoformat()
+            }
+            
+        except Exception as e:
+            return {
+                'error': str(e),
+                'validation_type': 'REAL_DATA_ERROR',
+                'fallback_to_simulation': True
+            }
+    
+    def run_real_validation_batch(self) -> Dict:
+        """Run real validation on all pending signals"""
+        try:
+            with open(self.signals_file, 'r') as f:
+                signals = json.load(f)
+            
+            real_validations = 0
+            simulation_fallbacks = 0
+            errors = 0
+            
+            for signal in signals:
+                if signal['status'] == 'active':
+                    signal_time = datetime.fromisoformat(signal['timestamp'])
+                    hours_elapsed = (datetime.now() - signal_time).total_seconds() / 3600
+                    
+                    if hours_elapsed >= 4:  # Validate after 4 hours
+                        validation_result = self.validate_signal_with_real_data(signal['id'])
+                        
+                        if validation_result.get('validation_successful'):
+                            real_validations += 1
+                        elif validation_result.get('fallback_to_simulation'):
+                            # Fall back to simulation if real data unavailable
+                            simulation_fallbacks += 1
+                        else:
+                            errors += 1
+            
+            return {
+                'real_validations': real_validations,
+                'simulation_fallbacks': simulation_fallbacks,
+                'errors': errors,
+                'total_processed': real_validations + simulation_fallbacks + errors,
+                'real_data_success_rate': (real_validations / max(1, real_validations + simulation_fallbacks + errors)) * 100,
+                'timestamp': datetime.now().isoformat()
+            }
+            
+        except Exception as e:
+            return {'error': str(e), 'real_validations': 0}
+    
     def get_next_level_prediction_accuracy(self) -> Dict:
         """NEXT-LEVEL UPGRADE: Advanced AI-powered prediction accuracy tracking"""
         try:
