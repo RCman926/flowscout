@@ -333,50 +333,55 @@ def main():
     
     # === SYMBOL SELECTOR ===
     st.markdown("---")
+    
+    # Fixed symbol selector - always 7 columns to prevent layout shifts
     symbol_rows = [symbols[i:i+7] for i in range(0, len(symbols), 7)]
     
     # Symbol selector with OPTIMIZED data fetching - only basic price data for buttons
     for row in symbol_rows:
-        cols = st.columns(len(row))
+        # Always create exactly 7 columns to maintain consistent structure
+        cols = st.columns(7)
         for i, symbol in enumerate(row):
-            # PERFORMANCE FIX: Only get basic market data for symbol buttons (cached)
-            try:
-                symbol_data = get_cached_market_data(symbol) if symbol == selected_symbol else {}
+            if i < len(cols):  # Safety check
+                with cols[i]:
+                    # PERFORMANCE FIX: Only get basic market data for symbol buttons (cached)
+                    try:
+                        symbol_data = get_cached_market_data(symbol) if symbol == selected_symbol else {}
+                        
+                        # For non-selected symbols, use lightweight price-only logic
+                        if symbol != selected_symbol:
+                            # Use simplified approach for button display only
+                            import yfinance as yf
+                            ticker = yf.Ticker(symbol)
+                            hist = ticker.history(period="1d", interval="1m")
+                            if not hist.empty:
+                                current_price = float(hist['Close'].iloc[-1])
+                                prev_close = float(hist['Close'].iloc[0])
+                                change_pct = ((current_price - prev_close) / prev_close) * 100
+                                symbol_data = {
+                                    'price': current_price,
+                                    'change_pct': change_pct,
+                                    'data_source': 'button_display_only',
+                                    'lightweight': True
+                                }
+                            else:
+                                symbol_data = {'price': 150.0, 'change_pct': 0.0, 'lightweight': True}
+                                
+                        price = symbol_data.get('price', 150.0)
+                        change_pct = symbol_data.get('change_pct', 0.0)
                 
-                # For non-selected symbols, use lightweight price-only logic
-                if symbol != selected_symbol:
-                    # Use simplified approach for button display only
-                    import yfinance as yf
-                    ticker = yf.Ticker(symbol)
-                    hist = ticker.history(period="1d", interval="1m")
-                    if not hist.empty:
-                        current_price = float(hist['Close'].iloc[-1])
-                        prev_close = float(hist['Close'].iloc[0])
-                        change_pct = ((current_price - prev_close) / prev_close) * 100
+                    except Exception as e:
+                        # Fallback symbol data structure
                         symbol_data = {
-                            'price': current_price,
-                            'change_pct': change_pct,
-                            'data_source': 'button_display_only',
+                            'symbol': symbol,
+                            'price': 150.0,
+                            'change_pct': 0.0,
+                            'data_source': 'fallback',
+                            'data_integrity': False,
                             'lightweight': True
                         }
-                    else:
-                        symbol_data = {'price': 150.0, 'change_pct': 0.0, 'lightweight': True}
-                        
-                price = symbol_data.get('price', 150.0)
-                change_pct = symbol_data.get('change_pct', 0.0)
-                
-            except Exception as e:
-                # Fallback symbol data structure
-                symbol_data = {
-                    'symbol': symbol,
-                    'price': 150.0,
-                    'change_pct': 0.0,
-                    'data_source': 'fallback',
-                    'data_integrity': False,
-                    'lightweight': True
-                }
-                price = 150.0
-                change_pct = 0.0
+                        price = 150.0
+                        change_pct = 0.0
             
             # === OPTIMIZED: Only generate full signals for selected symbol ===
             try:
@@ -573,6 +578,11 @@ def main():
                     # Seamless symbol change without page refresh
                     if 'selected_symbol' in st.session_state.seamless_data:
                         st.session_state.seamless_data['selected_symbol'] = symbol
+        
+        # Fill remaining columns with empty containers for consistent structure
+        for i in range(len(row), 7):
+            with cols[i]:
+                st.empty()
     
     # Enhanced accuracy logging only
     if ACCURACY_MODULES_LOADED:
