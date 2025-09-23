@@ -503,27 +503,20 @@ def main():
                     if 'selected_symbol' in st.session_state.seamless_data:
                         st.session_state.seamless_data['selected_symbol'] = symbol
     
-    # === ENHANCED ACCURACY DASHBOARD ===
+    # Enhanced accuracy logging only
     if ACCURACY_MODULES_LOADED:
         try:
-            # Create enhanced accuracy dashboard with fetch timing
+            # Just log insights without dashboard display
+            from data_quality_visualization_system import data_quality_visualizer
             fetch_start_time = time.time()
-            
-            # Run enhanced accuracy analysis with SYNCHRONOUS methods only
             quality_summary = data_quality_visualizer.render_quality_dashboard(
                 selected_symbol, market_data, flow_data, fetch_start_time
             )
-            
-            # Log accuracy insights
             if quality_summary and 'combined_confidence' in quality_summary:
                 confidence = quality_summary['combined_confidence']
                 print(f"🎯 ACCURACY ANALYSIS {selected_symbol}: Combined confidence {confidence}%")
-                
         except Exception as e:
-            st.error(f"⚠️ Accuracy Dashboard Error: {str(e)}")
-            print(f"Accuracy dashboard error: {e}")
-    else:
-        st.info("💡 Enhanced accuracy modules not loaded - using standard analysis")
+            print(f"Accuracy logging error: {e}")
 
     # === MAIN DASHBOARD ===
     st.markdown("---")
@@ -747,194 +740,33 @@ def main():
         vol_regime = "HIGH" if daily_range > 2 else "NORMAL" if daily_range > 0.5 else "LOW"
         st.metric("Vol Regime", vol_regime, f"{daily_range:.1f}% today")
     
-    # === LIVE ACTION OPTIONS BATTLE ===
-    st.markdown("### ⚔️ LIVE OPTIONS BATTLE - CALLS vs PUTS")
-    st.caption("📊 Using same unified data source as Options Flow Analysis above")
-    
-    # Use SAME unified data source for consistency 
+    # === COMPACT CALL/PUT ANALYSIS ===
+    # Use unified data source for call/put metrics
     live_flow_metrics = unified_flow
     
-    # Battle visualization at the top
-    battle_cols = st.columns([2, 1, 2])
+    # Compact call/put display (smaller boxes as requested)
+    cp_cols = st.columns(2)
     
-    with battle_cols[0]:
-        # Using same call_volume as Options Flow Analysis section
-        battle_call_volume = call_volume  # Same unified data
-        import random
-        call_pressure = random.randint(0, 15)  # Simulated pressure based on flow momentum
+    with cp_cols[0]:
+        # Smaller call box
         st.markdown(f"""
-        <div style='background: linear-gradient(90deg, #00ff00 0%, #004400 100%); padding: 20px; border-radius: 10px; text-align: center;'>
-            <h2 style='color: white; margin: 0;'>🟢 CALLS ARMY</h2>
-            <h1 style='color: white; margin: 10px 0;'>{battle_call_volume:,}</h1>
-            <p style='color: #ccffcc; margin: 0;'>Pressure: {call_pressure}%</p>
+        <div style='background: #004400; padding: 10px; border-radius: 5px; text-align: center;'>
+            <h4 style='color: #00ff00; margin: 0;'>🟢 CALLS</h4>
+            <h3 style='color: white; margin: 5px 0;'>{call_volume:,}</h3>
         </div>
         """, unsafe_allow_html=True)
     
-    with battle_cols[1]:
-        # Using same total_volume as Options Flow Analysis section
-        battle_total_volume = total_volume
-        call_dominance = (battle_call_volume / max(battle_total_volume, 1)) * 100
-        put_dominance = 100 - call_dominance
-        
-        if call_dominance > 52:
-            winner = "🟢 CALLS WINNING"
-            color = "#00ff00"
-        elif put_dominance > 52:
-            winner = "🔴 PUTS WINNING"
-            color = "#ff0000"
-        else:
-            winner = "⚔️ BATTLE RAGING"
-            color = "#ffff00"
-        
+    with cp_cols[1]:
+        # Smaller put box  
         st.markdown(f"""
-        <div style='text-align: center; padding: 20px;'>
-            <h3 style='color: {color}; margin: 0;'>{winner}</h3>
-            <div style='background: #333; height: 20px; border-radius: 10px; margin: 10px 0; overflow: hidden;'>
-                <div style='background: #00ff00; height: 100%; width: {call_dominance}%; float: left;'></div>
-                <div style='background: #ff0000; height: 100%; width: {put_dominance}%; float: right;'></div>
-            </div>
-            <p style='margin: 0; font-size: 12px;'>🟢 {call_dominance:.1f}% vs {put_dominance:.1f}% 🔴</p>
+        <div style='background: #440000; padding: 10px; border-radius: 5px; text-align: center;'>
+            <h4 style='color: #ff0000; margin: 0;'>🔴 PUTS</h4>
+            <h3 style='color: white; margin: 5px 0;'>{put_volume:,}</h3>
         </div>
         """, unsafe_allow_html=True)
     
-    with battle_cols[2]:
-        # Using same put_volume as Options Flow Analysis section
-        battle_put_volume = put_volume  # Same unified data
-        put_pressure = random.randint(0, 15)  # Simulated pressure based on flow momentum
-        st.markdown(f"""
-        <div style='background: linear-gradient(90deg, #440000 0%, #ff0000 100%); padding: 20px; border-radius: 10px; text-align: center;'>
-            <h2 style='color: white; margin: 0;'>🔴 PUTS ARMY</h2>
-            <h1 style='color: white; margin: 10px 0;'>{battle_put_volume:,}</h1>
-            <p style='color: #ffcccc; margin: 0;'>Pressure: {put_pressure}%</p>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    # Live flow action bar
-    st.markdown("#### 📊 LIVE ACTION FLOW")
-    
-    # Show REAL data source status - unified approach
-    unified_data_source = unified_flow.get('data_source', 'UNKNOWN')
-    data_freshness = unified_flow.get('data_freshness', 'UNKNOWN')
-    
-    if unified_data_source == 'live_scraper' or data_freshness == 'LIVE_SCRAPED':
-        st.success("✅ REAL LIVE DATA - Authenticated scraping active")
-        st.caption("Real-time options data from verified sources")
-    elif unified_data_source == 'yahoo_finance':
-        st.success("✅ LIVE DATA - Yahoo Finance API")
-        st.caption("Real market data with minimal delay")
-    elif unified_data_source == 'institutional_feed':
-        st.success("✅ INSTITUTIONAL DATA - Professional feed")
-        st.caption("Institutional-grade real-time data")
-    else:
-        st.error("❌ SYNTHETIC DATA DETECTED - REJECTED")
-        st.caption("HIGHEST LEVEL system requires REAL DATA only")
-        st.caption(f"Current source: {unified_data_source} - Not authenticated")
-    
-    # Comprehensive flow metrics
-    flow_detail_cols = st.columns(4)
-    
-    with flow_detail_cols[0]:
-        st.metric("🔥 Total Action", f"{total_volume:,}", f"Live volume")
-        cp_ratio = live_flow_metrics.get('cp_ratio', 1.0)
-        st.caption(f"C/P Ratio: {cp_ratio:.2f}")
-    
-    with flow_detail_cols[1]:
-        momentum = live_flow_metrics.get('momentum', 'NEUTRAL')
-        if 'BULLISH' in momentum:
-            st.success(f"📈 {momentum}")
-        elif 'BEARISH' in momentum:
-            st.error(f"📉 {momentum}")
-        else:
-            st.info(f"⚪ {momentum}")
-        st.caption("Flow momentum")
-    
-    with flow_detail_cols[2]:
-        unusual_activity = live_flow_metrics.get('unusual_activity', False)
-        if unusual_activity:
-            st.warning("🚨 UNUSUAL ACTIVITY")
-        else:
-            st.info("📊 Normal Flow")
-        st.caption("Activity level")
-    
-    with flow_detail_cols[3]:
-        timestamp = live_flow_metrics.get('timestamp', 'N/A')
-        if hasattr(timestamp, 'strftime'):
-            time_str = timestamp.strftime('%H:%M:%S')
-        else:
-            time_str = str(timestamp)
-        st.metric("🕐 Last Update", time_str)
-        st.caption("Live refresh")
-    
-    # === LIVE STREAMING OPTIONS ACTION ===
-    st.markdown("#### ⚡ LIVE STREAMING OPTIONS ACTION")
-    
-    # Get comprehensive options data for streaming view
-    from real_live_options_scraper import real_live_scraper
-    live_options_data = real_live_scraper.get_live_options_chain(selected_symbol)
-    
-    if live_options_data:
-        # Top strikes action
-        top_strikes = live_options_data.get('top_strikes', [])
-        if hasattr(real_live_scraper, '_get_top_strikes_by_volume'):
-            top_strikes = real_live_scraper._get_top_strikes_by_volume(live_options_data)
-        
-        if top_strikes:
-            st.markdown("**🔥 HOTTEST STRIKES**")
-            
-            # Create scrollable action feed
-            action_container = st.container()
-            with action_container:
-                # Show top 10 most active strikes
-                for i, strike in enumerate(top_strikes[:10]):
-                    strike_price = strike['strike']
-                    volume = strike['volume']
-                    option_type = strike['type']
-                    dte = strike.get('dte', 'N/A')
-                    
-                    # Simple compact display like before
-                    col1, col2, col3, col4 = st.columns([1, 2, 1, 1])
-                    
-                    with col1:
-                        if option_type == 'CALL':
-                            st.success(f"🟢 {option_type}")
-                        else:
-                            st.error(f"🔴 {option_type}")
-                    
-                    with col2:
-                        st.write(f"**${strike_price}**")
-                        st.caption(f"{dte}DTE")
-                    
-                    with col3:
-                        st.metric("Volume", f"{volume:,}")
-                        
-                    with col4:
-                        if volume > 1000:
-                            st.error("🔥 HOT")
-                        elif volume > 500:
-                            st.warning("⚡ ACTIVE")
-                        else:
-                            st.info("📊 NORMAL")
-                    
-                    # Add separator
-                    if i < len(top_strikes[:10]) - 1:
-                        st.markdown("---")
-        
-        # Compact unusual activity
-        unusual_activity = live_options_data.get('unusual_activity', [])
-        if unusual_activity:
-            st.markdown("**🚨 UNUSUAL ACTIVITY**")
-            for alert in unusual_activity[:3]:
-                strike = alert['strike']
-                option_type = alert['type']
-                volume = alert['volume']
-                
-                if option_type == 'CALL':
-                    st.success(f"🟢 CALL ${strike} - {volume:,} vol")
-                else:
-                    st.error(f"🔴 PUT ${strike} - {volume:,} vol")
-    
-    else:
-        st.warning("⚠️ Live options data temporarily unavailable - refreshing...")
+    # Simple total volume display only  
+    st.caption(f"Total Volume: {total_volume:,} | C/P Ratio: {live_flow_metrics.get('cp_ratio', 1.0):.2f}")
     
     # === COMPACT NEWS & CALENDAR SIDEBAR ===
     with st.sidebar:
@@ -1878,178 +1710,7 @@ def main():
         st.write(f"• Target: {profit_target}% = ${contracts_yolo * yolo_premium * 100 * profit_target/100:.0f}")
         st.caption("Strategy: Far OTM, 0-1 DTE")
     
-    # Portfolio allocation recommendation
-    st.markdown("---")
-    st.markdown("**💼 Recommended Portfolio Allocation:**")
-    
-    allocation_cols = st.columns(4)
-    
-    with allocation_cols[0]:
-        st.metric("Conservative", "40%", "Steady income")
-        st.caption("Monthly income plays")
-    
-    with allocation_cols[1]:
-        st.metric("Moderate", "35%", "Growth focused")
-        st.caption("2-3 week swings")
-    
-    with allocation_cols[2]:
-        st.metric("Aggressive", "20%", "High upside")
-        st.caption("Weekly plays")
-    
-    with allocation_cols[3]:
-        st.metric("Speculation", "5%", "Lottery tickets")
-        st.caption("0DTE only")
-    
-    # Professional risk-based recommendations
-    st.markdown("---")
-    st.markdown("### 🎯 Professional Strategy Builder")
-    
-    # Import professional risk management
-    from professional_risk_management import professional_risk
-    
-    # Generate balanced strategies
-    strategies = professional_risk.generate_balanced_strategies(
-        selected_symbol, current_price, account_value
-    )
-    
-    # Display strategies in columns
-    if strategies:
-        strat_tabs = st.tabs([
-            "🛡️ Conservative (40%)",
-            "📈 Moderate (35%)", 
-            "🚀 Aggressive (20%)",
-            "🎰 Speculation (5%)"
-        ])
-        
-        for i, strategy in enumerate(strategies):
-            with strat_tabs[i]:
-                risk_level = strategy.get('risk_level', 'unknown')
-                
-                st.markdown(f"**{strategy.get('description', 'Strategy')}**")
-                st.caption(f"Historical Win Rate: {strategy.get('expected_win_rate', 0):.0f}% | Target Return: {strategy.get('target_return', 'N/A')}")
-                st.info("📊 **Note**: Win rates shown are from historical backtesting of similar strategies, not live performance from this platform")
-                
-                # Strategy metrics
-                metrics_cols = st.columns(3)
-                
-                with metrics_cols[0]:
-                    st.metric("Allocation", f"${strategy.get('allocation_amount', 0):.0f}")
-                    st.caption(f"{strategy.get('allocation_pct', 0):.0f}% of portfolio")
-                
-                with metrics_cols[1]:
-                    st.metric("Strategy Type", strategy.get('strategy_type', 'N/A'))
-                    st.caption(f"Expires: {strategy.get('expiration', 'N/A')}")
-                
-                with metrics_cols[2]:
-                    if risk_level == 'conservative':
-                        st.success(f"Risk Level: LOW")
-                        st.caption("Steady income focus")
-                    elif risk_level == 'moderate':
-                        st.info(f"Risk Level: MEDIUM")
-                        st.caption("Balanced approach")
-                    elif risk_level == 'aggressive':
-                        st.warning(f"Risk Level: HIGH")
-                        st.caption("Growth focused")
-                    else:
-                        st.error(f"Risk Level: VERY HIGH")
-                        st.caption("Speculation only")
-                
-                # Show individual strategies if available
-                individual_strategies = strategy.get('strategies', [])
-                if individual_strategies:
-                    st.markdown("**Specific Plays:**")
-                    
-                    for j, play in enumerate(individual_strategies):
-                        with st.expander(f"{play.get('type', 'Strategy')} - ${play.get('strike', 0):.0f}"):
-                            play_cols = st.columns(2)
-                            
-                            with play_cols[0]:
-                                st.write(f"**Strike:** ${play.get('strike', 0):.2f}")
-                                st.write(f"**Premium:** ${play.get('premium', 0):.2f}")
-                                st.write(f"**Contracts:** {play.get('contracts', 0)}")
-                                st.write(f"**Total Cost:** ${play.get('cost', 0):.0f}")
-                            
-                            with play_cols[1]:
-                                if 'break_even' in play:
-                                    st.write(f"**Break Even:** ${play['break_even']:.2f}")
-                                if 'target_return' in play:
-                                    st.write(f"**Target Return:** {play['target_return']}")
-                                if 'probability' in play:
-                                    st.write(f"**Success Rate:** {play['probability']}")
-                                if 'move_needed' in play:
-                                    st.write(f"**Move Needed:** {play['move_needed']}")
-        
-        # Portfolio summary
-        portfolio_metrics = professional_risk.calculate_portfolio_metrics(strategies)
-        
-        st.markdown("---")
-        st.markdown("### 📊 Portfolio Summary")
-        
-        # Add transparency about win rate sources
-        with st.expander("📋 Win Rate Data Sources & Disclaimer"):
-            from strategy_backtesting_data import get_strategy_disclaimer, get_strategy_methodology
-            
-            st.markdown("#### Data Sources")
-            st.info("""
-            Win rates shown are from historical backtesting studies (2020-2024):
-            • **Conservative**: CBOE Options Institute covered call research
-            • **Moderate**: Market Chameleon directional options studies  
-            • **Aggressive**: Professional trading firm volatility studies
-            • **Speculation**: Academic research on lottery-type options
-            
-            Sample sizes: 10,000-100,000+ trades per strategy category
-            """)
-            
-            st.markdown("#### Important Disclaimer") 
-            st.warning(get_strategy_disclaimer())
-            
-            st.markdown("#### Methodology")
-            st.text(get_strategy_methodology())
-        
-        summary_cols = st.columns(4)
-        
-        with summary_cols[0]:
-            total_alloc = portfolio_metrics.get('total_allocation', 50000)
-            st.metric("Total Allocation", f"${total_alloc:.0f}")
-            st.caption("Across all strategies")
-        
-        with summary_cols[1]:
-            win_rate = portfolio_metrics.get('weighted_win_rate', 60)
-            st.metric("Weighted Win Rate", f"{win_rate:.0f}%")
-            st.caption("Portfolio average")
-        
-        with summary_cols[2]:
-            expected_ret = portfolio_metrics.get('expected_return', 100)
-            st.metric("Expected Return", f"{expected_ret:.0f}%")
-            st.caption("Risk-adjusted")
-        
-        with summary_cols[3]:
-            risk_dist = portfolio_metrics.get('risk_distribution', {'Conservative': 40, 'Moderate': 35, 'Aggressive': 20, 'Speculation': 5})
-            highest_risk = max(risk_dist.items(), key=lambda x: x[1])
-            st.metric("Primary Focus", highest_risk[0].title())
-            st.caption(f"{highest_risk[1]:.0f}% allocation")
-    
-    else:
-        st.info("Unable to generate strategies - using market-based recommendations")
-        
-        # Volatility-based fallback recommendations  
-        daily_vol = market_data.get('volatility', tech_data.get('daily_volatility', 1.5))
-        if daily_vol > 2:
-            position_rec = "High Vol = Smaller size, bigger gains"
-            vol_color = "error"
-        elif daily_vol > 1:
-            position_rec = "Normal Vol = Standard sizing"
-            vol_color = "warning"  
-        else:
-            position_rec = "Low Vol = Bigger size, steady gains"
-            vol_color = "success"
-            
-        if vol_color == "error":
-            st.error(f"⚡ {position_rec}")
-        elif vol_color == "warning":
-            st.warning(f"📊 {position_rec}")
-        else:
-            st.success(f"💚 {position_rec}")
+    # Removed Portfolio Allocation and Strategy Builder sections as requested
     
     # === LIVE MARKET DATA DISPLAY ===
     st.markdown("#### 📡 LIVE Market Intelligence")
