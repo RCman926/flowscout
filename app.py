@@ -340,6 +340,10 @@ def main():
     # === SYMBOL SELECTOR - STABLE STRUCTURE ===
     st.markdown("---")
     
+    # Initialize selected_symbol if not exists
+    if 'selected_symbol' not in st.session_state:
+        st.session_state.selected_symbol = 'SPY'  # Default symbol
+    
     # Use simple dropdown to prevent dynamic UI structure issues
     selected_symbol_new = st.selectbox(
         "📊 Select Trading Symbol:",
@@ -354,6 +358,7 @@ def main():
     
     # Update selected_symbol variable for rest of code
     selected_symbol = st.session_state.selected_symbol
+    symbol = selected_symbol  # Ensure symbol variable is defined for compatibility
     
     # Generate coordinated signal using the advanced AI ensemble + flow system
     import asyncio
