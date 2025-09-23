@@ -88,62 +88,47 @@ symbols = ['AAPL', 'TSLA', 'NVDA', 'MSFT', 'GOOGL', 'AMZN', 'META', 'NFLX', 'AMD
 # === MAIN APP LOGIC ===
 def main():
     from datetime import datetime, timedelta
-    from seamless_update_system import seamless_updater
+    # === NO-FLASH AUTO-REFRESH SYSTEM ===
+    from streamlit_autorefresh import st_autorefresh
     
-    # === SEAMLESS UPDATE SYSTEM ===
-    # Initialize seamless updates without page flashing
+    # Initialize auto-refresh without page flashing
     if 'auto_refresh_enabled' not in st.session_state:
         st.session_state.auto_refresh_enabled = True
         st.session_state.refresh_count = 0
     
-    # Start seamless mode for professional trading
-    seamless_updater.start_seamless_mode()
+    # Initialize optimization systems
+    if 'optimization_started' not in st.session_state:
+        success = start_optimized_systems()
+        st.session_state.optimization_started = success
     
-    # Initialize optimization systems on first run (no visible success message)
+    # Unnoticeable auto-refresh - NO page flashing
     if st.session_state.auto_refresh_enabled:
-        if 'optimization_started' not in st.session_state:
-            success = start_optimized_systems()
-            st.session_state.optimization_started = success
-        
-        # Create invisible refresh trigger - NO page flashing
-        seamless_updater.create_invisible_refresh_trigger()
+        st_autorefresh(interval=5000, key="live_trading_refresh")
     
     # === SIDEBAR CONTROLS ===
     with st.sidebar:
         st.markdown("### ⚡ LIVE TRADING FEED")
         
-        # Manual refresh button - seamless update only
+        # Manual refresh button
         if st.button("🚀 INSTANT REFRESH", type="primary"):
             st.session_state.refresh_count += 1
-            # Force update all containers seamlessly
-            for container_id in ['price_display', 'options_flow', 'technical_indicators']:
-                seamless_updater.update_container(container_id, None, force_update=True)
+            st.rerun()
         
-        # Auto-refresh toggle - seamless state update
+        # Auto-refresh toggle
         auto_enabled = st.toggle("Auto-Refresh", value=st.session_state.auto_refresh_enabled)
         if auto_enabled != st.session_state.auto_refresh_enabled:
             st.session_state.auto_refresh_enabled = auto_enabled
-            # No st.rerun() - seamless state change
         
-        # Seamless status display - no visual disruption
+        # Status display
         if st.session_state.auto_refresh_enabled:
-            st.caption("⚡ Seamless updates: 5s intervals")
-            st.caption(f"🚀 Mode: PROFESSIONAL TRADING")
+            st.caption("⚡ Live updates: 5s intervals")
         else:
-            st.caption("⏸️ Seamless updates: PAUSED")
-            st.caption(f"📊 Mode: MANUAL ONLY")
+            st.caption("⏸️ Live updates: PAUSED")
         
-        st.caption(f"🔄 Live updates: {st.session_state.refresh_count}")
-        
-        # Seamless status indicators - no layout changes
-        st.markdown("### 📡 LIVE STATUS")
-        if st.session_state.auto_refresh_enabled:
-            st.success("🟢 Seamless Updates: ACTIVE")
-        else:
-            st.warning("🟡 Seamless Updates: PAUSED")
+        # Market data status only
+        st.markdown("### 📡 Market Data Status")
         st.success("🟢 Market Data: LIVE")
         st.success("🟢 Options Flow: STREAMING")
-        st.info("⚡ Mode: NO-FLASH TRADING")
     
     # Get selected symbol
     selected_symbol = st.session_state.get('selected_symbol', 'SPY')
@@ -540,17 +525,18 @@ def main():
     else:
         st.info("💡 Enhanced accuracy modules not loaded - using standard analysis")
 
-    # === SEAMLESS MAIN DASHBOARD ===
+    # === MAIN DASHBOARD ===
     st.markdown("---")
     st.markdown("#### 📊 Live Market Data")
     
-    # Create seamless update containers for market overview
-    price_container = seamless_updater.create_container('price_display')
+    # Market overview columns
     overview_cols = st.columns(4)
     
     with overview_cols[0]:
-        # Update price display seamlessly
-        seamless_updater.update_price_display('price_metric', market_data)
+        # Price display
+        color = "green" if change_pct >= 0 else "red"
+        arrow = "▲" if change_pct >= 0 else "▼"
+        st.metric(selected_symbol, f"${current_price:.2f}", f"{arrow} {change_pct:.2f}%")
         
         # Add pre/after market pricing display
         # Calculate estimated pre/after market prices (would come from real data in production)
@@ -584,22 +570,22 @@ def main():
                  "Overbought" if tech_data['rsi'] > 70 else "Oversold" if tech_data['rsi'] < 30 else "Normal")
     
     with overview_cols[3]:
-        # Seamless options flow update container
+        # Options flow display
         if selected_symbol in ['SPY', 'QQQ', 'IWM', 'DIA']:
-            # Update options flow seamlessly
-            seamless_updater.update_options_flow('options_flow_signal', {
-                'call_volume': flow_data.get('call_volume', 0),
-                'put_volume': flow_data.get('put_volume', 0),
-                'symbol': selected_symbol
-            })
+            call_vol = flow_data.get('call_volume', 0)
+            put_vol = flow_data.get('put_volume', 0)
+            total_vol = call_vol + put_vol
+            if total_vol > 0:
+                call_pct = (call_vol / total_vol) * 100
+                put_pct = (put_vol / total_vol) * 100
+                st.metric("Call/Put", f"{call_pct:.0f}%/{put_pct:.0f}%", f"{total_vol/1000:.0f}K vol")
+            else:
+                st.metric("Call/Put", "Loading...", "0K vol")
         else:
-            # Seamless data status display
+            # Data status display
             data_freshness = market_data.get('data_freshness', 'UNKNOWN')
-            seamless_updater.update_container('data_status', f"""
-            {'✅ LIVE DATA' if data_freshness == 'LIVE_SCRAPED' else '📊 DATA STATUS'}
-            
-            {data_freshness}
-            """)
+            quality_score = market_data.get('quality_score', 0)
+            st.metric("Data Quality", f"Q:{quality_score}%", data_freshness)
     
 
     

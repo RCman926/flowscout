@@ -275,7 +275,9 @@ class SeamlessUpdateSystem:
         </script>
         """
         
-        st.components.v1.html(refresh_script, height=0)
+        # Disable problematic component - causing crashes
+        # st.components.v1.html(refresh_script, height=0)
+        pass
     
     def get_should_update(self, container_id: str) -> bool:
         """Check if container should be updated based on timing"""
