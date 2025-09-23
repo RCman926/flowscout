@@ -236,6 +236,10 @@ def main():
     call_volume = int(flow_data.get('call_volume', 0)) if flow_data else 0
     put_volume = int(flow_data.get('put_volume', 0)) if flow_data else 0
     
+    # Initialize other critical variables to prevent unbound errors
+    symbol_flow_data = flow_data  # Fix unbound variable at line 477
+    signal_type = "NEUTRAL"  # Fix unbound variable at line 1465
+    
     # Set high-quality defaults if data unavailable
     if not market_data:
         market_data = {
@@ -1919,6 +1923,7 @@ def main():
     st.markdown("#### 🎯 0DTE Options (Priority) + Options Chain")
     
     try:
+        import yfinance as yf  # Import here to prevent unbound error
         ticker = yf.Ticker(selected_symbol)
         if ticker.options and len(ticker.options) > 0:
             
@@ -1966,6 +1971,12 @@ def main():
                     for strike in strikes_to_show:
                         call_row = chain.calls[chain.calls['strike'] == strike]
                         put_row = chain.puts[chain.puts['strike'] == strike]
+                        
+                        # Initialize variables with safe defaults
+                        call_ask = 0.01
+                        put_ask = 0.01
+                        call_data = {'volume': 0, 'ask': 0.01}
+                        put_data = {'volume': 0, 'ask': 0.01}
                         
                         if not call_row.empty and not put_row.empty:
                             call_data = call_row.iloc[0]
@@ -2064,6 +2075,12 @@ def main():
                                     risk_color = "error"
                                     win_rate = "15-25%"
                                     target_return = "400-2000%"
+                                
+                                # Initialize variables with safe defaults  
+                                call_ask = 0.01
+                                put_ask = 0.01
+                                call_data = {'volume': 0, 'ask': 0.01}
+                                put_data = {'volume': 0, 'ask': 0.01}
                                 
                                 if not call_row.empty and not put_row.empty:
                                     call_data = call_row.iloc[0]
