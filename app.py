@@ -859,41 +859,62 @@ def main():
             top_strikes = real_live_scraper._get_top_strikes_by_volume(live_options_data)
         
         if top_strikes:
-            st.markdown("**🔥 HOTTEST STRIKES**")
+            st.markdown("**🔥 HOTTEST STRIKES - CURRENT 0DTE ONLY**")
+            st.caption("⚡ Same-day expiration options with highest volume")
             
             # Create scrollable action feed
             action_container = st.container()
             with action_container:
-                # Show top 10 most active strikes
+                # Show top 10 most active 0DTE strikes
                 for i, strike in enumerate(top_strikes[:10]):
                     strike_price = strike['strike']
                     volume = strike['volume']
                     option_type = strike['type']
-                    dte = strike.get('dte', 'N/A')
+                    dte = strike.get('dte', 0)
+                    premium_flow = strike.get('premium_flow', 0)
+                    is_fallback = strike.get('fallback_warning', False)
                     
-                    # Simple compact display like before
-                    col1, col2, col3, col4 = st.columns([1, 2, 1, 1])
+                    # Enhanced 0DTE display
+                    col1, col2, col3, col4 = st.columns([1, 2, 1.5, 1])
                     
                     with col1:
                         if option_type == 'CALL':
-                            st.success(f"🟢 {option_type}")
+                            if dte == 0:
+                                st.success(f"🟢 0DTE C")
+                            else:
+                                st.warning(f"🟡 {dte}DTE C")
                         else:
-                            st.error(f"🔴 {option_type}")
+                            if dte == 0:
+                                st.error(f"🔴 0DTE P")
+                            else:
+                                st.warning(f"🟡 {dte}DTE P")
                     
                     with col2:
                         st.write(f"**${strike_price}**")
-                        st.caption(f"{dte}DTE")
+                        if dte == 0:
+                            st.caption("⚡ SAME DAY")
+                        else:
+                            st.caption(f"⚠️ {dte} day{('s' if dte > 1 else '')} left")
                     
                     with col3:
                         st.metric("Volume", f"{volume:,}")
+                        if premium_flow > 0:
+                            st.caption(f"${premium_flow:,.0f} flow")
                         
                     with col4:
-                        if volume > 1000:
-                            st.error("🔥 HOT")
-                        elif volume > 500:
-                            st.warning("⚡ ACTIVE")
+                        if dte == 0:
+                            if volume > 1000:
+                                st.error("🚀 0DTE HOT")
+                            elif volume > 500:
+                                st.warning("⚡ 0DTE ACTIVE")
+                            else:
+                                st.info("📊 0DTE")
                         else:
-                            st.info("📊 NORMAL")
+                            st.warning("⚠️ NOT 0DTE")
+                    
+                    # Show fallback warning if not 0DTE
+                    if is_fallback:
+                        st.warning("⚠️ No 0DTE volume - showing {dte}DTE as fallback")
                     
                     # Add separator
                     if i < len(top_strikes[:10]) - 1:

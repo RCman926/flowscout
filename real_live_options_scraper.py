@@ -314,25 +314,48 @@ class RealLiveOptionsScraper:
         }
     
     def _get_top_strikes_by_volume(self, options_data):
-        """Get top strikes by volume from real data"""
-        all_strikes = []
+        """Get top strikes by volume from CURRENT 0DTE options only"""
+        current_0dte_strikes = []
         
         for exp in options_data['expirations']:
-            for option in exp['calls'] + exp['puts']:
-                if option['volume'] > 0:
-                    all_strikes.append({
-                        'strike': option['strike'],
-                        'volume': option['volume'],
-                        'type': option['type'],
-                        'expiration': exp['date'],
-                        'dte': exp['dte'],
-                        'last_price': option['last_price'],
-                        'open_interest': option['open_interest']
-                    })
+            # ONLY include 0DTE (same day expiration) options
+            if exp['dte'] == 0:
+                for option in exp['calls'] + exp['puts']:
+                    if option['volume'] > 0:
+                        current_0dte_strikes.append({
+                            'strike': option['strike'],
+                            'volume': option['volume'],
+                            'type': option['type'],
+                            'expiration': exp['date'],
+                            'dte': exp['dte'],
+                            'last_price': option['last_price'],
+                            'open_interest': option['open_interest'],
+                            'premium_flow': option['volume'] * option['last_price'] * 100,  # Dollar flow
+                            'time_decay_risk': 'EXTREME'  # 0DTE = maximum time decay
+                        })
         
-        # Sort by volume and return top 20
-        all_strikes.sort(key=lambda x: x['volume'], reverse=True)
-        return all_strikes[:20]
+        # If no 0DTE options available, try 1DTE but mark them clearly
+        if not current_0dte_strikes:
+            for exp in options_data['expirations']:
+                if exp['dte'] <= 1:  # Include 1DTE as fallback but mark it
+                    for option in exp['calls'] + exp['puts']:
+                        if option['volume'] > 0:
+                            current_0dte_strikes.append({
+                                'strike': option['strike'],
+                                'volume': option['volume'],
+                                'type': option['type'],
+                                'expiration': exp['date'],
+                                'dte': exp['dte'],
+                                'last_price': option['last_price'],
+                                'open_interest': option['open_interest'],
+                                'premium_flow': option['volume'] * option['last_price'] * 100,
+                                'time_decay_risk': 'HIGH' if exp['dte'] == 1 else 'EXTREME',
+                                'fallback_warning': exp['dte'] > 0  # Flag non-0DTE as fallback
+                            })
+        
+        # Sort by volume (highest first) and return top 20 current strikes
+        current_0dte_strikes.sort(key=lambda x: x['volume'], reverse=True)
+        return current_0dte_strikes[:20]
 
 # Global instance
 real_live_scraper = RealLiveOptionsScraper()
