@@ -11,6 +11,14 @@ import threading
 from concurrent.futures import ThreadPoolExecutor
 import asyncio
 
+# Import existing alert system
+try:
+    from alerts import AlertManager
+    ALERTS_AVAILABLE = True
+except ImportError:
+    ALERTS_AVAILABLE = False
+    AlertManager = None
+
 
 class PersonalizedWatchlist:
     """
@@ -19,11 +27,15 @@ class PersonalizedWatchlist:
     
     def __init__(self):
         self.watchlist_file = "user_watchlists.json"
-        self.alerts_file = "price_alerts.json" 
+        self.alerts_file = "price_alerts.json"
+        self.notifications_config_file = "notification_config.json"
         self.price_cache = {}
         self.cache_duration = 30  # 30 seconds cache
         self.alert_cooldown = 300  # 5 minute cooldown between same alerts
         self.last_alert_times = {}
+        
+        # Initialize alert manager
+        self.alert_manager = AlertManager() if ALERTS_AVAILABLE else None
         
         # Initialize storage files
         self._ensure_storage_files()
@@ -54,6 +66,22 @@ class PersonalizedWatchlist:
             default_alerts = {}
             with open(self.alerts_file, 'w') as f:
                 json.dump(default_alerts, f, indent=2)
+        
+        if not os.path.exists(self.notifications_config_file):
+            default_config = {
+                "telegram_enabled": False,
+                "telegram_chat_id": "",
+                "email_enabled": False,
+                "email_address": "",
+                "notification_preferences": {
+                    "all_alerts": True,
+                    "high_priority_only": False,
+                    "telegram_for_urgent": True,
+                    "email_for_summary": True
+                }
+            }
+            with open(self.notifications_config_file, 'w') as f:
+                json.dump(default_config, f, indent=2)
     
     def get_watchlists(self) -> Dict:
         """Get all user watchlists"""
@@ -336,7 +364,92 @@ class PersonalizedWatchlist:
         if triggered_alerts:
             self.save_alerts(alerts)
         
+        # Send notifications for triggered alerts
+        if triggered_alerts and self.alert_manager:
+            try:
+                asyncio.run(self._send_alert_notifications(triggered_alerts))
+            except Exception as e:
+                print(f"Notification delivery failed: {e}")
+        
         return triggered_alerts
+    
+    async def _send_alert_notifications(self, triggered_alerts: List[Dict]):
+        """Send notifications for triggered alerts"""
+        if not self.alert_manager:
+            return
+        
+        config = self.get_notification_config()
+        
+        for alert in triggered_alerts:
+            alert_message = self._format_alert_message(alert)
+            
+            # Send Telegram notification
+            if config.get('telegram_enabled') and config.get('telegram_chat_id'):
+                try:
+                    success = await self.alert_manager.send_telegram_alert(
+                        config['telegram_chat_id'],
+                        alert_message,
+                        parse_mode='HTML'
+                    )
+                    if success:
+                        print(f"✅ Telegram alert sent for {alert['symbol']}")
+                    else:
+                        print(f"❌ Telegram alert failed for {alert['symbol']} - check configuration")
+                except Exception as e:
+                    print(f"❌ Telegram notification failed: {e}")
+            
+            # Send Email notification
+            if config.get('email_enabled') and config.get('email_address'):
+                try:
+                    subject = f"🚨 Price Alert: {alert['symbol']}"
+                    success = await self.alert_manager.send_email_alert(
+                        config['email_address'],
+                        subject,
+                        alert_message
+                    )
+                    if success:
+                        print(f"✅ Email alert sent for {alert['symbol']}")
+                    else:
+                        print(f"❌ Email alert failed for {alert['symbol']} - check configuration")
+                except Exception as e:
+                    print(f"❌ Email notification failed: {e}")
+    
+    def _format_alert_message(self, alert: Dict) -> str:
+        """Format alert message for notifications"""
+        alert_icon = "📈" if alert['alert_type'] == 'above' else "📉"
+        direction = "above" if alert['alert_type'] == 'above' else "below"
+        
+        message = f"""
+🚨 <b>PRICE ALERT TRIGGERED</b> 🚨
+
+{alert_icon} <b>{alert['symbol']}</b> 
+💰 Current Price: <b>${alert['current_price']:.2f}</b>
+🎯 Alert Threshold: ${alert['price_threshold']:.2f} ({direction})
+📊 Watchlist: {alert.get('watchlist_name', 'N/A')}
+
+{alert.get('note', '')}
+
+⏰ Triggered at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+"""
+        return message.strip()
+    
+    def get_notification_config(self) -> Dict:
+        """Get notification configuration"""
+        try:
+            with open(self.notifications_config_file, 'r') as f:
+                return json.load(f)
+        except (FileNotFoundError, json.JSONDecodeError):
+            return {
+                "telegram_enabled": False,
+                "telegram_chat_id": "",
+                "email_enabled": False,
+                "email_address": ""
+            }
+    
+    def save_notification_config(self, config: Dict):
+        """Save notification configuration"""
+        with open(self.notifications_config_file, 'w') as f:
+            json.dump(config, f, indent=2)
     
     def _remove_alerts_for_watchlist(self, watchlist_name: str):
         """Remove all alerts associated with a watchlist"""

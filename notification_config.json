@@ -1,0 +1,12 @@
+{
+  "telegram_enabled": false,
+  "telegram_chat_id": "",
+  "email_enabled": false,
+  "email_address": "",
+  "notification_preferences": {
+    "all_alerts": true,
+    "high_priority_only": false,
+    "telegram_for_urgent": true,
+    "email_for_summary": true
+  }
+}

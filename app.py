@@ -2973,7 +2973,7 @@ def personalized_watchlists_page():
                     st.metric("Avg Performance", "0.00%")
     
     # === MAIN TABS ===
-    tab1, tab2, tab3 = st.tabs(["📋 My Watchlists", "🚨 Price Alerts", "⚙️ Manage"])
+    tab1, tab2, tab3, tab4 = st.tabs(["📋 My Watchlists", "🚨 Price Alerts", "⚙️ Manage", "🔔 Notifications"])
     
     with tab1:
         st.markdown("### 📋 **MY WATCHLISTS**")
@@ -3193,6 +3193,118 @@ def personalized_watchlists_page():
                             st.rerun()
                         else:
                             st.error(message)
+    
+    with tab4:
+        st.markdown("### 🔔 **NOTIFICATION SETTINGS**")
+        
+        # Get current config
+        config = watchlist_manager.get_notification_config()
+        
+        # Notification setup instructions
+        with st.expander("📘 **Setup Instructions**"):
+            st.markdown("""
+            **🤖 Telegram Setup:**
+            1. Create a Telegram bot by messaging @BotFather
+            2. Get your bot token and set it as `TELEGRAM_BOT_TOKEN` environment variable
+            3. Start a chat with your bot and get your chat ID
+            4. Enable Telegram notifications below
+            
+            **📧 Email Setup:**
+            1. Set your SMTP server details as environment variables:
+               - `SMTP_SERVER` (e.g., smtp.gmail.com)
+               - `SMTP_PORT` (e.g., 587)
+               - `SENDER_EMAIL` (your email)
+               - `SENDER_PASSWORD` (app password)
+            2. Enable email notifications below
+            """)
+        
+        # Telegram settings
+        st.markdown("#### 🤖 **Telegram Settings**")
+        telegram_col1, telegram_col2 = st.columns(2)
+        
+        with telegram_col1:
+            telegram_enabled = st.checkbox(
+                "Enable Telegram Alerts", 
+                value=config.get('telegram_enabled', False)
+            )
+        
+        with telegram_col2:
+            telegram_chat_id = st.text_input(
+                "Telegram Chat ID",
+                value=config.get('telegram_chat_id', ''),
+                placeholder="e.g., 123456789"
+            )
+        
+        # Email settings
+        st.markdown("#### 📧 **Email Settings**")
+        email_col1, email_col2 = st.columns(2)
+        
+        with email_col1:
+            email_enabled = st.checkbox(
+                "Enable Email Alerts",
+                value=config.get('email_enabled', False)
+            )
+        
+        with email_col2:
+            email_address = st.text_input(
+                "Email Address",
+                value=config.get('email_address', ''),
+                placeholder="your@email.com"
+            )
+        
+        # Save settings
+        if st.button("💾 Save Notification Settings"):
+            new_config = {
+                "telegram_enabled": telegram_enabled,
+                "telegram_chat_id": telegram_chat_id,
+                "email_enabled": email_enabled,
+                "email_address": email_address,
+                "notification_preferences": config.get('notification_preferences', {
+                    "all_alerts": True,
+                    "high_priority_only": False,
+                    "telegram_for_urgent": True,
+                    "email_for_summary": True
+                })
+            }
+            
+            watchlist_manager.save_notification_config(new_config)
+            st.success("✅ Notification settings saved!")
+            st.rerun()
+        
+        # Test notifications
+        st.markdown("#### 🧪 **Test Notifications**")
+        
+        test_col1, test_col2 = st.columns(2)
+        
+        with test_col1:
+            if st.button("🧪 Test Telegram") and config.get('telegram_enabled'):
+                if watchlist_manager.alert_manager:
+                    test_message = "🧪 Test alert from your watchlist system!"
+                    try:
+                        asyncio.run(watchlist_manager.alert_manager.send_telegram_alert(
+                            config.get('telegram_chat_id'),
+                            test_message
+                        ))
+                        st.success("Telegram test sent!")
+                    except Exception as e:
+                        st.error(f"Telegram test failed: {e}")
+                else:
+                    st.error("Alert system not available")
+        
+        with test_col2:
+            if st.button("🧪 Test Email") and config.get('email_enabled'):
+                if watchlist_manager.alert_manager:
+                    try:
+                        asyncio.run(watchlist_manager.alert_manager.send_email_alert(
+                            config.get('email_address'),
+                            "Test Alert",
+                            "🧪 Test email from your watchlist system!"
+                        ))
+                        st.success("Email test sent!")
+                    except Exception as e:
+                        st.error(f"Email test failed: {e}")
+                else:
+                    st.error("Alert system not available")
     
     # === REAL-TIME ALERT MONITORING ===
     st.markdown("---")
