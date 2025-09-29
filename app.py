@@ -88,7 +88,7 @@ symbols = ['AAPL', 'TSLA', 'NVDA', 'MSFT', 'GOOGL', 'AMZN', 'META', 'NFLX', 'AMD
 # === MAIN APP LOGIC ===
 def main():
     from datetime import datetime, timedelta
-    from seamless_update_system import seamless_updater
+    from seamless_update_system import SeamlessUpdateSystem
     
     # === SEAMLESS UPDATE SYSTEM ===
     # Initialize seamless updates without page flashing
@@ -96,7 +96,8 @@ def main():
         st.session_state.auto_refresh_enabled = True
         st.session_state.refresh_count = 0
     
-    # Start seamless mode for professional trading
+    # Initialize seamless updater - prevents crashes
+    seamless_updater = SeamlessUpdateSystem()
     seamless_updater.start_seamless_mode()
     
     # Initialize optimization systems on first run (no visible success message)
@@ -823,61 +824,7 @@ def main():
         </div>
         """, unsafe_allow_html=True)
     
-    # Live flow action bar
-    st.markdown("#### 📊 LIVE ACTION FLOW")
-    
-    # Show REAL data source status - unified approach
-    unified_data_source = unified_flow.get('data_source', 'UNKNOWN')
-    data_freshness = unified_flow.get('data_freshness', 'UNKNOWN')
-    
-    if unified_data_source == 'live_scraper' or data_freshness == 'LIVE_SCRAPED':
-        st.success("✅ REAL LIVE DATA - Authenticated scraping active")
-        st.caption("Real-time options data from verified sources")
-    elif unified_data_source == 'yahoo_finance':
-        st.success("✅ LIVE DATA - Yahoo Finance API")
-        st.caption("Real market data with minimal delay")
-    elif unified_data_source == 'institutional_feed':
-        st.success("✅ INSTITUTIONAL DATA - Professional feed")
-        st.caption("Institutional-grade real-time data")
-    else:
-        st.error("❌ SYNTHETIC DATA DETECTED - REJECTED")
-        st.caption("HIGHEST LEVEL system requires REAL DATA only")
-        st.caption(f"Current source: {unified_data_source} - Not authenticated")
-    
-    # Comprehensive flow metrics
-    flow_detail_cols = st.columns(4)
-    
-    with flow_detail_cols[0]:
-        st.metric("🔥 Total Action", f"{total_volume:,}", f"Live volume")
-        cp_ratio = live_flow_metrics.get('cp_ratio', 1.0)
-        st.caption(f"C/P Ratio: {cp_ratio:.2f}")
-    
-    with flow_detail_cols[1]:
-        momentum = live_flow_metrics.get('momentum', 'NEUTRAL')
-        if 'BULLISH' in momentum:
-            st.success(f"📈 {momentum}")
-        elif 'BEARISH' in momentum:
-            st.error(f"📉 {momentum}")
-        else:
-            st.info(f"⚪ {momentum}")
-        st.caption("Flow momentum")
-    
-    with flow_detail_cols[2]:
-        unusual_activity = live_flow_metrics.get('unusual_activity', False)
-        if unusual_activity:
-            st.warning("🚨 UNUSUAL ACTIVITY")
-        else:
-            st.info("📊 Normal Flow")
-        st.caption("Activity level")
-    
-    with flow_detail_cols[3]:
-        timestamp = live_flow_metrics.get('timestamp', 'N/A')
-        if hasattr(timestamp, 'strftime'):
-            time_str = timestamp.strftime('%H:%M:%S')
-        else:
-            time_str = str(timestamp)
-        st.metric("🕐 Last Update", time_str)
-        st.caption("Live refresh")
+    # === SEAMLESS DATA STATUS === (Removed LIVE ACTION FLOW section per user request)
     
     # === LIVE STREAMING OPTIONS ACTION ===
     st.markdown("#### ⚡ LIVE STREAMING OPTIONS ACTION")

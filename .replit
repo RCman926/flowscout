@@ -36,5 +36,9 @@ outputType = "webview"
 localPort = 5000
 externalPort = 80
 
+[[ports]]
+localPort = 36777
+externalPort = 3000
+
 [agent]
 integrations = ["python_slack==1.0.0", "perplexity_v0==1.0.0", "python_openai==1.0.0", "python_notion==1.0.0", "web_scraper==1.0.0"]

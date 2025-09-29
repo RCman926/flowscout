@@ -157,7 +157,10 @@ class DataQualityVisualizationSystem:
     
     def _render_quality_overview(self, symbol: str, validation_result: ValidationResult,
                                quality_metrics: QualityMetrics, flow_analysis: FlowAnalysisResult):
-        """Render quality overview section with badges and key metrics"""
+        """Render quality overview section with badges and key metrics - DISABLED per user request"""
+        
+        # DISABLED: User requested removal of Data Quality Overview section
+        return  # Skip rendering this section
         
         st.markdown("### 🎯 Data Quality Overview")
         
@@ -239,7 +242,10 @@ class DataQualityVisualizationSystem:
     
     def _render_detailed_metrics(self, validation_result: ValidationResult,
                                quality_metrics: QualityMetrics, flow_analysis: FlowAnalysisResult):
-        """Render detailed quality metrics with charts"""
+        """Render detailed quality metrics with charts - DISABLED per user request"""
+        
+        # DISABLED: User requested removal of Detailed Quality Analysis section
+        return  # Skip rendering this section
         
         st.markdown("### 📊 Detailed Quality Analysis")
         
@@ -535,7 +541,11 @@ class DataQualityVisualizationSystem:
             st.info("No recent alerts available")
     
     def _render_quality_trends(self, symbol: str):
-        """Render historical quality trends if available"""
+        """Render historical quality trends if available - DISABLED per user request"""
+        
+        # DISABLED: User requested removal of Quality Trends section
+        return  # Skip rendering this section
+        
         try:
             # Get quality history for the symbol
             if hasattr(real_time_quality_monitor, 'quality_history') and symbol in real_time_quality_monitor.quality_history:
