@@ -663,62 +663,132 @@ class ExplosiveStockScreener:
         return rsi
     
     def _calculate_explosive_score(self, signals: Dict) -> float:
-        """Calculate overall explosive potential score (0-100)"""
+        """Calculate comprehensive explosive potential score (0-100) with pattern recognition"""
         score = 0
-        max_score = 100
         
-        # Momentum Score (25 points)
+        # === EXPLOSIVE PATTERN SCORING (40 points - HIGHEST PRIORITY) ===
+        
+        # Triple Patterns (15 points)
+        triple_pattern = signals.get('triple_pattern', 'NONE')
+        if triple_pattern == 'TRIPLE_TOP_BREAKOUT':
+            score += 15  # Maximum points for triple top breakout
+        elif triple_pattern == 'TRIPLE_BOTTOM_BOUNCE':
+            score += 14  # Nearly as good
+        elif triple_pattern in ['TRIPLE_TOP_FORMING', 'TRIPLE_BOTTOM_FORMING']:
+            score += 10  # Building up
+        
+        # Double Patterns (10 points)
+        double_pattern = signals.get('double_pattern', 'NONE')
+        if double_pattern in ['DOUBLE_TOP_BREAKOUT', 'DOUBLE_BOTTOM_BOUNCE']:
+            score += 10  # Strong breakout patterns
+        elif 'FORMING' in double_pattern:
+            score += 6
+        
+        # Bollinger Squeeze - "Boiler Banger" (10 points)
+        squeeze = signals.get('bollinger_squeeze', 'NONE')
+        breakout = signals.get('squeeze_breakout', 'NONE')
+        if breakout == 'UPWARD_BREAKOUT':
+            score += 10  # Explosive breakout from squeeze
+        elif squeeze == 'EXTREME_SQUEEZE':
+            score += 8  # Coiled spring about to explode
+        elif squeeze in ['STRONG_SQUEEZE', 'MODERATE_SQUEEZE']:
+            score += 5
+        
+        # Cup and Handle (3 points)
+        cup_handle = signals.get('cup_handle', 'NONE')
+        if cup_handle == 'CUP_HANDLE_BREAKOUT':
+            score += 3
+        elif cup_handle == 'CUP_HANDLE_FORMING':
+            score += 2
+        
+        # Triangle Patterns (2 points)
+        triangle = signals.get('triangle_pattern', 'NONE')
+        if 'BREAKOUT' in triangle:
+            score += 2
+        elif 'SQUEEZE' in triangle:
+            score += 1
+        
+        # === PENNY STOCK EXPLOSIVE MULTIPLIER ===
+        penny_multiplier = 1.0
+        if 'penny_multiplier' in signals:
+            penny_volume_strength = signals.get('penny_volume_strength', 0)
+            penny_momentum = signals.get('penny_momentum', 'WEAK')
+            
+            # Penny stock volume explosion (game changer)
+            if penny_volume_strength >= 95:  # Explosive volume
+                score += 15
+            elif penny_volume_strength >= 80:  # High volume
+                score += 10
+            elif penny_volume_strength >= 60:  # Elevated volume
+                score += 5
+            
+            # Penny stock momentum bonus
+            if penny_momentum == 'EXPLOSIVE':
+                score += 10
+            elif penny_momentum == 'STRONG':
+                score += 6
+            elif penny_momentum == 'BUILDING':
+                score += 3
+            
+            penny_multiplier = signals.get('penny_multiplier', 1.0)
+        
+        # === MOMENTUM SIGNALS (20 points) ===
         if signals.get('rsi_signal') == 'OVERSOLD_BOUNCE':
-            score += 8
+            score += 6
         elif signals.get('rsi_signal') == 'MOMENTUM_BUILD':
-            score += 12
+            score += 8
         
         if signals.get('macd_crossover') == 'BULLISH':
-            score += 13
-        
-        # Breakout Score (25 points)
-        if signals.get('bb_breakout') == 'UPWARD':
-            score += 15
-        elif signals.get('bb_position', 0) > 0.8:
-            score += 8  # Near upper band
-        
-        if signals.get('near_resistance') and signals.get('volume_surge', 1) > 1.5:
-            score += 10  # Breaking resistance with volume
-        
-        # Volume Score (20 points)
-        volume_surge = signals.get('volume_surge', 1)
-        if volume_surge > 3.0:
-            score += 15
-        elif volume_surge > 2.0:
-            score += 10
-        elif volume_surge > 1.5:
-            score += 5
-        
-        if signals.get('obv_trend') == 'BULLISH':
-            score += 5
-        
-        # Trend Score (20 points)
-        if signals.get('above_sma_20') and signals.get('above_sma_50'):
             score += 8
-        elif signals.get('above_sma_20'):
+        
+        stoch_signal = signals.get('stochastic_signal', 'NEUTRAL')
+        if stoch_signal in ['OVERSOLD_BULLISH', 'BULLISH']:
             score += 4
         
-        if signals.get('ma_alignment') == 'BULLISH':
+        # === BREAKOUT CONFIRMATION (15 points) ===
+        if signals.get('bb_breakout') == 'UPWARD':
+            score += 10
+        elif signals.get('bb_position', 0) > 0.8:
+            score += 5  # Near breakout
+        
+        if signals.get('near_resistance') and signals.get('volume_surge', 1) > 1.5:
+            score += 5  # Breaking resistance with volume
+        
+        # === VOLUME CONFIRMATION (15 points) ===
+        volume_surge = signals.get('volume_surge', 1)
+        if volume_surge > 3.0:
+            score += 10
+        elif volume_surge > 2.0:
             score += 6
+        elif volume_surge > 1.5:
+            score += 3
+        
+        if signals.get('obv_trend') == 'BULLISH':
+            score += 3
+        
+        # === TREND ALIGNMENT (10 points) ===
+        if signals.get('above_sma_20') and signals.get('above_sma_50'):
+            score += 5
+        elif signals.get('above_sma_20'):
+            score += 2
+        
+        if signals.get('ma_alignment') == 'BULLISH':
+            score += 3
         
         trend_strength = signals.get('trend_strength_20d', 0)
         if trend_strength > 15:
-            score += 6
-        elif trend_strength > 5:
-            score += 3
+            score += 2
         
-        # Volatility Score (10 points)
+        # === VOLATILITY SETUP (5 points) ===
         if signals.get('low_volatility') and signals.get('consolidation'):
-            score += 8  # Coiling for breakout
+            score += 3  # Coiling for breakout
         elif signals.get('atr_percentage', 0) > 3:
-            score += 5  # High volatility for explosive moves
+            score += 2  # High volatility potential
         
-        return min(score, max_score)
+        # Apply penny stock multiplier and cap at 100
+        final_score = min(score * penny_multiplier, 100)
+        
+        return final_score
     
     def _get_recommendation(self, score: float) -> str:
         """Get recommendation based on explosive score"""
