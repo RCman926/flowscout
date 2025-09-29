@@ -1,0 +1,20 @@
+{
+  "My Stocks": {
+    "symbols": [
+      "AAPL",
+      "TSLA",
+      "NVDA"
+    ],
+    "created": "2025-09-29T15:49:08.638422",
+    "description": "My favorite tech stocks"
+  },
+  "Penny Stocks": {
+    "symbols": [
+      "SNDL",
+      "HITI",
+      "MULN"
+    ],
+    "created": "2025-09-29T15:49:08.638432",
+    "description": "High-risk penny stock plays"
+  }
+}

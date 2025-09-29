@@ -17,6 +17,9 @@ import random
 import warnings
 warnings.filterwarnings('ignore')
 
+# === PERSONALIZED WATCHLIST IMPORT ===
+from personalized_watchlist import watchlist_manager
+
 # === ENHANCED ACCURACY IMPORTS ===
 try:
     from enhanced_cross_validation_engine import enhanced_cross_validator
@@ -2917,6 +2920,310 @@ def explosive_opportunities_page():
         st.markdown("**🏭 Industrial**: CAT, DE, BA, GE")
 
 
+def personalized_watchlists_page():
+    """Personalized watchlists with real-time alerts page"""
+    
+    st.title("⭐ MY WATCHLISTS")
+    st.markdown("**Create personalized watchlists and get real-time price alerts**")
+    
+    # Initialize explosive screener if needed (for symbol validation)
+    if 'explosive_screener' not in st.session_state:
+        from explosive_stock_screener import ExplosiveStockScreener
+        st.session_state.explosive_screener = ExplosiveStockScreener()
+    
+    # === WATCHLIST MANAGEMENT SECTION ===
+    st.markdown("---")
+    
+    # Get current watchlists
+    watchlists = watchlist_manager.get_watchlists()
+    
+    # === TOP METRICS ROW ===
+    if watchlists:
+        metrics_col1, metrics_col2, metrics_col3, metrics_col4 = st.columns(4)
+        
+        total_symbols = sum(len(wl['symbols']) for wl in watchlists.values())
+        total_lists = len(watchlists)
+        
+        # Get alerts
+        alerts = watchlist_manager.get_alerts()
+        active_alerts = len([a for a in alerts.values() if a['active']])
+        
+        with metrics_col1:
+            st.metric("Total Watchlists", total_lists)
+        with metrics_col2:
+            st.metric("Total Symbols", total_symbols)
+        with metrics_col3:
+            st.metric("Active Alerts", active_alerts)
+        with metrics_col4:
+            if total_symbols > 0:
+                # Get real-time prices for all symbols to calculate avg performance
+                all_symbols = []
+                for wl in watchlists.values():
+                    all_symbols.extend(wl['symbols'])
+                
+                if all_symbols:
+                    prices = watchlist_manager.get_real_time_prices(all_symbols)
+                    total_change = sum(
+                        prices[sym].get('change_percent', 0) 
+                        for sym in all_symbols if sym in prices
+                    )
+                    avg_performance = total_change / len(all_symbols) if all_symbols else 0
+                    st.metric("Avg Performance", f"{avg_performance:+.2f}%")
+                else:
+                    st.metric("Avg Performance", "0.00%")
+    
+    # === MAIN TABS ===
+    tab1, tab2, tab3 = st.tabs(["📋 My Watchlists", "🚨 Price Alerts", "⚙️ Manage"])
+    
+    with tab1:
+        st.markdown("### 📋 **MY WATCHLISTS**")
+        
+        if not watchlists:
+            st.info("🎯 No watchlists yet. Create your first watchlist in the 'Manage' tab!")
+        else:
+            # Display watchlists
+            for watchlist_name, watchlist_data in watchlists.items():
+                with st.expander(f"📋 **{watchlist_name}** ({len(watchlist_data['symbols'])} symbols)", expanded=True):
+                    
+                    if not watchlist_data['symbols']:
+                        st.info("No symbols in this watchlist")
+                        continue
+                    
+                    # Get real-time prices
+                    prices = watchlist_manager.get_real_time_prices(watchlist_data['symbols'])
+                    
+                    # Performance summary
+                    performance = watchlist_manager.get_watchlist_performance(watchlist_name)
+                    if performance:
+                        perf_col1, perf_col2, perf_col3, perf_col4 = st.columns(4)
+                        
+                        with perf_col1:
+                            st.metric("Performance", f"{performance['avg_change_percent']:+.2f}%")
+                        with perf_col2:
+                            st.metric("Grade", performance['performance_grade'])
+                        with perf_col3:
+                            st.metric("Winners", f"{performance['winning_stocks']}/{performance['total_symbols']}")
+                        with perf_col4:
+                            st.metric("Total Volume", f"{performance['total_volume']:,}")
+                    
+                    # Stock table
+                    stock_data = []
+                    for symbol in watchlist_data['symbols']:
+                        if symbol in prices:
+                            price_info = prices[symbol]
+                            stock_data.append({
+                                'Symbol': symbol,
+                                'Price': f"${price_info.get('current_price', 0):.2f}",
+                                'Change': f"{price_info.get('change', 0):+.2f}",
+                                'Change %': f"{price_info.get('change_percent', 0):+.2f}%",
+                                'Volume': f"{price_info.get('volume', 0):,}",
+                                'Status': '🟢' if price_info.get('change', 0) > 0 else '🔴' if price_info.get('change', 0) < 0 else '⚪'
+                            })
+                        else:
+                            stock_data.append({
+                                'Symbol': symbol,
+                                'Price': "Loading...",
+                                'Change': "-",
+                                'Change %': "-", 
+                                'Volume': "-",
+                                'Status': '⚪'
+                            })
+                    
+                    if stock_data:
+                        df = pd.DataFrame(stock_data)
+                        st.dataframe(df, hide_index=True, use_container_width=True)
+                    
+                    # Description
+                    if watchlist_data.get('description'):
+                        st.caption(f"📝 {watchlist_data['description']}")
+    
+    with tab2:
+        st.markdown("### 🚨 **PRICE ALERTS**")
+        
+        alerts = watchlist_manager.get_alerts()
+        
+        if not alerts:
+            st.info("🔔 No price alerts set. Create alerts for your watchlist symbols!")
+        else:
+            # Display alerts
+            for alert_id, alert in alerts.items():
+                if not alert['active']:
+                    continue
+                    
+                alert_col1, alert_col2 = st.columns([3, 1])
+                
+                with alert_col1:
+                    alert_type_icon = "📈" if alert['alert_type'] == 'above' else "📉"
+                    st.markdown(f"""
+                    **{alert_type_icon} {alert['symbol']}** - Alert when price goes **{alert['alert_type']}** ${alert['price_threshold']:.2f}
+                    """)
+                    
+                    if alert.get('note'):
+                        st.caption(f"💭 {alert['note']}")
+                    
+                    if alert.get('last_triggered'):
+                        st.caption(f"Last triggered: {alert['last_triggered']} (Count: {alert['triggered_count']})")
+                
+                with alert_col2:
+                    if st.button("🗑️ Delete", key=f"del_alert_{alert_id}"):
+                        success, message = watchlist_manager.remove_alert(alert_id)
+                        if success:
+                            st.success(message)
+                            st.rerun()
+                        else:
+                            st.error(message)
+        
+        # Create new alert
+        st.markdown("### ➕ **CREATE NEW ALERT**")
+        
+        alert_col1, alert_col2, alert_col3 = st.columns(3)
+        
+        with alert_col1:
+            # Get all symbols from all watchlists
+            all_symbols = []
+            for wl in watchlists.values():
+                all_symbols.extend(wl['symbols'])
+            
+            if all_symbols:
+                alert_symbol = st.selectbox("Symbol", sorted(set(all_symbols)))
+            else:
+                st.info("Add symbols to watchlists first")
+                alert_symbol = None
+        
+        with alert_col2:
+            alert_type = st.selectbox("Alert Type", ["above", "below"])
+        
+        with alert_col3:
+            alert_price = st.number_input("Price Threshold", min_value=0.01, value=100.0, step=0.01)
+        
+        alert_note = st.text_input("Note (optional)", placeholder="e.g., Buy signal at resistance")
+        
+        if st.button("🚨 Create Alert") and alert_symbol:
+            success, message = watchlist_manager.create_price_alert(
+                alert_symbol, alert_type, alert_price, note=alert_note
+            )
+            if success:
+                st.success(message)
+                st.rerun()
+            else:
+                st.error(message)
+    
+    with tab3:
+        st.markdown("### ⚙️ **MANAGE WATCHLISTS**")
+        
+        # Create new watchlist
+        st.markdown("#### ➕ **CREATE NEW WATCHLIST**")
+        
+        create_col1, create_col2 = st.columns(2)
+        
+        with create_col1:
+            new_watchlist_name = st.text_input("Watchlist Name", placeholder="e.g., Tech Stocks")
+        
+        with create_col2:
+            new_watchlist_desc = st.text_input("Description", placeholder="e.g., My favorite technology stocks")
+        
+        if st.button("➕ Create Watchlist"):
+            if new_watchlist_name:
+                success, message = watchlist_manager.create_watchlist(
+                    new_watchlist_name, description=new_watchlist_desc
+                )
+                if success:
+                    st.success(message)
+                    st.rerun()
+                else:
+                    st.error(message)
+            else:
+                st.error("Please enter a watchlist name")
+        
+        st.markdown("---")
+        
+        # Manage existing watchlists
+        if watchlists:
+            st.markdown("#### 📝 **MANAGE EXISTING WATCHLISTS**")
+            
+            for watchlist_name, watchlist_data in watchlists.items():
+                with st.expander(f"✏️ **{watchlist_name}**"):
+                    
+                    manage_col1, manage_col2 = st.columns(2)
+                    
+                    with manage_col1:
+                        # Add symbol
+                        new_symbol = st.text_input(
+                            f"Add Symbol to {watchlist_name}", 
+                            key=f"add_symbol_{watchlist_name}",
+                            placeholder="e.g., AAPL"
+                        )
+                        
+                        if st.button(f"➕ Add Symbol", key=f"add_btn_{watchlist_name}"):
+                            if new_symbol:
+                                success, message = watchlist_manager.add_symbol_to_watchlist(
+                                    watchlist_name, new_symbol
+                                )
+                                if success:
+                                    st.success(message)
+                                    st.rerun()
+                                else:
+                                    st.error(message)
+                    
+                    with manage_col2:
+                        # Remove symbol
+                        if watchlist_data['symbols']:
+                            remove_symbol = st.selectbox(
+                                f"Remove Symbol from {watchlist_name}",
+                                watchlist_data['symbols'],
+                                key=f"remove_symbol_{watchlist_name}"
+                            )
+                            
+                            if st.button(f"🗑️ Remove Symbol", key=f"remove_btn_{watchlist_name}"):
+                                success, message = watchlist_manager.remove_symbol_from_watchlist(
+                                    watchlist_name, remove_symbol
+                                )
+                                if success:
+                                    st.success(message)
+                                    st.rerun()
+                                else:
+                                    st.error(message)
+                    
+                    # Delete entire watchlist
+                    st.markdown("**⚠️ Danger Zone:**")
+                    if st.button(f"🗑️ Delete '{watchlist_name}' Watchlist", key=f"delete_wl_{watchlist_name}"):
+                        success, message = watchlist_manager.delete_watchlist(watchlist_name)
+                        if success:
+                            st.success(message)
+                            st.rerun()
+                        else:
+                            st.error(message)
+    
+    # === REAL-TIME ALERT MONITORING ===
+    st.markdown("---")
+    st.markdown("### 🔔 **REAL-TIME MONITORING**")
+    
+    if st.button("🔄 Check Alerts Now"):
+        # Get all symbols from all watchlists
+        all_symbols = []
+        for wl in watchlists.values():
+            all_symbols.extend(wl['symbols'])
+        
+        if all_symbols:
+            with st.spinner("Checking prices and alerts..."):
+                prices = watchlist_manager.get_real_time_prices(all_symbols)
+                triggered_alerts = watchlist_manager.check_price_alerts(prices)
+                
+                if triggered_alerts:
+                    st.success(f"🚨 **{len(triggered_alerts)} alerts triggered!**")
+                    
+                    for alert in triggered_alerts:
+                        alert_icon = "📈" if alert['alert_type'] == 'above' else "📉"
+                        st.warning(f"""
+                        {alert_icon} **{alert['symbol']}** alert triggered!
+                        Price: ${alert['current_price']:.2f} ({alert['alert_type']} ${alert['price_threshold']:.2f})
+                        """)
+                else:
+                    st.info("✅ No alerts triggered. All symbols within normal ranges.")
+        else:
+            st.info("Add symbols to watchlists first")
+
+
 # === MAIN APP LOGIC ===
 def main():
     # === PAGE NAVIGATION ===
@@ -2925,7 +3232,7 @@ def main():
     # Page selection
     page = st.sidebar.selectbox(
         "**Choose Trading Module:**",
-        ["🎯 Options Trading", "🚀 Explosive Opportunities"],
+        ["🎯 Options Trading", "🚀 Explosive Opportunities", "⭐ My Watchlists"],
         index=0
     )
     
@@ -2936,6 +3243,8 @@ def main():
         options_trading_page()
     elif page == "🚀 Explosive Opportunities":
         explosive_opportunities_page()
+    elif page == "⭐ My Watchlists":
+        personalized_watchlists_page()
 
 
 if __name__ == "__main__":
