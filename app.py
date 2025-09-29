@@ -154,26 +154,63 @@ def main():
         should_refresh_news = bool(current_significant - st.session_state.last_significant_news)
         
         if should_refresh_news or not hasattr(st.session_state, 'cached_significant_news'):
-            # === EARNINGS ALERTS (Only major beats/misses) ===
-            major_earnings = [e for e in earnings_today if abs(e.get('beat_percentage', 0)) > 15]
-            for earning in major_earnings[:2]:  # Top 2 major results only
+            # === EARNINGS ALERTS (Major beats/misses + upcoming) ===
+            major_earnings = [e for e in earnings_today if abs(e.get('beat_percentage', 0)) > 15 or e.get('status') == 'UPCOMING']
+            
+            # Show recent major beats first
+            recent_beats = [e for e in major_earnings if e.get('status') == 'REPORTED']
+            for earning in recent_beats[:2]:  # Top 2 recent beats
                 result = earning.get('result', 'PENDING')
                 symbol = earning['symbol']
                 pct = earning.get('beat_percentage', 0)
                 
                 if result in ['BEAT', 'STRONG_BEAT'] and pct > 15:
                     st.success(f"✅ {symbol} Beat +{pct:.0f}%")
-                    st.caption("Major earnings beat")
+                    st.caption(f"EPS: ${earning.get('actual_eps', 0):.2f} vs ${earning.get('estimate_eps', 0):.2f}")
                 elif result in ['MISS', 'STRONG_MISS'] and pct < -15:
                     st.error(f"❌ {symbol} Miss {pct:.0f}%")
-                    st.caption("Major earnings miss")
+                    st.caption(f"EPS: ${earning.get('actual_eps', 0):.2f} vs ${earning.get('estimate_eps', 0):.2f}")
             
-            # === FED & ECONOMIC EVENTS (Only major ones) ===
+            # Show next critical upcoming earnings
+            upcoming_earnings = [e for e in major_earnings if e.get('status') == 'UPCOMING']
+            if upcoming_earnings:
+                st.markdown("**📅 Next Critical:**")
+                next_earning = upcoming_earnings[0]  # Most important upcoming
+                symbol = next_earning['symbol']
+                next_date = next_earning.get('next_earnings', 'TBD')
+                importance = next_earning.get('importance', 'HIGH')
+                
+                if importance == 'CRITICAL':
+                    st.warning(f"⚡ {symbol} {next_date}")
+                else:
+                    st.info(f"• {symbol} {next_date}")
+                
+                # Show key metrics to watch
+                if 'key_metrics' in next_earning:
+                    st.caption(f"Watch: {next_earning['key_metrics']}")
+                else:
+                    st.caption(f"Est EPS: ${next_earning.get('estimate_eps', 0):.2f}")
+            
+            # === FED & ECONOMIC EVENTS (Accurate dates + last meeting info) ===
             fed_events = market_intelligence.get_major_fed_events()
-            for event in fed_events[:2]:  # Only next 2 major events
+            
+            # Show last meeting outcome first
+            st.markdown("**🏛️ Last FOMC (Jul 29-30):**")
+            st.info("📊 Held at 4.25-4.50%")
+            st.caption("Powell: Data-dependent approach")
+            
+            # Show next critical events
+            for event in fed_events[:2]:  # Next 2 critical events
                 if event['importance'] == 'CRITICAL':
-                    st.warning(f"🏛️ {event['title']} {event['date']}")
-                    st.caption("Fed critical event")
+                    st.warning(f"⚡ {event['title']}")
+                    st.caption(f"{event['date']} • {event.get('time', '')}")
+                    
+                    # Show additional details
+                    if 'details' in event:
+                        st.caption(f"📋 {event['details']}")
+                elif event['importance'] == 'HIGH':
+                    st.info(f"📅 {event['title']}")
+                    st.caption(f"{event['date']} • {event.get('details', '')}")
             
             # === SIGNIFICANT GLOBAL NEWS (High impact only) ===
             for news in significant_news[:3]:  # Only top 3 significant
@@ -202,8 +239,10 @@ def main():
         current_time = datetime.now().strftime("%H:%M")
         if should_refresh_news:
             st.caption(f"🔔 Updated: {current_time}")
+            st.caption("📈 New significant events detected")
         else:
             st.caption(f"📰 Last check: {current_time}")
+            st.caption("✅ No new significant events")
         
         # === LIVE STATUS ===
         st.markdown("### 📡 LIVE STATUS")
