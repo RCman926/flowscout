@@ -868,80 +868,85 @@ def main():
             top_strikes = real_live_scraper._get_top_strikes_by_volume(live_options_data)
         
         if top_strikes:
-            st.markdown("**🔥 HOTTEST STRIKES - CURRENT 0DTE ONLY**")
-            st.caption("⚡ Same-day expiration options with highest volume")
+            st.markdown("**🔥 0DTE HOTTEST STRIKES**")
             
-            # Create scrollable action feed
-            action_container = st.container()
-            with action_container:
-                # Show top 10 most active 0DTE strikes
-                for i, strike in enumerate(top_strikes[:10]):
-                    strike_price = strike['strike']
-                    volume = strike['volume']
-                    option_type = strike['type']
-                    dte = strike.get('dte', 0)
-                    premium_flow = strike.get('premium_flow', 0)
-                    is_fallback = strike.get('fallback_warning', False)
-                    
-                    # Enhanced 0DTE display
-                    col1, col2, col3, col4 = st.columns([1, 2, 1.5, 1])
-                    
-                    with col1:
-                        if option_type == 'CALL':
-                            if dte == 0:
-                                st.success(f"🟢 0DTE C")
-                            else:
-                                st.warning(f"🟡 {dte}DTE C")
-                        else:
-                            if dte == 0:
-                                st.error(f"🔴 0DTE P")
-                            else:
-                                st.warning(f"🟡 {dte}DTE P")
-                    
-                    with col2:
-                        st.write(f"**${strike_price}**")
-                        if dte == 0:
-                            st.caption("⚡ SAME DAY")
-                        else:
-                            st.caption(f"⚠️ {dte} day{('s' if dte > 1 else '')} left")
-                    
-                    with col3:
-                        st.metric("Volume", f"{volume:,}")
-                        if premium_flow > 0:
-                            st.caption(f"${premium_flow:,.0f} flow")
-                        
-                    with col4:
-                        if dte == 0:
-                            if volume > 1000:
-                                st.error("🚀 0DTE HOT")
-                            elif volume > 500:
-                                st.warning("⚡ 0DTE ACTIVE")
-                            else:
-                                st.info("📊 0DTE")
-                        else:
-                            st.warning("⚠️ NOT 0DTE")
-                    
-                    # Show fallback warning if not 0DTE
-                    if is_fallback:
-                        st.warning("⚠️ No 0DTE volume - showing {dte}DTE as fallback")
-                    
-                    # Add separator
-                    if i < len(top_strikes[:10]) - 1:
-                        st.markdown("---")
+            # Compact table format - more data, less space
+            strikes_data = []
+            for strike in top_strikes[:8]:  # Top 8 most active
+                strike_price = strike['strike']
+                volume = strike['volume']
+                option_type = strike['type']
+                dte = strike.get('dte', 0)
+                premium_flow = strike.get('premium_flow', 0)
+                oi = strike.get('open_interest', 0)
+                last_price = strike.get('last_price', 0)
+                
+                # Heat level
+                if dte == 0:
+                    if volume > 1000:
+                        heat = "🚀"
+                    elif volume > 500:
+                        heat = "⚡"
+                    else:
+                        heat = "📊"
+                else:
+                    heat = "⚠️"
+                
+                # Type indicator
+                type_icon = "🟢" if option_type == 'CALL' else "🔴"
+                
+                strikes_data.append({
+                    'Strike': f"{type_icon} ${strike_price}",
+                    'Vol': f"{volume:,}",
+                    'OI': f"{oi:,}" if oi > 0 else "-",
+                    'Premium': f"${last_price:.2f}" if last_price > 0 else "-",
+                    'Flow': f"${premium_flow/1000:.0f}K" if premium_flow > 1000 else f"${premium_flow:.0f}",
+                    'DTE': f"{dte}" if dte > 0 else "0⚡",
+                    'Heat': heat
+                })
+            
+            if strikes_data:
+                # Display as compact dataframe
+                import pandas as pd
+                df = pd.DataFrame(strikes_data)
+                
+                # Show compact table with styling
+                st.dataframe(
+                    df, 
+                    hide_index=True, 
+                    use_container_width=True, 
+                    height=240,
+                    column_config={
+                        "Strike": st.column_config.TextColumn("Strike", width="medium"),
+                        "Vol": st.column_config.TextColumn("Vol", width="small"),
+                        "OI": st.column_config.TextColumn("OI", width="small"),
+                        "Premium": st.column_config.TextColumn("Premium", width="small"),
+                        "Flow": st.column_config.TextColumn("Flow", width="small"),
+                        "DTE": st.column_config.TextColumn("DTE", width="small"),
+                        "Heat": st.column_config.TextColumn("🔥", width="small")
+                    }
+                )
+                
+                # Compact legend
+                leg_col1, leg_col2 = st.columns(2)
+                with leg_col1:
+                    st.caption("🟢Call 🔴Put | 🚀Hot >1K | ⚡Active >500")
+                with leg_col2:
+                    st.caption("Vol=Volume | OI=Open Interest | 0⚡=0DTE")
         
-        # Compact unusual activity
+        # Ultra-compact unusual activity
         unusual_activity = live_options_data.get('unusual_activity', [])
         if unusual_activity:
-            st.markdown("**🚨 UNUSUAL ACTIVITY**")
+            st.markdown("**🚨 UNUSUAL (Top 3)**")
+            unusual_text = []
             for alert in unusual_activity[:3]:
                 strike = alert['strike']
                 option_type = alert['type']
                 volume = alert['volume']
-                
-                if option_type == 'CALL':
-                    st.success(f"🟢 CALL ${strike} - {volume:,} vol")
-                else:
-                    st.error(f"🔴 PUT ${strike} - {volume:,} vol")
+                icon = "🟢" if option_type == 'CALL' else "🔴"
+                unusual_text.append(f"{icon}${strike}({volume:,}v)")
+            
+            st.info(" | ".join(unusual_text))
     
     else:
         st.warning("⚠️ Live options data temporarily unavailable - refreshing...")
