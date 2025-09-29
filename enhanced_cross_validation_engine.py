@@ -27,10 +27,6 @@ class ValidationResult:
     price_consistency: bool
     volume_consistency: bool
     historical_consistency: bool
-    ai_validation_score: float  # NEW: AI-powered validation
-    pattern_consistency: bool   # NEW: Pattern consistency check
-    institutional_flow_consistency: bool  # NEW: Flow data consistency
-    next_level_confidence: float  # NEW: Enhanced confidence score
 
 class EnhancedCrossValidationEngine:
     """
