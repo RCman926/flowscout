@@ -24,7 +24,7 @@ class ExplosiveStockScreener:
     
     def __init__(self):
         self.watchlist_symbols = [
-            # Large Cap Movers
+            # Large Cap Movers (potential explosive moves)
             'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'TSLA', 'NVDA', 'META', 'NFLX',
             # Growth Tech
             'AMD', 'CRM', 'ADBE', 'NOW', 'SNOW', 'PLTR', 'RBLX', 'COIN',
@@ -39,7 +39,23 @@ class ExplosiveStockScreener:
             # Industrial
             'CAT', 'DE', 'BA', 'GE', 'MMM', 'HON', 'UPS', 'FDX',
             # Emerging/Volatile
-            'RIVN', 'LCID', 'SOFI', 'HOOD', 'UPST', 'AFRM', 'ZM', 'PTON'
+            'RIVN', 'LCID', 'SOFI', 'HOOD', 'UPST', 'AFRM', 'ZM', 'PTON',
+            
+            # === EXPLOSIVE PENNY STOCKS & HIGH VOLATILITY ===
+            # Penny Stocks Under $10 (High Explosion Potential)
+            'SNDL', 'HITI', 'BBIG', 'MULN', 'GNUS', 'PROG', 'ATER', 'BBBY',
+            'NKLA', 'RIDE', 'GOEV', 'WKHS', 'HYMC', 'RMED', 'PHUN', 'DWAC',
+            'SPRT', 'GREE', 'IRNT', 'OPAD', 'ANY', 'BGFV', 'ROOT', 'CLOV',
+            'WISH', 'SKLZ', 'DKNG', 'PENN', 'TLRY', 'ACB', 'CGC', 'CRON',
+            'RIOT', 'MARA', 'BTBT', 'EBON', 'CAN', 'HVBT', 'BITF', 'HIVE',
+            
+            # Small Cap Explosive Potential ($10-50)
+            'PLBY', 'BODY', 'BARK', 'MVST', 'QS', 'CHPT', 'BLNK', 'EVGO',
+            'SPCE', 'ASTR', 'RKT', 'OPEN', 'BROS', 'DNUT', 'BYND', 'OATLY',
+            'RKLB', 'PL', 'DDOG', 'CRWD', 'ZS', 'OKTA', 'ESTC', 'MDB',
+            
+            # Meme Stock Potential
+            'GME', 'AMC', 'KOSS', 'EXPR', 'NAKD', 'SIRI', 'NOK', 'BB'
         ]
         
         self.cache_duration = 300  # 5 minutes
@@ -74,6 +90,13 @@ class ExplosiveStockScreener:
             
             # === TREND SIGNALS ===
             signals.update(self._calculate_trend_signals(df))
+            
+            # === EXPLOSIVE PATTERN RECOGNITION ===
+            signals.update(self._detect_explosive_patterns(df))
+            
+            # === PENNTY STOCK EXPLOSIVE SIGNALS ===
+            if signals['current_price'] < 10:  # Penny stock special analysis
+                signals.update(self._calculate_penny_stock_signals(df))
             
             # === CALCULATE EXPLOSIVE SCORE ===
             explosive_score = self._calculate_explosive_score(signals)
@@ -207,6 +230,401 @@ class ExplosiveStockScreener:
         returns = df['Close'].pct_change().dropna()
         hist_vol = returns.rolling(window=20).std() * np.sqrt(252) * 100
         signals['historical_volatility'] = hist_vol.iloc[-1] if not hist_vol.empty else 0
+        
+        return signals
+    
+    def _detect_explosive_patterns(self, df: pd.DataFrame) -> Dict:
+        """Detect explosive chart patterns like triple tops/bottoms, cup and handle, etc."""
+        signals = {}
+        
+        # === TRIPLE TOP/BOTTOM DETECTION ===
+        triple_signals = self._detect_triple_patterns(df)
+        signals.update(triple_signals)
+        
+        # === DOUBLE TOP/BOTTOM DETECTION ===
+        double_signals = self._detect_double_patterns(df)
+        signals.update(double_signals)
+        
+        # === BOLLINGER BAND SQUEEZE ("BOILER BANGER") ===
+        squeeze_signals = self._detect_bollinger_squeeze(df)
+        signals.update(squeeze_signals)
+        
+        # === CUP AND HANDLE PATTERN ===
+        cup_handle_signals = self._detect_cup_and_handle(df)
+        signals.update(cup_handle_signals)
+        
+        # === ASCENDING/DESCENDING TRIANGLE ===
+        triangle_signals = self._detect_triangle_patterns(df)
+        signals.update(triangle_signals)
+        
+        # === FLAG AND PENNANT PATTERNS ===
+        flag_signals = self._detect_flag_patterns(df)
+        signals.update(flag_signals)
+        
+        return signals
+    
+    def _detect_triple_patterns(self, df: pd.DataFrame) -> Dict:
+        """Detect triple top/bottom patterns (very explosive when broken)"""
+        signals = {}
+        
+        if len(df) < 60:  # Need enough data for pattern recognition
+            return {'triple_pattern': 'INSUFFICIENT_DATA'}
+        
+        highs = df['High'].rolling(window=5).max()
+        lows = df['Low'].rolling(window=5).min()
+        
+        # Find peaks (highs) and troughs (lows)
+        recent_highs = highs.tail(30)
+        recent_lows = lows.tail(30)
+        
+        # Triple top detection (bearish until broken)
+        high_peaks = []
+        for i in range(2, len(recent_highs)-2):
+            if (recent_highs.iloc[i] > recent_highs.iloc[i-1] and 
+                recent_highs.iloc[i] > recent_highs.iloc[i-2] and
+                recent_highs.iloc[i] > recent_highs.iloc[i+1] and
+                recent_highs.iloc[i] > recent_highs.iloc[i+2]):
+                high_peaks.append(recent_highs.iloc[i])
+        
+        # Triple bottom detection (bullish pattern)
+        low_troughs = []
+        for i in range(2, len(recent_lows)-2):
+            if (recent_lows.iloc[i] < recent_lows.iloc[i-1] and 
+                recent_lows.iloc[i] < recent_lows.iloc[i-2] and
+                recent_lows.iloc[i] < recent_lows.iloc[i+1] and
+                recent_lows.iloc[i] < recent_lows.iloc[i+2]):
+                low_troughs.append(recent_lows.iloc[i])
+        
+        current_price = df['Close'].iloc[-1]
+        
+        if len(high_peaks) >= 3:
+            # Check if similar levels (within 3%)
+            peak_range = (max(high_peaks[-3:]) - min(high_peaks[-3:])) / min(high_peaks[-3:])
+            if peak_range < 0.03:
+                resistance_level = max(high_peaks[-3:])
+                if current_price > resistance_level * 1.01:  # Breakout above
+                    signals['triple_pattern'] = 'TRIPLE_TOP_BREAKOUT'
+                    signals['triple_pattern_strength'] = 95  # Very strong
+                else:
+                    signals['triple_pattern'] = 'TRIPLE_TOP_FORMING'
+                    signals['triple_pattern_strength'] = 75
+        
+        if len(low_troughs) >= 3:
+            trough_range = (max(low_troughs[-3:]) - min(low_troughs[-3:])) / min(low_troughs[-3:])
+            if trough_range < 0.03:
+                support_level = min(low_troughs[-3:])
+                if current_price > support_level * 1.05:  # Bouncing off support
+                    signals['triple_pattern'] = 'TRIPLE_BOTTOM_BOUNCE'
+                    signals['triple_pattern_strength'] = 90
+                else:
+                    signals['triple_pattern'] = 'TRIPLE_BOTTOM_FORMING'
+                    signals['triple_pattern_strength'] = 70
+        
+        if 'triple_pattern' not in signals:
+            signals['triple_pattern'] = 'NONE'
+            signals['triple_pattern_strength'] = 0
+        
+        return signals
+    
+    def _detect_double_patterns(self, df: pd.DataFrame) -> Dict:
+        """Detect double top/bottom patterns"""
+        signals = {}
+        
+        if len(df) < 40:
+            return {'double_pattern': 'INSUFFICIENT_DATA'}
+        
+        # Look for two distinct peaks/troughs
+        rolling_max = df['High'].rolling(window=10, center=True).max()
+        rolling_min = df['Low'].rolling(window=10, center=True).min()
+        
+        # Find recent peaks and troughs
+        recent_data = df.tail(40)
+        peaks = []
+        troughs = []
+        
+        for i in range(10, len(recent_data)-10):
+            if recent_data['High'].iloc[i] == rolling_max.iloc[-40+i]:
+                peaks.append((i, recent_data['High'].iloc[i]))
+            if recent_data['Low'].iloc[i] == rolling_min.iloc[-40+i]:
+                troughs.append((i, recent_data['Low'].iloc[i]))
+        
+        current_price = df['Close'].iloc[-1]
+        
+        # Double top detection
+        if len(peaks) >= 2:
+            last_two_peaks = peaks[-2:]
+            peak1_price = last_two_peaks[0][1]
+            peak2_price = last_two_peaks[1][1]
+            
+            # Check if peaks are similar (within 2%)
+            if abs(peak1_price - peak2_price) / max(peak1_price, peak2_price) < 0.02:
+                resistance = max(peak1_price, peak2_price)
+                if current_price > resistance * 1.015:  # Breakout
+                    signals['double_pattern'] = 'DOUBLE_TOP_BREAKOUT'
+                    signals['double_pattern_strength'] = 85
+                else:
+                    signals['double_pattern'] = 'DOUBLE_TOP_FORMING'
+                    signals['double_pattern_strength'] = 65
+        
+        # Double bottom detection
+        if len(troughs) >= 2:
+            last_two_troughs = troughs[-2:]
+            trough1_price = last_two_troughs[0][1]
+            trough2_price = last_two_troughs[1][1]
+            
+            if abs(trough1_price - trough2_price) / max(trough1_price, trough2_price) < 0.02:
+                support = min(trough1_price, trough2_price)
+                if current_price > support * 1.03:  # Bouncing up
+                    signals['double_pattern'] = 'DOUBLE_BOTTOM_BOUNCE'
+                    signals['double_pattern_strength'] = 80
+                else:
+                    signals['double_pattern'] = 'DOUBLE_BOTTOM_FORMING'
+                    signals['double_pattern_strength'] = 60
+        
+        if 'double_pattern' not in signals:
+            signals['double_pattern'] = 'NONE'
+            signals['double_pattern_strength'] = 0
+        
+        return signals
+    
+    def _detect_bollinger_squeeze(self, df: pd.DataFrame) -> Dict:
+        """Detect Bollinger Band squeeze - the 'boiler banger' setup"""
+        signals = {}
+        
+        # Calculate Bollinger Bands
+        rolling_mean = df['Close'].rolling(window=20).mean()
+        rolling_std = df['Close'].rolling(window=20).std()
+        
+        upper_band = rolling_mean + (rolling_std * 2)
+        lower_band = rolling_mean - (rolling_std * 2)
+        
+        # Band width (squeeze indicator)
+        band_width = (upper_band - lower_band) / rolling_mean
+        
+        # Current vs historical band width
+        current_width = band_width.iloc[-1]
+        avg_width_50 = band_width.tail(50).mean()
+        
+        # Squeeze detection
+        squeeze_ratio = current_width / avg_width_50
+        
+        if squeeze_ratio < 0.7:  # Bands are very tight
+            signals['bollinger_squeeze'] = 'EXTREME_SQUEEZE'
+            signals['squeeze_strength'] = 95
+        elif squeeze_ratio < 0.8:
+            signals['bollinger_squeeze'] = 'STRONG_SQUEEZE' 
+            signals['squeeze_strength'] = 80
+        elif squeeze_ratio < 0.9:
+            signals['bollinger_squeeze'] = 'MODERATE_SQUEEZE'
+            signals['squeeze_strength'] = 65
+        else:
+            signals['bollinger_squeeze'] = 'NONE'
+            signals['squeeze_strength'] = 0
+        
+        # Check for breakout from squeeze
+        current_price = df['Close'].iloc[-1]
+        if current_price > upper_band.iloc[-1]:
+            signals['squeeze_breakout'] = 'UPWARD_BREAKOUT'
+            signals['breakout_strength'] = 90
+        elif current_price < lower_band.iloc[-1]:
+            signals['squeeze_breakout'] = 'DOWNWARD_BREAKOUT' 
+            signals['breakout_strength'] = 75
+        else:
+            signals['squeeze_breakout'] = 'NONE'
+            signals['breakout_strength'] = 0
+        
+        return signals
+    
+    def _detect_cup_and_handle(self, df: pd.DataFrame) -> Dict:
+        """Detect cup and handle pattern - very bullish"""
+        signals = {}
+        
+        if len(df) < 50:
+            return {'cup_handle': 'INSUFFICIENT_DATA'}
+        
+        prices = df['Close'].tail(50)
+        
+        # Find the cup (U-shape)
+        # Cup should have: high -> low -> high pattern
+        first_third = prices.iloc[:17].max()
+        middle_third = prices.iloc[17:34].min()
+        last_third = prices.iloc[34:].max()
+        
+        # Cup criteria
+        cup_depth = (first_third - middle_third) / first_third
+        cup_recovery = (last_third - middle_third) / (first_third - middle_third)
+        
+        if (0.12 < cup_depth < 0.35 and  # 12-35% correction
+            cup_recovery > 0.75 and      # Recovered 75%+ 
+            abs(first_third - last_third) / first_third < 0.05):  # Similar highs
+            
+            # Look for handle (small pullback)
+            recent_prices = prices.tail(10)
+            handle_high = recent_prices.max()
+            handle_low = recent_prices.min()
+            handle_depth = (handle_high - handle_low) / handle_high
+            
+            current_price = df['Close'].iloc[-1]
+            
+            if handle_depth < 0.15:  # Handle pullback < 15%
+                if current_price >= handle_high * 0.98:  # Near breakout
+                    signals['cup_handle'] = 'CUP_HANDLE_BREAKOUT'
+                    signals['cup_handle_strength'] = 90
+                else:
+                    signals['cup_handle'] = 'CUP_HANDLE_FORMING'
+                    signals['cup_handle_strength'] = 75
+            else:
+                signals['cup_handle'] = 'CUP_FORMED'
+                signals['cup_handle_strength'] = 60
+        else:
+            signals['cup_handle'] = 'NONE'
+            signals['cup_handle_strength'] = 0
+        
+        return signals
+    
+    def _detect_triangle_patterns(self, df: pd.DataFrame) -> Dict:
+        """Detect ascending/descending triangles"""
+        signals = {}
+        
+        if len(df) < 30:
+            return {'triangle_pattern': 'INSUFFICIENT_DATA'}
+        
+        recent_data = df.tail(30)
+        highs = recent_data['High']
+        lows = recent_data['Low']
+        
+        # Find trend in highs and lows
+        high_trend = np.polyfit(range(len(highs)), highs, 1)[0]  # Slope
+        low_trend = np.polyfit(range(len(lows)), lows, 1)[0]
+        
+        current_price = df['Close'].iloc[-1]
+        recent_high = highs.tail(5).max()
+        recent_low = lows.tail(5).min()
+        
+        # Ascending triangle (flat resistance, rising support)
+        if abs(high_trend) < 0.01 and low_trend > 0.02:
+            if current_price > recent_high * 1.01:  # Breakout
+                signals['triangle_pattern'] = 'ASCENDING_BREAKOUT'
+                signals['triangle_strength'] = 85
+            else:
+                signals['triangle_pattern'] = 'ASCENDING_FORMING'
+                signals['triangle_strength'] = 70
+        
+        # Descending triangle (declining resistance, flat support)  
+        elif high_trend < -0.02 and abs(low_trend) < 0.01:
+            if current_price > recent_high * 1.02:  # Breakout above declining resistance
+                signals['triangle_pattern'] = 'DESCENDING_BREAKOUT'
+                signals['triangle_strength'] = 80
+            else:
+                signals['triangle_pattern'] = 'DESCENDING_FORMING'
+                signals['triangle_strength'] = 50
+        
+        # Symmetrical triangle (converging lines)
+        elif high_trend < -0.01 and low_trend > 0.01:
+            range_compression = (recent_high - recent_low) / current_price
+            if range_compression < 0.05:  # Very tight range
+                signals['triangle_pattern'] = 'SYMMETRICAL_SQUEEZE'
+                signals['triangle_strength'] = 75
+            else:
+                signals['triangle_pattern'] = 'SYMMETRICAL_FORMING'
+                signals['triangle_strength'] = 55
+        else:
+            signals['triangle_pattern'] = 'NONE'
+            signals['triangle_strength'] = 0
+        
+        return signals
+    
+    def _detect_flag_patterns(self, df: pd.DataFrame) -> Dict:
+        """Detect flag and pennant patterns (continuation patterns)"""
+        signals = {}
+        
+        if len(df) < 25:
+            return {'flag_pattern': 'INSUFFICIENT_DATA'}
+        
+        # Look for strong move followed by consolidation
+        prices = df['Close']
+        
+        # Check for strong initial move (flagpole)
+        flagpole_start = prices.iloc[-20]
+        flagpole_end = prices.iloc[-10]
+        flagpole_move = (flagpole_end - flagpole_start) / flagpole_start
+        
+        if abs(flagpole_move) > 0.08:  # Strong 8%+ move
+            # Check consolidation period (flag)
+            consolidation = prices.tail(10)
+            flag_range = (consolidation.max() - consolidation.min()) / consolidation.mean()
+            
+            current_price = prices.iloc[-1]
+            
+            if flag_range < 0.05:  # Tight consolidation
+                if flagpole_move > 0:  # Bullish flag
+                    if current_price > consolidation.max() * 1.005:  # Breakout
+                        signals['flag_pattern'] = 'BULL_FLAG_BREAKOUT'
+                        signals['flag_strength'] = 85
+                    else:
+                        signals['flag_pattern'] = 'BULL_FLAG_FORMING'
+                        signals['flag_strength'] = 70
+                else:  # Bear flag (less relevant for explosive screening)
+                    signals['flag_pattern'] = 'BEAR_FLAG_FORMING'
+                    signals['flag_strength'] = 40
+            else:
+                signals['flag_pattern'] = 'LOOSE_CONSOLIDATION'
+                signals['flag_strength'] = 30
+        else:
+            signals['flag_pattern'] = 'NONE'
+            signals['flag_strength'] = 0
+        
+        return signals
+    
+    def _calculate_penny_stock_signals(self, df: pd.DataFrame) -> Dict:
+        """Special analysis for penny stocks with explosive potential"""
+        signals = {}
+        
+        current_price = df['Close'].iloc[-1]
+        
+        # Penny stock classification
+        if current_price < 1:
+            signals['penny_tier'] = 'ULTRA_PENNY'  # Highest volatility
+            volatility_multiplier = 2.0
+        elif current_price < 5:
+            signals['penny_tier'] = 'PENNY_STOCK'
+            volatility_multiplier = 1.5
+        else:
+            signals['penny_tier'] = 'LOW_PRICE'
+            volatility_multiplier = 1.2
+        
+        # Volume explosion detection (critical for penny stocks)
+        volume_recent = df['Volume'].tail(5).mean()
+        volume_baseline = df['Volume'].tail(50).mean()
+        volume_explosion = volume_recent / max(volume_baseline, 1)
+        
+        if volume_explosion > 5:
+            signals['penny_volume_signal'] = 'EXPLOSIVE_VOLUME'
+            signals['penny_volume_strength'] = 95
+        elif volume_explosion > 3:
+            signals['penny_volume_signal'] = 'HIGH_VOLUME'
+            signals['penny_volume_strength'] = 80
+        elif volume_explosion > 1.5:
+            signals['penny_volume_signal'] = 'ELEVATED_VOLUME'
+            signals['penny_volume_strength'] = 60
+        else:
+            signals['penny_volume_signal'] = 'NORMAL_VOLUME'
+            signals['penny_volume_strength'] = 20
+        
+        # Price explosion potential
+        price_change_5d = (current_price - df['Close'].iloc[-5]) / df['Close'].iloc[-5] * 100
+        
+        if price_change_5d > 50:  # 50%+ move in 5 days
+            signals['penny_momentum'] = 'EXPLOSIVE'
+        elif price_change_5d > 25:
+            signals['penny_momentum'] = 'STRONG'
+        elif price_change_5d > 10:
+            signals['penny_momentum'] = 'BUILDING'
+        else:
+            signals['penny_momentum'] = 'WEAK'
+        
+        # Apply volatility multiplier to scoring
+        signals['penny_multiplier'] = volatility_multiplier
         
         return signals
     
