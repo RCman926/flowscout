@@ -128,6 +128,24 @@ class OptionsEngine:
         """Get real-time options flow data"""
         return self.analyze_flow_patterns(symbol, min_volume, min_premium)
     
+    def _safe_option_value(self, value, default=0):
+        """Safely extract option values with comprehensive NaN handling"""
+        try:
+            if value is None or np.isnan(float(value)):
+                return default
+            return float(value)
+        except (ValueError, TypeError, OverflowError):
+            return default
+    
+    def _safe_option_int(self, value, default=0):
+        """Safely extract integer option values"""
+        try:
+            if value is None or np.isnan(float(value)):
+                return default
+            return max(0, int(float(value)))
+        except (ValueError, TypeError, OverflowError):
+            return default
+    
     async def _get_yahoo_options_flow(self, symbol, min_volume, min_premium):
         """Get options flow using Yahoo Finance (fallback)"""
         try:
@@ -143,37 +161,18 @@ class OptionsEngine:
                     calls = chain.calls
                     puts = chain.puts
                     
-                    # FIXED: Enhanced NaN protection for NVDA and other symbols
-                    def safe_option_value(value, default=0):
-                        """Safely extract option values with comprehensive NaN handling"""
-                        try:
-                            if value is None or pd.isna(value) or np.isnan(float(value)):
-                                return default
-                            return float(value)
-                        except (ValueError, TypeError, OverflowError):
-                            return default
-                    
-                    def safe_option_int(value, default=0):
-                        """Safely extract integer option values"""
-                        try:
-                            if value is None or pd.isna(value) or np.isnan(float(value)):
-                                return default
-                            return max(0, int(float(value)))
-                        except (ValueError, TypeError, OverflowError):
-                            return default
-                    
                     # Process calls with enhanced error handling
                     for _, call in calls.iterrows():
                         try:
-                            volume = safe_option_int(call.get('volume', 0))
-                            last_price = safe_option_value(call.get('lastPrice', 0))
-                            strike = safe_option_value(call.get('strike', 0))
+                            volume = self._safe_option_int(call.get('volume', 0))
+                            last_price = self._safe_option_value(call.get('lastPrice', 0))
+                            strike = self._safe_option_value(call.get('strike', 0))
                             
                             if volume >= min_volume and last_price * volume * 100 >= min_premium:
                                 # Safe delta calculation with fallback
                                 try:
                                     delta = self._calculate_delta(symbol, strike, exp_date, 'call', 
-                                                                safe_option_value(call.get('impliedVolatility', 0.25)))
+                                                                self._safe_option_value(call.get('impliedVolatility', 0.25)))
                                 except Exception:
                                     delta = 0.5  # Default call delta
                                 
@@ -183,17 +182,17 @@ class OptionsEngine:
                                     'type': 'CALL',
                                     'strike': strike,
                                     'expiry': exp_date,
-                                    'bid': safe_option_value(call.get('bid', 0)),
-                                    'ask': safe_option_value(call.get('ask', 0)),
+                                    'bid': self._safe_option_value(call.get('bid', 0)),
+                                    'ask': self._safe_option_value(call.get('ask', 0)),
                                     'last': last_price,
                                     'volume': volume,
-                                    'open_interest': safe_option_int(call.get('openInterest', 0)),
-                                    'iv': safe_option_value(call.get('impliedVolatility', 0.25)),
+                                    'open_interest': self._safe_option_int(call.get('openInterest', 0)),
+                                    'iv': self._safe_option_value(call.get('impliedVolatility', 0.25)),
                                     'premium': last_price * volume * 100,
                                     'delta': delta,
-                                    'avg_volume': safe_option_int(call.get('openInterest', 0)) * 0.1,
-                                    'change': safe_option_value(call.get('change', 0)),
-                                    'percent_change': safe_option_value(call.get('percentChange', 0))
+                                    'avg_volume': self._safe_option_int(call.get('openInterest', 0)) * 0.1,
+                                    'change': self._safe_option_value(call.get('change', 0)),
+                                    'percent_change': self._safe_option_value(call.get('percentChange', 0))
                                 })
                         except Exception as call_error:
                             if symbol == 'NVDA':  # Special logging for NVDA
@@ -203,15 +202,15 @@ class OptionsEngine:
                     # Process puts with enhanced error handling
                     for _, put in puts.iterrows():
                         try:
-                            volume = safe_option_int(put.get('volume', 0))
-                            last_price = safe_option_value(put.get('lastPrice', 0))
-                            strike = safe_option_value(put.get('strike', 0))
+                            volume = self._safe_option_int(put.get('volume', 0))
+                            last_price = self._safe_option_value(put.get('lastPrice', 0))
+                            strike = self._safe_option_value(put.get('strike', 0))
                             
                             if volume >= min_volume and last_price * volume * 100 >= min_premium:
                                 # Safe delta calculation with fallback
                                 try:
                                     delta = self._calculate_delta(symbol, strike, exp_date, 'put', 
-                                                                safe_option_value(put.get('impliedVolatility', 0.25)))
+                                                                self._safe_option_value(put.get('impliedVolatility', 0.25)))
                                 except Exception:
                                     delta = -0.5  # Default put delta
                                 
@@ -221,17 +220,17 @@ class OptionsEngine:
                                     'type': 'PUT',
                                     'strike': strike,
                                     'expiry': exp_date,
-                                    'bid': safe_option_value(put.get('bid', 0)),
-                                    'ask': safe_option_value(put.get('ask', 0)),
+                                    'bid': self._safe_option_value(put.get('bid', 0)),
+                                    'ask': self._safe_option_value(put.get('ask', 0)),
                                     'last': last_price,
                                     'volume': volume,
-                                    'open_interest': safe_option_int(put.get('openInterest', 0)),
-                                    'iv': safe_option_value(put.get('impliedVolatility', 0.25)),
+                                    'open_interest': self._safe_option_int(put.get('openInterest', 0)),
+                                    'iv': self._safe_option_value(put.get('impliedVolatility', 0.25)),
                                     'premium': last_price * volume * 100,
                                     'delta': delta,
-                                    'avg_volume': safe_option_int(put.get('openInterest', 0)) * 0.1,
-                                    'change': safe_option_value(put.get('change', 0)),
-                                    'percent_change': safe_option_value(put.get('percentChange', 0))
+                                    'avg_volume': self._safe_option_int(put.get('openInterest', 0)) * 0.1,
+                                    'change': self._safe_option_value(put.get('change', 0)),
+                                    'percent_change': self._safe_option_value(put.get('percentChange', 0))
                                 })
                         except Exception as put_error:
                             if symbol == 'NVDA':  # Special logging for NVDA
