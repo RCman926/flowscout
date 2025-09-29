@@ -136,7 +136,76 @@ def main():
         
         st.caption(f"🔄 Live updates: {st.session_state.refresh_count}")
         
-        # Seamless status indicators - no layout changes
+        # === SIGNIFICANT MARKET NEWS ONLY ===
+        st.markdown("### 📰 Market News")
+        st.caption("*Only significant events*")
+        
+        # Initialize significant news tracking
+        if 'last_significant_news' not in st.session_state:
+            st.session_state.last_significant_news = set()
+        
+        # Get only truly significant market events
+        from enhanced_market_intelligence import market_intelligence
+        significant_news = market_intelligence.get_significant_market_events()
+        earnings_today = market_intelligence.get_major_earnings_beats_misses()
+        
+        # Check if any new significant events to refresh
+        current_significant = set([n['id'] for n in significant_news if n.get('id')])
+        should_refresh_news = bool(current_significant - st.session_state.last_significant_news)
+        
+        if should_refresh_news or not hasattr(st.session_state, 'cached_significant_news'):
+            # === EARNINGS ALERTS (Only major beats/misses) ===
+            major_earnings = [e for e in earnings_today if abs(e.get('beat_percentage', 0)) > 15]
+            for earning in major_earnings[:2]:  # Top 2 major results only
+                result = earning.get('result', 'PENDING')
+                symbol = earning['symbol']
+                pct = earning.get('beat_percentage', 0)
+                
+                if result in ['BEAT', 'STRONG_BEAT'] and pct > 15:
+                    st.success(f"✅ {symbol} Beat +{pct:.0f}%")
+                    st.caption("Major earnings beat")
+                elif result in ['MISS', 'STRONG_MISS'] and pct < -15:
+                    st.error(f"❌ {symbol} Miss {pct:.0f}%")
+                    st.caption("Major earnings miss")
+            
+            # === FED & ECONOMIC EVENTS (Only major ones) ===
+            fed_events = market_intelligence.get_major_fed_events()
+            for event in fed_events[:2]:  # Only next 2 major events
+                if event['importance'] == 'CRITICAL':
+                    st.warning(f"🏛️ {event['title']} {event['date']}")
+                    st.caption("Fed critical event")
+            
+            # === SIGNIFICANT GLOBAL NEWS (High impact only) ===
+            for news in significant_news[:3]:  # Only top 3 significant
+                if news.get('market_impact', 'LOW') in ['HIGH', 'CRITICAL']:
+                    # Show time since news
+                    time_ago = (datetime.now() - news['timestamp']).total_seconds() / 60
+                    if time_ago < 60:
+                        time_str = f"{max(1, int(time_ago))}m"
+                    elif time_ago < 1440:
+                        time_str = f"{int(time_ago/60)}h"
+                    else:
+                        time_str = f"{int(time_ago/1440)}d"
+                    
+                    # Show with appropriate impact indicator
+                    if news.get('market_impact') == 'CRITICAL':
+                        st.error(f"🚨 {news['title'][:40]}...")
+                    else:
+                        st.warning(f"⚠️ {news['title'][:40]}...")
+                    st.caption(f"{time_str} ago • {news.get('source', 'News')}")
+            
+            # Update cache
+            st.session_state.last_significant_news = current_significant
+            st.session_state.cached_significant_news = True
+        
+        # Show last significant update time
+        current_time = datetime.now().strftime("%H:%M")
+        if should_refresh_news:
+            st.caption(f"🔔 Updated: {current_time}")
+        else:
+            st.caption(f"📰 Last check: {current_time}")
+        
+        # === LIVE STATUS ===
         st.markdown("### 📡 LIVE STATUS")
         if st.session_state.auto_refresh_enabled:
             st.success("🟢 Seamless Updates: ACTIVE")
@@ -648,97 +717,8 @@ def main():
 
 
     
-    # === MARKET INTELLIGENCE ===
-    st.markdown("#### 📊 Market Intelligence")
-    
-    from enhanced_market_intelligence import market_intelligence
-    
-    # Get live data
-    live_news = market_intelligence.get_live_market_news(max_items=4)
-    earnings_calendar = market_intelligence.get_live_earnings_calendar()
-    
-    # Compact 4-column layout
-    intel_cols = st.columns(4)
-    
-    with intel_cols[0]:
-        st.text("📊 Earnings Today")
-        # Today's reported earnings
-        today_earnings = [e for e in earnings_calendar if e['status'] == 'REPORTED']
-        for earning in today_earnings[:3]:  # Top 3 results
-            result = earning.get('result', 'PENDING')
-            symbol = earning['symbol']
-            pct = earning.get('beat_percentage', 0)
-            
-            if result in ['BEAT', 'STRONG_BEAT']:
-                st.text(f"✓ {symbol} Beat +{pct:.1f}%")
-                st.caption("EPS vs estimate")
-            elif result in ['MISS', 'STRONG_MISS']:
-                st.text(f"✗ {symbol} Miss {pct:.1f}%")
-                st.caption("EPS vs estimate")
-            else:
-                st.text(f"• {symbol} ${earning.get('actual', 0):.2f}")
-                st.caption("Actual EPS")
-    
-    with intel_cols[1]:
-        st.text("📅 Earnings Coming")
-        # Upcoming earnings
-        upcoming = [e for e in earnings_calendar if e['status'] != 'REPORTED']
-        for earning in upcoming[:3]:  # Next 3 upcoming
-            symbol = earning['symbol']
-            date = earning['date']
-            if earning['importance'] == 'HIGH':
-                st.text(f"⚡ {symbol} {date}")
-            else:
-                st.text(f"• {symbol} {date}")
-    
-    with intel_cols[2]:
-        st.text("🏛️ Fed Events")
-        from datetime import datetime, timedelta
-        
-        # FOMC meetings (simulated realistic dates)
-        next_fomc = datetime.now() + timedelta(days=14)
-        fomc_after = datetime.now() + timedelta(days=60)
-        
-        st.text(f"FOMC {next_fomc.strftime('%m/%d')}")
-        st.text(f"Minutes {(next_fomc + timedelta(days=21)).strftime('%m/%d')}")
-        st.text(f"Next FOMC {fomc_after.strftime('%m/%d')}")
-        
-        # Economic data releases
-        st.text("CPI 09/12")
-        st.text("PPI 09/13")
-        st.text("Jobs 10/04")
-    
-    with intel_cols[3]:
-        st.text("🌍 Global News")
-        # Most important global news affecting markets
-        for i, news in enumerate(live_news[:3]):
-            title = news['title'][:30] + "..." if len(news['title']) > 30 else news['title']
-            
-            # Time indicator - fix the time calculation
-            time_ago = (datetime.now() - news['timestamp']).total_seconds() / 60
-            if time_ago < 60:
-                time_str = f"{max(1, int(time_ago))}m"
-            elif time_ago < 1440:  # Less than 24 hours
-                time_str = f"{int(time_ago/60)}h"
-            else:
-                time_str = f"{int(time_ago/1440)}d"
-            
-            # Show sentiment impact
-            impact = ""
-            if news['sentiment'] == 'BULLISH':
-                impact = "↗"
-            elif news['sentiment'] == 'BEARISH':
-                impact = "↘"
-            elif news['sentiment'] == 'VOLATILE':
-                impact = "⚡"
-            
-            st.text(f"{impact} {title}")
-            st.caption(f"{news.get('source', 'News')} • {time_str} • Market impact")
-    
-    # Key levels in minimal format
-    current_price = market_data['price']
-    atm_strike = round(current_price / 5) * 5
-    st.caption(f"Key: Support ${atm_strike-5} | Resistance ${atm_strike+5} | ATM ${atm_strike}")
+    # === MARKET INTELLIGENCE MOVED TO SIDEBAR === 
+    # (Market news now displayed in left sidebar with intelligent filtering)
     
     # === MAIN OPTIONS ANALYSIS ===
     st.markdown("#### 🎯 Key Trading Levels")
@@ -2013,7 +1993,7 @@ def main():
             st.success(f"💚 {position_rec}")
     
     # === LIVE MARKET DATA DISPLAY ===
-    st.markdown("#### 📡 LIVE Market Intelligence")
+    st.markdown("#### 📡 LIVE Market Data")
     
     # Display live market data with high confidence
     market_cols = st.columns(4)
