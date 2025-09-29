@@ -52,10 +52,16 @@ def now_et():
     """Get current time in US/Eastern timezone"""
     return datetime.now(ZoneInfo('America/New_York'))
 
-# Initialize AI and advanced modules
+# Initialize AI and advanced modules - UPGRADED TO PROFESSIONAL AI SYSTEM
 if 'professional_ai' not in st.session_state:
+    from upgraded_prediction_engine import upgraded_prediction_engine
+    st.session_state.professional_ai = upgraded_prediction_engine
+    print("🚀 UPGRADED: Professional AI Trading System v2.0 initialized with 40+ features")
+
+# Keep backup prediction engine for fallback
+if 'backup_prediction_engine' not in st.session_state:
     from advanced_prediction_engine import AdvancedPredictionEngine
-    st.session_state.professional_ai = AdvancedPredictionEngine()
+    st.session_state.backup_prediction_engine = AdvancedPredictionEngine()
 
 if 'signal_coordinator' not in st.session_state:
     from signal_coordinator import ProfessionalSignalCoordinator
