@@ -215,9 +215,11 @@ def main():
             # === SIGNIFICANT GLOBAL NEWS (High impact only) ===
             for news in significant_news[:3]:  # Only top 3 significant
                 if news.get('market_impact', 'LOW') in ['HIGH', 'CRITICAL']:
-                    # Show time since news
+                    # Show time since news - LIVE timing
                     time_ago = (datetime.now() - news['timestamp']).total_seconds() / 60
-                    if time_ago < 60:
+                    if time_ago < 1:
+                        time_str = "LIVE"  # Less than 1 minute = LIVE
+                    elif time_ago < 60:
                         time_str = f"{max(1, int(time_ago))}m"
                     elif time_ago < 1440:
                         time_str = f"{int(time_ago/60)}h"
@@ -229,7 +231,14 @@ def main():
                         st.error(f"🚨 {news['title'][:40]}...")
                     else:
                         st.warning(f"⚠️ {news['title'][:40]}...")
-                    st.caption(f"{time_str} ago • {news.get('source', 'News')}")
+                    
+                    # Enhanced timing display
+                    if time_str == "LIVE":
+                        st.caption(f"🔴 {time_str} • {news.get('source', 'News')} • BREAKING")
+                    elif time_ago < 15:
+                        st.caption(f"🟠 {time_str} ago • {news.get('source', 'News')} • HOT")
+                    else:
+                        st.caption(f"{time_str} ago • {news.get('source', 'News')}")
             
             # Update cache
             st.session_state.last_significant_news = current_significant
