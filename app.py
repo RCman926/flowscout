@@ -1073,6 +1073,84 @@ def main():
         current_time = datetime.now().strftime("%H:%M:%S")
         st.caption(f"Last refresh: {current_time}")
     
+    # === PRIORITY NEWS DEEP DIVE CARDS ===
+    st.markdown("#### 📰 MARKET INTELLIGENCE - DEEP DIVE")
+    
+    # Get comprehensive news for detailed analysis
+    deep_dive_news = intelligence_hub.get_deep_dive_cards()
+    
+    # Dual-column layout for Deep Dive Cards
+    news_col1, news_col2 = st.columns(2)
+    
+    for idx, news in enumerate(deep_dive_news[:4]):  # Top 4 detailed stories
+        # Alternate between columns
+        col = news_col1 if idx % 2 == 0 else news_col2
+        
+        with col:
+            # Card container with rich information
+            with st.container():
+                # Header with impact and freshness
+                impact_emoji = "🚨" if news.impact_score >= 8 else "⚠️" if news.impact_score >= 6 else "📰"
+                freshness_color = "🔴" if news.freshness_minutes < 10 else "🟠" if news.freshness_minutes < 30 else "🟡"
+                
+                st.markdown(f"**{impact_emoji} {news.headline}**")
+                
+                # Meta information bar
+                meta_col1, meta_col2, meta_col3 = st.columns(3)
+                with meta_col1:
+                    st.caption(f"{freshness_color} {news.freshness_minutes}m ago")
+                with meta_col2:
+                    st.caption(f"📊 Impact: {news.impact_score:.1f}/10")
+                with meta_col3:
+                    reliability_color = "🟢" if news.reliability_score >= 90 else "🟡" if news.reliability_score >= 70 else "🔴"
+                    st.caption(f"{reliability_color} {news.source}")
+                
+                # Content preview
+                st.markdown(f"*{news.content[:150]}...*")
+                
+                # Related tickers and sentiment
+                tickers_col, sentiment_col = st.columns(2)
+                with tickers_col:
+                    if news.related_tickers:
+                        tickers_text = " ".join([f"**{ticker}**" for ticker in news.related_tickers[:3]])
+                        st.markdown(f"🎯 {tickers_text}")
+                
+                with sentiment_col:
+                    if news.sentiment_score > 0.3:
+                        sentiment_display = "📈 Bullish"
+                        sentiment_color = "success"
+                    elif news.sentiment_score < -0.3:
+                        sentiment_display = "📉 Bearish" 
+                        sentiment_color = "error"
+                    else:
+                        sentiment_display = "➡️ Neutral"
+                        sentiment_color = "info"
+                    
+                    if sentiment_color == "success":
+                        st.success(sentiment_display)
+                    elif sentiment_color == "error":
+                        st.error(sentiment_display)
+                    else:
+                        st.info(sentiment_display)
+                
+                # Options flow implications
+                if hasattr(news, 'flow_signals') and news.flow_signals:
+                    flow_signals = news.flow_signals
+                    if 'expected_iv_change' in flow_signals:
+                        iv_change = flow_signals['expected_iv_change']
+                        iv_emoji = "📊" if abs(iv_change) < 3 else "⚡" if abs(iv_change) < 8 else "🌪️"
+                        st.caption(f"{iv_emoji} Expected IV: {iv_change:+.1f}%")
+                    
+                    if 'flow_direction' in flow_signals:
+                        flow_dir = flow_signals['flow_direction']
+                        flow_emoji = "🟢" if flow_dir == 'bullish' else "🔴" if flow_dir == 'bearish' else "⚪"
+                        st.caption(f"{flow_emoji} Flow: {flow_dir.upper()}")
+                
+                # Trading implications
+                st.info(f"💡 **Action**: {news.trade_implications}")
+                
+                st.markdown("---")
+    
     # Main content area now has more space
     
     # Removed sentiment section - user feedback indicated it was useless
