@@ -957,6 +957,7 @@ def main():
         
         # Import the advanced intelligence system
         from market_intelligence_hub import intelligence_hub
+        from datetime import datetime
         
         # === TODAY & NEXT 48H HEAT TIMELINE ===
         st.markdown("**🔥 NEXT 48H CATALYSTS**")
@@ -1075,6 +1076,9 @@ def main():
     
     # === PRIORITY NEWS DEEP DIVE CARDS ===
     st.markdown("#### 📰 MARKET INTELLIGENCE - DEEP DIVE")
+    
+    # Import intelligence hub for main content area  
+    from market_intelligence_hub import intelligence_hub
     
     # Get comprehensive news for detailed analysis
     deep_dive_news = intelligence_hub.get_deep_dive_cards()
