@@ -896,12 +896,30 @@ def options_trading_page():
                 # Type indicator
                 type_icon = "🟢" if option_type == 'CALL' else "🔴"
                 
+                # Calculate good buy-in prices
+                if last_price > 0:
+                    # Aggressive entry (immediate): Current price
+                    aggressive_entry = last_price
+                    
+                    # Conservative entry (10% below): Better fill
+                    conservative_entry = last_price * 0.9
+                    
+                    # Target profit (50% gain): Realistic target
+                    profit_target = last_price * 1.5
+                    
+                    buy_in_info = f"Buy: ${conservative_entry:.2f}-${aggressive_entry:.2f}"
+                    target_info = f"Target: ${profit_target:.2f}"
+                else:
+                    buy_in_info = "No Price"
+                    target_info = "TBD"
+                
                 strikes_data.append({
                     'Strike': f"{type_icon} ${strike_price}",
                     'Vol': f"{volume:,}",
                     'OI': f"{oi:,}" if oi > 0 else "-",
                     'Premium': f"${last_price:.2f}" if last_price > 0 else "-",
-                    'Flow': f"${premium_flow/1000:.0f}K" if premium_flow > 1000 else f"${premium_flow:.0f}",
+                    'Buy-In': buy_in_info,
+                    'Target': target_info,
                     'DTE': f"{dte}" if dte > 0 else "0⚡",
                     'Heat': heat
                 })
@@ -911,29 +929,33 @@ def options_trading_page():
                 import pandas as pd
                 df = pd.DataFrame(strikes_data)
                 
-                # Show compact table with styling
+                # Show compact table with enhanced trading info
                 st.dataframe(
                     df, 
                     hide_index=True, 
                     use_container_width=True, 
-                    height=240,
+                    height=280,
                     column_config={
                         "Strike": st.column_config.TextColumn("Strike", width="medium"),
                         "Vol": st.column_config.TextColumn("Vol", width="small"),
                         "OI": st.column_config.TextColumn("OI", width="small"),
                         "Premium": st.column_config.TextColumn("Premium", width="small"),
-                        "Flow": st.column_config.TextColumn("Flow", width="small"),
+                        "Buy-In": st.column_config.TextColumn("Buy-In", width="medium"),
+                        "Target": st.column_config.TextColumn("Target", width="small"),
                         "DTE": st.column_config.TextColumn("DTE", width="small"),
                         "Heat": st.column_config.TextColumn("🔥", width="small")
                     }
                 )
                 
-                # Compact legend
+                # Enhanced legend with buy-in guidance
                 leg_col1, leg_col2 = st.columns(2)
                 with leg_col1:
                     st.caption("🟢Call 🔴Put | 🚀Hot >1K | ⚡Active >500")
                 with leg_col2:
-                    st.caption("Vol=Volume | OI=Open Interest | 0⚡=0DTE")
+                    st.caption("Buy-In: Conservative-Aggressive range | Target: 50% profit")
+                    
+                # Trading Tips
+                st.info("💡 **Buy-In Strategy**: Conservative = 10% below current price (better fill), Aggressive = Current price (immediate entry)")
         
         # Ultra-compact unusual activity
         unusual_activity = live_options_data.get('unusual_activity', [])
@@ -2046,102 +2068,8 @@ def options_trading_page():
         for detail in signal_details:
             st.info(f"• {detail}")
     
-    # === LIVE OPTIONS FEED WITH ZERO DELAYS ===
-    st.markdown("#### 🚀 LIVE Options Feed - 0DTE Signals")
-    
-    # Real-time options engine for live signals
-    from live_options_engine import live_options_engine
-    
-    # Display live timestamp - zero delays with auto-refresh
-    current_time = datetime.now().strftime("%H:%M:%S")
-    st.markdown(f"**Last Update: {current_time} (LIVE) - 0s ago**")
-    
-    # Auto-refresh indicator
-    placeholder = st.empty()
-    with placeholder.container():
-        st.success("🟢 LIVE FEED ACTIVE - Auto-updating every 15 seconds")
-    
-    # Live options chain data (live_predictions already loaded above)
-    live_chain = live_options_engine.get_live_options_chain(selected_symbol)
-    
-    # Live signals display
-    signal_cols = st.columns(3)
-    
-    with signal_cols[0]:
-        st.markdown("**📈 LIVE CALLS**")
-        for call in live_chain['calls'][:5]:
-            signal_color = "success" if "BUY" in call['signal'] else "warning" if "WATCH" in call['signal'] else "info"
-            
-            if signal_color == "success":
-                st.success(f"${call['strike']} - {call['signal']}")
-            elif signal_color == "warning":
-                st.warning(f"${call['strike']} - {call['signal']}")
-            else:
-                st.info(f"${call['strike']} - {call['signal']}")
-                
-            st.caption(f"Last: ${call['last']} | Vol: {call['volume']:,} | Target: +{call['profit_target']['profit_percentage']}%")
-    
-    with signal_cols[1]:
-        st.markdown("**📉 LIVE PUTS**")
-        for put in live_chain['puts'][:5]:
-            signal_color = "error" if "SELL" in put['signal'] else "warning" if "WATCH" in put['signal'] else "info"
-            
-            if signal_color == "error":
-                st.error(f"${put['strike']} - {put['signal']}")
-            elif signal_color == "warning":
-                st.warning(f"${put['strike']} - {put['signal']}")
-            else:
-                st.info(f"${put['strike']} - {put['signal']}")
-                
-            st.caption(f"Last: ${put['last']} | Vol: {put['volume']:,} | Target: +{put['profit_target']['profit_percentage']}%")
-    
-    with signal_cols[2]:
-        st.markdown("**🤖 AI PREDICTIONS**")
-        
-        # Get ML prediction from unified signal
-        ml_prediction = unified_consensus.get('action', 'HOLD')
-        ml_confidence = unified_consensus.get('confidence', 50)
-        
-        # Only show ML prediction if it meets the 60% confidence threshold
-        if ml_confidence >= 60:
-            if 'BUY' in ml_prediction.upper() and 'CALL' in ml_prediction.upper():
-                st.success(f"💥 {ml_prediction}")
-                direction_text = "BULLISH"
-            elif 'BUY' in ml_prediction.upper() and 'PUT' in ml_prediction.upper():
-                st.error(f"💥 {ml_prediction}")
-                direction_text = "BEARISH"
-            else:
-                st.info(f"⚪ NEUTRAL/HOLD")
-                direction_text = "NEUTRAL"
-        else:
-            st.info(f"⚪ NEUTRAL/HOLD")
-            st.caption(f"Low confidence ({ml_confidence:.0f}%)")
-            direction_text = "NEUTRAL"
-            
-        st.metric("ML Confidence", f"{ml_confidence:.0f}%")
-        
-        # Show prediction source consistency
-        if ml_confidence >= 60:
-            st.caption("✅ Meets 60% threshold")
-        else:
-            st.caption("❌ Below 60% threshold")
-        
-        # Show live market signal with options confidence
-        if working_signals and 'action' in working_signals:
-            working_action = working_signals['action']
-            working_conf = working_signals['confidence']
-            
-            st.markdown("**📊 LIVE OPTIONS SIGNAL**")
-            if working_conf >= 70:
-                st.success(f"🎯 {working_action}")
-            elif working_conf >= 60:
-                st.warning(f"⚡ {working_action}")
-            else:
-                st.info(f"⚪ {working_action}")
-            st.caption(f"Options Confidence: {working_conf:.0f}%")
-            
-            # Show technical confirmation
-            tech_strength = working_signals.get('strength', 'UNKNOWN')
+    # === REMOVED DUPLICATE OPTIONS FEED ===
+    # All options data is now consolidated in the Hottest Strikes section above
             tech_conf = live_market_data['technical_signals']['confidence']
             
             if tech_conf >= 70:
