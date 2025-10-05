@@ -47,6 +47,16 @@ class TechnicalAnalyzer:
             indicators['resistance'] = self.find_resistance_level(price_data)
             indicators['trend'] = self.identify_trend(price_data)
             
+            # Fibonacci retracement levels
+            fib_levels = self.calculate_fibonacci_retracements(price_data)
+            indicators.update(fib_levels)
+            
+            # VWAP (Volume Weighted Average Price)
+            if len(volume_data) == len(price_data):
+                indicators['vwap'] = self.calculate_vwap(price_data, volume_data)
+            else:
+                indicators['vwap'] = None
+            
             return indicators
             
         except Exception as e:
@@ -573,3 +583,64 @@ class TechnicalAnalyzer:
         except Exception as e:
             print(f"Trading signals error: {e}")
             return []
+    
+    def calculate_fibonacci_retracements(self, data, lookback=50):
+        """Calculate Fibonacci retracement levels based on recent swing high/low"""
+        try:
+            if len(data) < lookback:
+                lookback = len(data)
+            
+            # Find swing high and low in the lookback period
+            recent_data = data[-lookback:]
+            swing_high = np.max(recent_data)
+            swing_low = np.min(recent_data)
+            
+            # Calculate the range
+            price_range = swing_high - swing_low
+            
+            # Standard Fibonacci retracement levels
+            fib_levels = {
+                'fib_0': swing_low,  # 0% (swing low)
+                'fib_236': swing_low + (price_range * 0.236),  # 23.6%
+                'fib_382': swing_low + (price_range * 0.382),  # 38.2%
+                'fib_50': swing_low + (price_range * 0.50),   # 50%
+                'fib_618': swing_low + (price_range * 0.618),  # 61.8%
+                'fib_786': swing_low + (price_range * 0.786),  # 78.6%
+                'fib_100': swing_high,  # 100% (swing high)
+                'fib_swing_high': swing_high,
+                'fib_swing_low': swing_low
+            }
+            
+            return fib_levels
+            
+        except Exception as e:
+            print(f"Fibonacci calculation error: {e}")
+            return {
+                'fib_0': None, 'fib_236': None, 'fib_382': None, 'fib_50': None,
+                'fib_618': None, 'fib_786': None, 'fib_100': None,
+                'fib_swing_high': None, 'fib_swing_low': None
+            }
+    
+    def calculate_vwap(self, price_data, volume_data):
+        """Calculate Volume Weighted Average Price"""
+        try:
+            if len(price_data) != len(volume_data) or len(price_data) == 0:
+                return None
+            
+            # VWAP = Sum(Price * Volume) / Sum(Volume)
+            prices = np.array(price_data)
+            volumes = np.array(volume_data)
+            
+            # Calculate cumulative (price * volume)
+            pv = prices * volumes
+            cum_pv = np.cumsum(pv)
+            cum_vol = np.cumsum(volumes)
+            
+            # VWAP is cumulative PV / cumulative volume
+            vwap = cum_pv[-1] / cum_vol[-1] if cum_vol[-1] > 0 else None
+            
+            return vwap
+            
+        except Exception as e:
+            print(f"VWAP calculation error: {e}")
+            return None
