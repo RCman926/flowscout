@@ -438,8 +438,8 @@ class EnhancedVisualization:
             )
             
             # RSI levels
-            fig.add_hline(y=70, line_dash="dash", line_color="red", row=2, col=1)
-            fig.add_hline(y=30, line_dash="dash", line_color="green", row=2, col=1)
+            fig.add_hline(y=70, line_dash="dash", line_color="red", row="2", col="1")
+            fig.add_hline(y=30, line_dash="dash", line_color="green", row="2", col="1")
             
             fig.update_layout(
                 title=f"{symbol} Technical Analysis",
