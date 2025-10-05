@@ -1,6 +1,33 @@
 # Overview
 
-This is a comprehensive options trading platform built with Streamlit that provides real-time market data analysis, options pricing, technical indicators, and alert management. The platform integrates with Interactive Brokers (IBKR) API for live trading data and implements advanced options analytics including Greeks calculation, volatility analysis, and risk management tools. The system is designed for professional traders who need sophisticated analysis capabilities with a clean, intuitive interface.
+This is a comprehensive institutional-grade options trading platform built with Streamlit that provides real-time market data analysis, options pricing, technical indicators, and alert management. The platform integrates with Interactive Brokers (IBKR) API for live trading data and implements advanced options analytics including Greeks calculation, volatility analysis, and risk management tools. The system is designed for professional traders who need sophisticated analysis capabilities with a clean, intuitive interface.
+
+## Platform Organization (Prediction Priority)
+
+The platform is now organized by importance for making trading predictions, with clear priority tiers:
+
+**🎯 TIER 1 - CORE AI PREDICTIONS (Highest Priority):**
+1. **Master Trading Signals** - Core AI prediction engine with 40+ advanced features (fractal analysis, Hurst exponent, market regime detection)
+2. **Signal Validation Dashboard** - Verifies signal quality and consistency before trading
+3. **AI Prediction Results Tracker** - Tracks AI accuracy and performance in real-time
+4. **AI Trading Assistant** - AI-powered trade recommendations and pattern analysis
+
+**🎯 TIER 2 - LIVE MARKET INTELLIGENCE (High Priority):**
+5. **Live Market Data** - Real-time price, volume, RSI with seamless 5-second updates
+6. **Live Options Flow** - Real-time institutional activity and unusual options patterns
+7. **Gamma Exposure & Key Levels** - Institutional positioning and dealer dynamics
+8. **Institutional Analytics Dashboard** - Smart money positioning and flow analysis
+9. **Execution Plan** - Trade setup with entry, stop-loss, and target levels
+
+**🎯 TIER 3 - STRATEGY & CONTEXT (Medium Priority):**
+10. **Options Flow Battle** - Visual call vs put analysis
+11. **Key Trading Levels** - Support, resistance, daily range
+12. **Strategy Builder** - Professional portfolio construction with risk-based allocation
+13. **Risk Management** - VaR, stress testing, correlation analysis
+
+**🎯 TIER 4 - DIAGNOSTIC & INFO (Lower Priority):**
+14. **Data Authentication Status** - Data quality monitoring and validation
+15. **Portfolio Summary** - Overview statistics and disclaimers
 
 # User Preferences
 
