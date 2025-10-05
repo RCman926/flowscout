@@ -12,7 +12,6 @@ from datetime import datetime, timedelta, time as time_obj
 from zoneinfo import ZoneInfo
 import asyncio
 import time
-import random
 import warnings
 warnings.filterwarnings('ignore')
 
@@ -809,8 +808,8 @@ def options_trading_page():
     with battle_cols[0]:
         # Using same call_volume as Options Flow Analysis section
         battle_call_volume = call_volume  # Same unified data
-        import random
-        call_pressure = random.randint(0, 15)  # Simulated pressure based on flow momentum
+        # Calculate REAL pressure from flow momentum (no random/fake data)
+        call_pressure = min(int((call_volume / max(total_volume, 1)) * 100), 100)
         st.markdown(f"""
         <div style='background: linear-gradient(90deg, #00ff00 0%, #004400 100%); padding: 20px; border-radius: 10px; text-align: center;'>
             <h2 style='color: white; margin: 0;'>🟢 CALLS ARMY</h2>
@@ -849,7 +848,8 @@ def options_trading_page():
     with battle_cols[2]:
         # Using same put_volume as Options Flow Analysis section
         battle_put_volume = put_volume  # Same unified data
-        put_pressure = random.randint(0, 15)  # Simulated pressure based on flow momentum
+        # Calculate REAL pressure from flow momentum (no random/fake data)
+        put_pressure = min(int((put_volume / max(total_volume, 1)) * 100), 100)
         st.markdown(f"""
         <div style='background: linear-gradient(90deg, #440000 0%, #ff0000 100%); padding: 20px; border-radius: 10px; text-align: center;'>
             <h2 style='color: white; margin: 0;'>🔴 PUTS ARMY</h2>
