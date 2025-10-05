@@ -58,10 +58,7 @@ if 'professional_ai' not in st.session_state:
     st.session_state.professional_ai = upgraded_prediction_engine
     print("🚀 UPGRADED: Professional AI Trading System v2.0 initialized with 40+ features")
 
-# Keep backup prediction engine for fallback
-if 'backup_prediction_engine' not in st.session_state:
-    from advanced_prediction_engine import AdvancedPredictionEngine
-    st.session_state.backup_prediction_engine = AdvancedPredictionEngine()
+# Backup removed - upgraded engine is now the primary and only prediction system
 
 if 'signal_coordinator' not in st.session_state:
     from signal_coordinator import ProfessionalSignalCoordinator
@@ -1195,7 +1192,7 @@ def options_trading_page():
     st.markdown("#### 🎯 Prediction Tracker - Real Results")
     
     from prediction_tracker import prediction_tracker
-    from advanced_prediction_engine import prediction_engine
+    prediction_engine = st.session_state.professional_ai  # Use upgraded engine
     
     # Check for expired predictions and update results
     expired_updates = prediction_tracker.check_expired_predictions()
@@ -1261,8 +1258,8 @@ def options_trading_page():
     
     # Removed redundant trading signal - already have one above
     
-    # Generate new ML predictions
-    from advanced_prediction_engine import prediction_engine
+    # Generate new ML predictions using upgraded AI system
+    prediction_engine = st.session_state.professional_ai  # Use upgraded engine
     prediction_data = prediction_engine.generate_advanced_prediction(market_data, tech_data, flow_data)
     
     st.markdown("**🤖 Current ML Prediction**")

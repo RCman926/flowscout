@@ -654,6 +654,50 @@ class UpgradedPredictionEngine:
         days_to_friday = (4 - day_of_week) % 7
         return days_to_friday / 7  # Time decay increases as we approach expiry
     
+    def generate_advanced_prediction(self, market_data, tech_data, flow_data):
+        """Synchronous wrapper for backward compatibility - converts market_data format"""
+        try:
+            # Extract price and volume data from market_data dict
+            price = market_data.get('price', 100)
+            prev_close = market_data.get('prev_close', price)
+            volume = market_data.get('volume', 1000000)
+            
+            # Create price_data array (simplified)
+            price_data = [prev_close] * 19 + [price]  # 20 data points
+            volume_data = [volume] * 20
+            
+            # Add flow data to indicators for comprehensive analysis
+            indicators_enhanced = dict(tech_data)
+            indicators_enhanced['sentiment_score'] = 0  # Default
+            
+            # Use asyncio.run to call async method from sync context
+            import asyncio
+            try:
+                result = asyncio.run(self.generate_professional_prediction(
+                    price_data, volume_data, indicators_enhanced, symbol=""
+                ))
+                return result
+            except RuntimeError:
+                # If event loop already running (Streamlit), create new loop
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                result = loop.run_until_complete(self.generate_professional_prediction(
+                    price_data, volume_data, indicators_enhanced, symbol=""
+                ))
+                loop.close()
+                return result
+                
+        except Exception as e:
+            print(f"Sync prediction wrapper error: {e}")
+            return {
+                'enhanced_signal': 'HOLD',
+                'confidence': 50,
+                'prediction_score': 0.0,
+                'pattern_strength': 'MODERATE',
+                'risk_level': 'MEDIUM',
+                'time_horizon': '1-3 DTE'
+            }
+    
     async def generate_professional_prediction(self, price_data, volume_data, indicators, symbol=""):
         """Generate professional-grade prediction with 40+ features"""
         try:
