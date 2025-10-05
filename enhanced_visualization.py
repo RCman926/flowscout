@@ -373,6 +373,62 @@ class EnhancedVisualization:
                 row=1, col=1
             )
             
+            # SMA 50 (50-day MA)
+            sma_50 = tech_data.get('sma_50', current_price)
+            if sma_50:
+                fig.add_trace(
+                    go.Scatter(x=dates, y=[sma_50]*len(dates), mode='lines',
+                              name='SMA 50', line=dict(color='#00CED1', width=2)),
+                    row=1, col=1
+                )
+            
+            # VWAP
+            vwap = tech_data.get('vwap')
+            if vwap:
+                fig.add_trace(
+                    go.Scatter(x=dates, y=[vwap]*len(dates), mode='lines',
+                              name='VWAP', line=dict(color='cyan', dash='dot', width=2)),
+                    row=1, col=1
+                )
+            
+            # Support and Resistance levels
+            support = tech_data.get('support')
+            resistance = tech_data.get('resistance')
+            if support:
+                fig.add_trace(
+                    go.Scatter(x=dates, y=[support]*len(dates), mode='lines',
+                              name='Support', line=dict(color='green', dash='dot', width=1)),
+                    row=1, col=1
+                )
+            if resistance:
+                fig.add_trace(
+                    go.Scatter(x=dates, y=[resistance]*len(dates), mode='lines',
+                              name='Resistance', line=dict(color='red', dash='dot', width=1)),
+                    row=1, col=1
+                )
+            
+            # Fibonacci retracement levels
+            fib_levels = {
+                '23.6%': tech_data.get('fib_236'),
+                '38.2%': tech_data.get('fib_382'),
+                '50.0%': tech_data.get('fib_50'),
+                '61.8%': tech_data.get('fib_618'),
+                '78.6%': tech_data.get('fib_786')
+            }
+            fib_colors = {'23.6%': '#FFB6C1', '38.2%': '#DDA0DD', '50.0%': '#9370DB', 
+                         '61.8%': '#8A2BE2', '78.6%': '#9400D3'}
+            
+            for level_name, level_value in fib_levels.items():
+                if level_value:
+                    fig.add_trace(
+                        go.Scatter(x=dates, y=[level_value]*len(dates), mode='lines',
+                                  name=f'Fib {level_name}', 
+                                  line=dict(color=fib_colors.get(level_name, 'purple'), 
+                                           dash='dash', width=1),
+                                  opacity=0.6),
+                        row=1, col=1
+                    )
+            
             # RSI
             rsi_values = [tech_data.get('rsi', 50)] * len(dates)
             fig.add_trace(
