@@ -2215,10 +2215,10 @@ def options_trading_page():
         )
         
         data_status_cols = st.columns(4)
-    
-    with data_status_cols[0]:
-        if auth_result.is_authentic and auth_result.quality_score >= 90:
-            st.success("🟢 AUTHENTICATED")
+        
+        with data_status_cols[0]:
+            if auth_result.is_authentic and auth_result.quality_score >= 90:
+                st.success("🟢 AUTHENTICATED")
                 st.caption("Real-time authenticated")
             elif auth_result.is_authentic and auth_result.quality_score >= 75:
                 st.warning("🟡 AUTHENTICATED")
