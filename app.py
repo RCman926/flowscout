@@ -989,214 +989,6 @@ def options_trading_page():
     else:
         st.warning("⚠️ Live options data temporarily unavailable - refreshing...")
     
-    # === ADVANCED MARKET INTELLIGENCE HUB ===
-    with st.sidebar:
-        st.markdown("### 🎯 MARKET INTELLIGENCE HUB")
-        
-        # Import the advanced intelligence system
-        from market_intelligence_hub import intelligence_hub
-        from datetime import datetime
-        
-        # === TODAY & NEXT 48H HEAT TIMELINE ===
-        st.markdown("**🔥 NEXT 48H CATALYSTS**")
-        timeline_container = st.container()
-        with timeline_container:
-            catalysts_48h = intelligence_hub.get_today_next_48h_catalysts()
-            
-            for catalyst in catalysts_48h[:5]:  # Top 5 critical catalysts
-                # Time until event
-                time_until = catalyst.scheduled_time - datetime.now()
-                hours_until = int(time_until.total_seconds() / 3600)
-                
-                # Impact indicator
-                if catalyst.impact_level.value == "critical":
-                    impact_color = "🔴"
-                    st.error(f"{impact_color} **{hours_until}h** | {catalyst.title}")
-                elif catalyst.impact_level.value == "high":
-                    impact_color = "🟠"  
-                    st.warning(f"{impact_color} **{hours_until}h** | {catalyst.title}")
-                else:
-                    impact_color = "🟡"
-                    st.info(f"{impact_color} **{hours_until}h** | {catalyst.title}")
-                
-                # Rich details in caption
-                vol_text = f"Vol: +{catalyst.expected_volatility:.0f}%"
-                move_text = f"Move: ±{catalyst.historical_move:.1f}%"
-                st.caption(f"{vol_text} | {move_text} | {catalyst.related_tickers[0] if catalyst.related_tickers else 'Market'}")
-                
-                # Trade readiness flags
-                if catalyst.trade_readiness_flags:
-                    flags_text = " ".join([f"#{flag}" for flag in catalyst.trade_readiness_flags[:2]])
-                    st.caption(f"🎯 {flags_text}")
-        
-        # === PRIORITY BREAKING NEWS TICKER ===
-        st.markdown("**🚨 BREAKING & LIVE**")
-        news_ticker_container = st.container()
-        with news_ticker_container:
-            breaking_news = intelligence_hub.get_breaking_live_news()
-            
-            for news in breaking_news[:3]:  # Top 3 breaking stories
-                # Freshness indicator
-                if news.freshness_minutes < 5:
-                    freshness_icon = "🔴 LIVE"
-                elif news.freshness_minutes < 15:
-                    freshness_icon = "🟠 HOT"
-                else:
-                    freshness_icon = f"🕒 {news.freshness_minutes}m"
-                
-                # Impact level display
-                if news.impact_score >= 9:
-                    st.error(f"{freshness_icon} | {news.headline[:45]}...")
-                elif news.impact_score >= 7:
-                    st.warning(f"{freshness_icon} | {news.headline[:45]}...")
-                else:
-                    st.info(f"{freshness_icon} | {news.headline[:45]}...")
-                
-                # Rich context
-                sentiment = "📈" if news.sentiment_score > 0.3 else "📉" if news.sentiment_score < -0.3 else "➡️"
-                reliability = f"{news.reliability_score:.0f}%"
-                st.caption(f"{sentiment} {news.source} ({reliability}) | {news.trade_implications[:30]}...")
-        
-        # === WEEKLY TRADING PLAYBOOK ===
-        st.markdown("**📅 WEEKLY PLAYBOOK**")
-        playbook_container = st.container()
-        with playbook_container:
-            weekly_playbook = intelligence_hub.get_weekly_playbook()
-            
-            # Show session breakdown with counts
-            for session, events in weekly_playbook.items():
-                if events:  # Only show sessions with events
-                    session_display = session.replace("_", " ").title()
-                    critical_count = sum(1 for e in events if e.impact_level.value == "critical")
-                    high_count = sum(1 for e in events if e.impact_level.value == "high") 
-                    
-                    if critical_count > 0:
-                        st.error(f"🔴 {session_display}: {critical_count} Critical, {high_count} High")
-                    elif high_count > 0:
-                        st.warning(f"🟠 {session_display}: {high_count} High Impact")
-                    else:
-                        st.info(f"🟡 {session_display}: {len(events)} Events")
-                    
-                    # Show top event for session
-                    if events:
-                        top_event = events[0]
-                        st.caption(f"📍 {top_event.title[:35]}... | {top_event.related_tickers[0] if top_event.related_tickers else 'Market'}")
-        
-        # === FORWARD 14-DAY WATCHLIST ===
-        st.markdown("**⏭️ FORWARD WATCHLIST (14d)**")
-        watchlist_container = st.container()
-        with watchlist_container:
-            forward_catalysts = intelligence_hub.get_forward_watchlist()
-            
-            for catalyst in forward_catalysts[:4]:  # Top 4 forward catalysts
-                days_until = (catalyst.scheduled_time - datetime.now()).days
-                
-                # Format with readiness flags
-                readiness_flags = "🎯" if catalyst.trade_readiness_flags else "📋"
-                
-                if catalyst.impact_level.value == "critical":
-                    st.error(f"{readiness_flags} **+{days_until}d** | {catalyst.title[:30]}...")
-                else:
-                    st.warning(f"{readiness_flags} **+{days_until}d** | {catalyst.title[:30]}...")
-                
-                # Expected move and positioning
-                move_text = f"±{catalyst.historical_move:.1f}%"
-                bias_text = catalyst.positioning_bias.upper()
-                st.caption(f"{move_text} | {bias_text} | Conf: {catalyst.confidence_score:.0f}%")
-        
-        # === DATA QUALITY STATUS ===
-        st.markdown("**📊 DATA QUALITY**")
-        st.success("🟢 Intelligence Hub: LIVE")
-        st.success("🟢 Breaking News: <60s")
-        st.success(f"🟢 Catalyst Data: {intelligence_hub.cache_duration//60}min cache")
-        current_time = datetime.now().strftime("%H:%M:%S")
-        st.caption(f"Last refresh: {current_time}")
-    
-    # === PRIORITY NEWS DEEP DIVE CARDS ===
-    st.markdown("#### 📰 MARKET INTELLIGENCE - DEEP DIVE")
-    
-    # Import intelligence hub for main content area  
-    from market_intelligence_hub import intelligence_hub
-    
-    # Get comprehensive news for detailed analysis
-    deep_dive_news = intelligence_hub.get_deep_dive_cards()
-    
-    # Dual-column layout for Deep Dive Cards
-    news_col1, news_col2 = st.columns(2)
-    
-    for idx, news in enumerate(deep_dive_news[:4]):  # Top 4 detailed stories
-        # Alternate between columns
-        col = news_col1 if idx % 2 == 0 else news_col2
-        
-        with col:
-            # Card container with rich information
-            with st.container():
-                # Header with impact and freshness
-                impact_emoji = "🚨" if news.impact_score >= 8 else "⚠️" if news.impact_score >= 6 else "📰"
-                freshness_color = "🔴" if news.freshness_minutes < 10 else "🟠" if news.freshness_minutes < 30 else "🟡"
-                
-                st.markdown(f"**{impact_emoji} {news.headline}**")
-                
-                # Meta information bar
-                meta_col1, meta_col2, meta_col3 = st.columns(3)
-                with meta_col1:
-                    st.caption(f"{freshness_color} {news.freshness_minutes}m ago")
-                with meta_col2:
-                    st.caption(f"📊 Impact: {news.impact_score:.1f}/10")
-                with meta_col3:
-                    reliability_color = "🟢" if news.reliability_score >= 90 else "🟡" if news.reliability_score >= 70 else "🔴"
-                    st.caption(f"{reliability_color} {news.source}")
-                
-                # Content preview
-                st.markdown(f"*{news.content[:150]}...*")
-                
-                # Related tickers and sentiment
-                tickers_col, sentiment_col = st.columns(2)
-                with tickers_col:
-                    if news.related_tickers:
-                        tickers_text = " ".join([f"**{ticker}**" for ticker in news.related_tickers[:3]])
-                        st.markdown(f"🎯 {tickers_text}")
-                
-                with sentiment_col:
-                    if news.sentiment_score > 0.3:
-                        sentiment_display = "📈 Bullish"
-                        sentiment_color = "success"
-                    elif news.sentiment_score < -0.3:
-                        sentiment_display = "📉 Bearish" 
-                        sentiment_color = "error"
-                    else:
-                        sentiment_display = "➡️ Neutral"
-                        sentiment_color = "info"
-                    
-                    if sentiment_color == "success":
-                        st.success(sentiment_display)
-                    elif sentiment_color == "error":
-                        st.error(sentiment_display)
-                    else:
-                        st.info(sentiment_display)
-                
-                # Options flow implications
-                if hasattr(news, 'flow_signals') and news.flow_signals:
-                    flow_signals = news.flow_signals
-                    if 'expected_iv_change' in flow_signals:
-                        iv_change = flow_signals['expected_iv_change']
-                        iv_emoji = "📊" if abs(iv_change) < 3 else "⚡" if abs(iv_change) < 8 else "🌪️"
-                        st.caption(f"{iv_emoji} Expected IV: {iv_change:+.1f}%")
-                    
-                    if 'flow_direction' in flow_signals:
-                        flow_dir = flow_signals['flow_direction']
-                        flow_emoji = "🟢" if flow_dir == 'bullish' else "🔴" if flow_dir == 'bearish' else "⚪"
-                        st.caption(f"{flow_emoji} Flow: {flow_dir.upper()}")
-                
-                # Trading implications
-                st.info(f"💡 **Action**: {news.trade_implications}")
-                
-                st.markdown("---")
-    
-    # Main content area now has more space
-    
-    # Removed sentiment section - user feedback indicated it was useless
-    
     # === PREDICTION TRACKER & RESULTS ===
     st.markdown("### 🎯 PREDICTION PRIORITY TIER 1: AI PREDICTION RESULTS")
     st.caption("⭐ **HIGHEST PRIORITY** - Track AI accuracy and performance")
@@ -1961,12 +1753,9 @@ def options_trading_page():
         portfolio_metrics = professional_risk.calculate_portfolio_metrics(strategies)
         
         st.markdown("---")
-        st.markdown("### 🎯 PREDICTION PRIORITY TIER 4: PORTFOLIO SUMMARY")
-        st.caption("📋 Overview statistics - Lower importance (informational)")
-        st.markdown("### 📊 Portfolio Summary")
         
-        # Add transparency about win rate sources
-        with st.expander("📋 Win Rate Data Sources & Disclaimer"):
+        # Collapse TIER 4 into compact expander
+        with st.expander("📋 Portfolio Summary & Win Rate Sources (Optional - TIER 4)"):
             from strategy_backtesting_data import get_strategy_disclaimer, get_strategy_methodology
             
             st.markdown("#### Data Sources")
@@ -2031,74 +1820,6 @@ def options_trading_page():
         else:
             st.success(f"💚 {position_rec}")
     
-    # === LIVE MARKET DATA DISPLAY ===
-    st.markdown("#### 📡 LIVE Market Data")
-    
-    # Display live market data with high confidence
-    market_cols = st.columns(4)
-    
-    with market_cols[0]:
-        price_color = "success" if live_market_data['change'] > 0 else "error"
-        if price_color == "success":
-            st.success(f"${live_market_data['current_price']:.2f}")
-        else:
-            st.error(f"${live_market_data['current_price']:.2f}")
-        st.caption(f"{live_market_data['change']:+.2f} ({live_market_data['change_pct']:+.2f}%)")
-    
-    with market_cols[1]:
-        options_conf = live_market_data['options_confidence']
-        options_signal = live_market_data['options_signal']
-        
-        if options_conf >= 70:
-            st.success(f"OPTIONS: {options_conf:.0f}%")
-        elif options_conf >= 60:
-            st.warning(f"OPTIONS: {options_conf:.0f}%")
-        else:
-            st.info(f"OPTIONS: {options_conf:.0f}%")
-        st.caption(f"Signal: {options_signal}")
-    
-    with market_cols[2]:
-        tech_conf = live_market_data['technical_signals']['confidence']
-        tech_strength = live_market_data['technical_signals']['trend_strength']
-        
-        if tech_conf >= 70:
-            st.success(f"TECHNICAL: {tech_conf:.0f}%")
-        elif tech_conf >= 60:
-            st.warning(f"TECHNICAL: {tech_conf:.0f}%")
-        else:
-            st.info(f"TECHNICAL: {tech_conf:.0f}%")
-        st.caption(f"Trend: {tech_strength}")
-    
-    with market_cols[3]:
-        volume = live_market_data['volume']
-        market_status = live_market_data['market_status']
-        
-        if market_status == 'OPEN':
-            st.success(f"VOLUME: {volume:,}")
-            st.caption("Market OPEN")
-        else:
-            st.info(f"VOLUME: {volume:,}")
-            st.caption("Market CLOSED")
-    
-    # Show detailed signals if high confidence
-    if live_market_data['options_confidence'] >= 65 or live_market_data['technical_signals']['confidence'] >= 65:
-        st.markdown("**🎯 HIGH CONFIDENCE SIGNALS DETECTED**")
-        
-        signal_details = []
-        if live_market_data['options_confidence'] >= 65:
-            signal_details.append(f"Options: {live_market_data['options_signal']} ({live_market_data['options_confidence']:.0f}%)")
-        
-        if live_market_data['technical_signals']['confidence'] >= 65:
-            tech_signals = live_market_data['technical_signals']['signals']
-            signal_details.append(f"Technical: {', '.join(tech_signals[:2])}")
-        
-        for detail in signal_details:
-            st.info(f"• {detail}")
-    
-    # === REMOVED DUPLICATE OPTIONS FEED ===
-    # All options data is now consolidated in the Hottest Strikes section above
-            tech_conf = live_market_data['technical_signals']['confidence']
-            
             if tech_conf >= 70:
                 st.success(f"📈 Technical: {tech_strength} ({tech_conf:.0f}%)")
             elif tech_conf >= 60:
@@ -2483,90 +2204,88 @@ def options_trading_page():
             st.success("⏰ Low Decay")
     
     # === REAL DATA AUTHENTICATION STATUS ===
-    st.markdown("### 🎯 PREDICTION PRIORITY TIER 4: DATA STATUS")
-    st.caption("📋 Data quality monitoring - Lower importance (diagnostic only)")
-    st.markdown("#### 📡 REAL Data Authentication Status")
-    
-    # Import real data authenticator for validation
-    from real_data_authenticator import real_data_authenticator
-    
-    # Check real data status for current symbol
-    auth_result = real_data_authenticator.authenticate_data_source(
-        market_data, selected_symbol
-    )
-    
-    data_status_cols = st.columns(4)
+    # Collapse TIER 4 diagnostic info into compact expander
+    with st.expander("📡 Data Authentication Status (Optional - TIER 4 Diagnostic)"):
+        # Import real data authenticator for validation
+        from real_data_authenticator import real_data_authenticator
+        
+        # Check real data status for current symbol
+        auth_result = real_data_authenticator.authenticate_data_source(
+            market_data, selected_symbol
+        )
+        
+        data_status_cols = st.columns(4)
     
     with data_status_cols[0]:
         if auth_result.is_authentic and auth_result.quality_score >= 90:
             st.success("🟢 AUTHENTICATED")
-            st.caption("Real-time authenticated")
-        elif auth_result.is_authentic and auth_result.quality_score >= 75:
-            st.warning("🟡 AUTHENTICATED")
-            st.caption("Real but delayed")
-        else:
-            st.error("🔴 REJECTED")
-            st.caption("Failed authentication")
-    
-    with data_status_cols[1]:
-        data_source = auth_result.data_source if auth_result.data_source else 'UNKNOWN'
-        st.metric("Source", data_source.replace('_authenticated', '').upper())
+                st.caption("Real-time authenticated")
+            elif auth_result.is_authentic and auth_result.quality_score >= 75:
+                st.warning("🟡 AUTHENTICATED")
+                st.caption("Real but delayed")
+            else:
+                st.error("🔴 REJECTED")
+                st.caption("Failed authentication")
         
-        # Calculate actual data age
-        timestamp = market_data.get('timestamp', datetime.now())
-        if isinstance(timestamp, datetime):
-            seconds_ago = (datetime.now() - timestamp).total_seconds()
-        else:
-            seconds_ago = 0
+        with data_status_cols[1]:
+            data_source = auth_result.data_source if auth_result.data_source else 'UNKNOWN'
+            st.metric("Source", data_source.replace('_authenticated', '').upper())
             
-        if seconds_ago < 60:
-            time_display = f"{int(seconds_ago)}s ago"
-        elif seconds_ago < 3600:
-            time_display = f"{int(seconds_ago/60)}m ago"
+            # Calculate actual data age
+            timestamp = market_data.get('timestamp', datetime.now())
+            if isinstance(timestamp, datetime):
+                seconds_ago = (datetime.now() - timestamp).total_seconds()
+            else:
+                seconds_ago = 0
+                
+            if seconds_ago < 60:
+                time_display = f"{int(seconds_ago)}s ago"
+            elif seconds_ago < 3600:
+                time_display = f"{int(seconds_ago/60)}m ago"
+            else:
+                time_display = f"{int(seconds_ago/3600)}h ago"
+                
+            st.caption(f"Updated: {time_display}")
+        
+        with data_status_cols[2]:
+            quality_score = auth_result.quality_score
+            if quality_score >= 95:
+                st.success(f"📊 QUALITY: {quality_score}%")
+                st.caption("Institutional grade")
+            elif quality_score >= 85:
+                st.warning(f"📊 QUALITY: {quality_score}%")
+                st.caption("Professional grade")
+            elif quality_score >= 70:
+                st.info(f"📊 QUALITY: {quality_score}%")
+                st.caption("Acceptable grade")
+            else:
+                st.error(f"📊 QUALITY: {quality_score}%")
+                st.caption("Below standards")
+        
+        with data_status_cols[3]:
+            # Show rejection reason if data is not authentic
+            if not auth_result.is_authentic:
+                st.error("❌ REJECTED")
+                st.caption(auth_result.rejection_reason if auth_result.rejection_reason else 'Failed validation')
+            else:
+                st.success("✅ VERIFIED")
+                st.caption("Passed all checks")
+        
+        # Data authenticity guarantee
+        if auth_result.is_authentic and auth_result.quality_score >= 90:
+            st.success("🎯 **ZERO TOLERANCE POLICY ACTIVE**: Only authenticated real-time data is displayed. All synthetic, fallback, and simulated data is automatically rejected.")
+        elif auth_result.is_authentic:
+            st.warning("🎯 **AUTHENTICATED BUT DELAYED**: Real data confirmed but not real-time. No synthetic data present.")
         else:
-            time_display = f"{int(seconds_ago/3600)}h ago"
-            
-        st.caption(f"Updated: {time_display}")
-    
-    with data_status_cols[2]:
-        quality_score = auth_result.quality_score
-        if quality_score >= 95:
-            st.success(f"📊 QUALITY: {quality_score}%")
-            st.caption("Institutional grade")
-        elif quality_score >= 85:
-            st.warning(f"📊 QUALITY: {quality_score}%")
-            st.caption("Professional grade")
-        elif quality_score >= 70:
-            st.info(f"📊 QUALITY: {quality_score}%")
-            st.caption("Acceptable grade")
-        else:
-            st.error(f"📊 QUALITY: {quality_score}%")
-            st.caption("Below standards")
-    
-    with data_status_cols[3]:
-        # Show rejection reason if data is not authentic
-        if not auth_result.is_authentic:
-            st.error("❌ REJECTED")
-            st.caption(auth_result.rejection_reason if auth_result.rejection_reason else 'Failed validation')
-        else:
-            st.success("✅ VERIFIED")
-            st.caption("Passed all checks")
-    
-    # Data authenticity guarantee
-    if auth_result.is_authentic and auth_result.quality_score >= 90:
-        st.success("🎯 **ZERO TOLERANCE POLICY ACTIVE**: Only authenticated real-time data is displayed. All synthetic, fallback, and simulated data is automatically rejected.")
-    elif auth_result.is_authentic:
-        st.warning("🎯 **AUTHENTICATED BUT DELAYED**: Real data confirmed but not real-time. No synthetic data present.")
-    else:
-        st.error("🎯 **DATA REJECTED**: This data failed authentication and has been rejected according to zero tolerance policy. Connect IBKR or enable live data feeds for authentic data.")
-    
-    # === AI-POWERED TRADING ASSISTANT ===
-    st.markdown("### 🎯 PREDICTION PRIORITY TIER 1: AI TRADING ASSISTANT")
-    st.caption("⭐ **HIGHEST PRIORITY** - AI-powered trade recommendations and analysis")
-    st.markdown("#### 🤖 AI Trading Assistant")
-    
-    # Import AI and advanced modules
-    from ai_trading_assistant import ai_assistant
+            st.error("🎯 **DATA REJECTED**: This data failed authentication and has been rejected according to zero tolerance policy. Connect IBKR or enable live data feeds for authentic data.")
+        
+        # === AI-POWERED TRADING ASSISTANT ===
+        st.markdown("### 🎯 PREDICTION PRIORITY TIER 1: AI TRADING ASSISTANT")
+        st.caption("⭐ **HIGHEST PRIORITY** - AI-powered trade recommendations and analysis")
+        st.markdown("#### 🤖 AI Trading Assistant")
+        
+        # Import AI and advanced modules
+        from ai_trading_assistant import ai_assistant
     from advanced_strategy_builder import strategy_builder
     from algorithmic_trading_engine import algo_engine
     from professional_risk_management import professional_risk
