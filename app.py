@@ -476,7 +476,7 @@ def options_trading_page():
                             float_val = float(value)
                             
                             # Check for NaN, infinity, or negative values
-                            if pd.isna(float_val) or np.isnan(float_val) or np.isinf(float_val) or float_val < 0:
+                            if np.isnan(float_val) or np.isinf(float_val) or float_val < 0:
                                 return 0
                             
                             # Convert to integer and ensure positive
