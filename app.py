@@ -665,6 +665,8 @@ def options_trading_page():
 
     # === SEAMLESS MAIN DASHBOARD ===
     st.markdown("---")
+    st.markdown("### 🎯 PREDICTION PRIORITY TIER 2: LIVE MARKET DATA")
+    st.caption("⚡ Real-time market conditions - High importance for predictions")
     st.markdown("#### 📊 Live Market Data")
     
     # Create seamless update containers for market overview
@@ -727,6 +729,8 @@ def options_trading_page():
 
     
     # === GAMMA EXPOSURE ===
+    st.markdown("### 🎯 PREDICTION PRIORITY TIER 2: GAMMA & KEY LEVELS")
+    st.caption("⚡ Institutional positioning - High importance for predictions")
     st.markdown("#### ⚡ Gamma Exposure & Key Strikes")
     
     gamma_cols = st.columns(4)
@@ -774,6 +778,8 @@ def options_trading_page():
     # (Market news now displayed in left sidebar with intelligent filtering)
     
     # === MAIN OPTIONS ANALYSIS ===
+    st.markdown("### 🎯 PREDICTION PRIORITY TIER 3: KEY LEVELS")
+    st.caption("📊 Support/Resistance - Medium importance for entries")
     st.markdown("#### 🎯 Key Trading Levels")
     
     # Key levels in a clean 4-column layout
@@ -796,6 +802,8 @@ def options_trading_page():
         st.metric("Vol Regime", vol_regime, f"{daily_range:.1f}% today")
     
     # === LIVE ACTION OPTIONS BATTLE ===
+    st.markdown("### 🎯 PREDICTION PRIORITY TIER 3: OPTIONS FLOW BATTLE")
+    st.caption("📊 Visual flow analysis - Medium importance for context")
     st.markdown("### ⚔️ LIVE OPTIONS BATTLE - CALLS vs PUTS")
     st.caption("📊 Using same unified data source as Options Flow Analysis above")
     
@@ -861,6 +869,8 @@ def options_trading_page():
     # === SEAMLESS DATA STATUS === (Removed LIVE ACTION FLOW section per user request)
     
     # === LIVE STREAMING OPTIONS ACTION ===
+    st.markdown("### 🎯 PREDICTION PRIORITY TIER 2: LIVE OPTIONS FLOW")
+    st.caption("⚡ Real-time institutional activity - High importance for predictions")
     st.markdown("#### ⚡ LIVE STREAMING OPTIONS ACTION")
     
     # Get comprehensive options data for streaming view
@@ -1188,6 +1198,8 @@ def options_trading_page():
     # Removed sentiment section - user feedback indicated it was useless
     
     # === PREDICTION TRACKER & RESULTS ===
+    st.markdown("### 🎯 PREDICTION PRIORITY TIER 1: AI PREDICTION RESULTS")
+    st.caption("⭐ **HIGHEST PRIORITY** - Track AI accuracy and performance")
     st.markdown("#### 🎯 Prediction Tracker - Real Results")
     
     from prediction_tracker import prediction_tracker
@@ -1356,6 +1368,8 @@ def options_trading_page():
     # to avoid duplication and maintain clean UI
     
     # === INSTITUTIONAL EXECUTION PLAN ===
+    st.markdown("### 🎯 PREDICTION PRIORITY TIER 2: EXECUTION PLAN")
+    st.caption("⚡ Trade setup and levels - High importance for execution")
     st.markdown("#### 🎯 Institutional Execution Plan")
     
     # Calculate sophisticated trading levels
@@ -1572,6 +1586,8 @@ def options_trading_page():
     unified_consensus = signal_validator.integrate_ml_prediction(ml_prediction, unified_consensus)
     
     # === SIGNAL CONSISTENCY DASHBOARD ===
+    st.markdown("### 🎯 PREDICTION PRIORITY TIER 1: SIGNAL VALIDATION")
+    st.caption("⭐ **HIGHEST PRIORITY** - Verify signal quality before trading")
     st.markdown("#### 📊 Signal Validation Dashboard")
     consistency_cols = st.columns(4)
     
@@ -1637,6 +1653,8 @@ def options_trading_page():
             """)
     
     # === TRADING DECISION CENTER (MASTER AUTHORITY) ===
+    st.markdown("### 🎯 PREDICTION PRIORITY TIER 1: MASTER TRADING SIGNALS")
+    st.caption("⭐ **HIGHEST PRIORITY** - Core AI prediction engine with 40+ features")
     st.markdown("#### 🎯 Trading Decision Center - MASTER SIGNALS")
     st.caption("🏛️ INSTITUTIONAL GRADE - Final trading authority with signal validation")
     
@@ -1860,6 +1878,8 @@ def options_trading_page():
     
     # Professional risk-based recommendations
     st.markdown("---")
+    st.markdown("### 🎯 PREDICTION PRIORITY TIER 3: STRATEGY BUILDER")
+    st.caption("📊 Portfolio construction - Medium importance for planning")
     st.markdown("### 🎯 Professional Strategy Builder")
     
     # Import professional risk management
@@ -1941,6 +1961,8 @@ def options_trading_page():
         portfolio_metrics = professional_risk.calculate_portfolio_metrics(strategies)
         
         st.markdown("---")
+        st.markdown("### 🎯 PREDICTION PRIORITY TIER 4: PORTFOLIO SUMMARY")
+        st.caption("📋 Overview statistics - Lower importance (informational)")
         st.markdown("### 📊 Portfolio Summary")
         
         # Add transparency about win rate sources
@@ -2289,6 +2311,8 @@ def options_trading_page():
         st.error("Options chain temporarily unavailable - Contact broker for live data access")
     
     # === INSTITUTIONAL ANALYTICS DASHBOARD ===
+    st.markdown("### 🎯 PREDICTION PRIORITY TIER 2: INSTITUTIONAL ANALYTICS")
+    st.caption("⚡ Smart money positioning - High importance for predictions")
     st.markdown("#### 🏛️ Institutional Analytics Dashboard")
     
     # Import advanced engines
@@ -2459,6 +2483,8 @@ def options_trading_page():
             st.success("⏰ Low Decay")
     
     # === REAL DATA AUTHENTICATION STATUS ===
+    st.markdown("### 🎯 PREDICTION PRIORITY TIER 4: DATA STATUS")
+    st.caption("📋 Data quality monitoring - Lower importance (diagnostic only)")
     st.markdown("#### 📡 REAL Data Authentication Status")
     
     # Import real data authenticator for validation
@@ -2535,6 +2561,8 @@ def options_trading_page():
         st.error("🎯 **DATA REJECTED**: This data failed authentication and has been rejected according to zero tolerance policy. Connect IBKR or enable live data feeds for authentic data.")
     
     # === AI-POWERED TRADING ASSISTANT ===
+    st.markdown("### 🎯 PREDICTION PRIORITY TIER 1: AI TRADING ASSISTANT")
+    st.caption("⭐ **HIGHEST PRIORITY** - AI-powered trade recommendations and analysis")
     st.markdown("#### 🤖 AI Trading Assistant")
     
     # Import AI and advanced modules
@@ -2661,6 +2689,8 @@ def options_trading_page():
             st.warning(f"Performance: {algo_performance['overall_performance']}")
     
     # === PROFESSIONAL RISK MANAGEMENT ===
+    st.markdown("### 🎯 PREDICTION PRIORITY TIER 3: RISK MANAGEMENT")
+    st.caption("📊 Portfolio protection - Medium importance for safety")
     st.markdown("#### ⚠️ Professional Risk Management")
     
     # Sample portfolio for risk analysis
