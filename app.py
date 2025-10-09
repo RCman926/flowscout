@@ -2631,7 +2631,7 @@ def explosive_opportunities_page():
                             float_m = opp['float_shares'] / 1_000_000
                             st.markdown(f"Float: **{float_m:.1f}M**")
                     
-                    # Expandable detailed analysis
+                    # Expandable detailed analysis WITH CHARTS
                     with st.expander(f"📊 **Detailed Squeeze Analysis - {opp['symbol']}**"):
                         detail_col1, detail_col2 = st.columns(2)
                         
@@ -2656,8 +2656,161 @@ def explosive_opportunities_page():
                             st.markdown(f"• Current Volume: **{opp['volume']:,.0f}**")
                             st.markdown(f"• Volatility: **{volatility:.0f}%** (annual)")
                         
+                        # === SQUEEZE CHARTS ===
+                        st.markdown("---")
+                        st.markdown("### 📈 Squeeze Setup Charts")
+                        
+                        import yfinance as yf
+                        import plotly.graph_objects as go
+                        from plotly.subplots import make_subplots
+                        
+                        # Get historical data for charts
+                        ticker = yf.Ticker(opp['symbol'])
+                        hist = ticker.history(period='1mo')
+                        
+                        if not hist.empty:
+                            # Create subplots: Price + Volume
+                            fig = make_subplots(
+                                rows=2, cols=1,
+                                shared_xaxes=True,
+                                vertical_spacing=0.05,
+                                subplot_titles=(f'{opp["symbol"]} Price Action (30 Days)', 'Volume Surge Analysis'),
+                                row_heights=[0.7, 0.3]
+                            )
+                            
+                            # Price candlestick
+                            fig.add_trace(
+                                go.Candlestick(
+                                    x=hist.index,
+                                    open=hist['Open'],
+                                    high=hist['High'],
+                                    low=hist['Low'],
+                                    close=hist['Close'],
+                                    name='Price'
+                                ),
+                                row=1, col=1
+                            )
+                            
+                            # Volume bars with surge highlighting
+                            avg_vol = opp['avg_volume']
+                            colors = ['red' if v > avg_vol * 2 else 'orange' if v > avg_vol * 1.5 else 'gray' for v in hist['Volume']]
+                            
+                            fig.add_trace(
+                                go.Bar(
+                                    x=hist.index,
+                                    y=hist['Volume'],
+                                    name='Volume',
+                                    marker_color=colors,
+                                    showlegend=True
+                                ),
+                                row=2, col=1
+                            )
+                            
+                            # Add average volume line
+                            fig.add_trace(
+                                go.Scatter(
+                                    x=hist.index,
+                                    y=[avg_vol] * len(hist),
+                                    mode='lines',
+                                    name='Avg Volume',
+                                    line=dict(color='cyan', dash='dash', width=2)
+                                ),
+                                row=2, col=1
+                            )
+                            
+                            # Update layout
+                            fig.update_layout(
+                                height=500,
+                                showlegend=True,
+                                xaxis_rangeslider_visible=False,
+                                hovermode='x unified'
+                            )
+                            
+                            fig.update_xaxes(title_text="Date", row=2, col=1)
+                            fig.update_yaxes(title_text="Price ($)", row=1, col=1)
+                            fig.update_yaxes(title_text="Volume", row=2, col=1)
+                            
+                            st.plotly_chart(fig, use_container_width=True)
+                            
+                            # Squeeze indicator gauges
+                            gauge_col1, gauge_col2, gauge_col3 = st.columns(3)
+                            
+                            with gauge_col1:
+                                # Short Interest Gauge
+                                short_fig = go.Figure(go.Indicator(
+                                    mode="gauge+number",
+                                    value=opp['short_interest'],
+                                    title={'text': "Short Interest %"},
+                                    gauge={
+                                        'axis': {'range': [None, 50]},
+                                        'bar': {'color': "red"},
+                                        'steps': [
+                                            {'range': [0, 10], 'color': "lightgray"},
+                                            {'range': [10, 20], 'color': "yellow"},
+                                            {'range': [20, 50], 'color': "orange"}
+                                        ],
+                                        'threshold': {
+                                            'line': {'color': "red", 'width': 4},
+                                            'thickness': 0.75,
+                                            'value': 30
+                                        }
+                                    }
+                                ))
+                                short_fig.update_layout(height=200)
+                                st.plotly_chart(short_fig, use_container_width=True)
+                            
+                            with gauge_col2:
+                                # Volume Surge Gauge
+                                vol_fig = go.Figure(go.Indicator(
+                                    mode="gauge+number",
+                                    value=vol_surge,
+                                    title={'text': "Volume Surge (x)"},
+                                    gauge={
+                                        'axis': {'range': [None, 5]},
+                                        'bar': {'color': "orange"},
+                                        'steps': [
+                                            {'range': [0, 1.5], 'color': "lightgray"},
+                                            {'range': [1.5, 2.5], 'color': "yellow"},
+                                            {'range': [2.5, 5], 'color': "red"}
+                                        ],
+                                        'threshold': {
+                                            'line': {'color': "red", 'width': 4},
+                                            'thickness': 0.75,
+                                            'value': 3
+                                        }
+                                    }
+                                ))
+                                vol_fig.update_layout(height=200)
+                                st.plotly_chart(vol_fig, use_container_width=True)
+                            
+                            with gauge_col3:
+                                # Squeeze Score Gauge
+                                score_fig = go.Figure(go.Indicator(
+                                    mode="gauge+number",
+                                    value=score,
+                                    title={'text': "Squeeze Score"},
+                                    gauge={
+                                        'axis': {'range': [None, 100]},
+                                        'bar': {'color': "green"},
+                                        'steps': [
+                                            {'range': [0, 60], 'color': "lightgray"},
+                                            {'range': [60, 70], 'color': "yellow"},
+                                            {'range': [70, 80], 'color': "orange"},
+                                            {'range': [80, 100], 'color': "red"}
+                                        ],
+                                        'threshold': {
+                                            'line': {'color': "red", 'width': 4},
+                                            'thickness': 0.75,
+                                            'value': 80
+                                        }
+                                    }
+                                ))
+                                score_fig.update_layout(height=200)
+                                st.plotly_chart(score_fig, use_container_width=True)
+                        
                         # Squeeze potential analysis
-                        st.markdown("**🚀 Squeeze Potential:**")
+                        st.markdown("---")
+                        st.markdown("**🚀 Squeeze Potential Analysis:**")
                         if score >= 80:
                             st.error("⚠️ **EXTREME SQUEEZE SETUP** - High short interest + volume surge + momentum")
                         elif score >= 70:
