@@ -64,15 +64,22 @@ class MarketWideScreener:
         
         # === ANALYZE EACH CANDIDATE ===
         explosive_plays = []
+        analyzed_count = 0
         
-        for i, symbol in enumerate(unique_symbols[:500]):  # Limit to 500 for performance
-            if i % 50 == 0:
-                print(f"⚡ Analyzed {i}/{min(500, len(unique_symbols))} stocks...")
+        # Analyze up to 300 symbols for performance (good balance)
+        max_to_analyze = min(300, len(unique_symbols))
+        
+        for i, symbol in enumerate(unique_symbols[:max_to_analyze]):
+            if i % 30 == 0 and i > 0:
+                print(f"⚡ Analyzed {i}/{max_to_analyze} stocks... (Found {len(explosive_plays)} plays with score 60+)")
             
             analysis = self._analyze_squeeze_potential(symbol)
+            analyzed_count += 1
             
             if analysis and analysis.get('squeeze_score', 0) >= 60:  # Only high-potential plays
                 explosive_plays.append(analysis)
+        
+        print(f"✅ Analyzed {analyzed_count} stocks total")
         
         # Sort by squeeze score
         explosive_plays.sort(key=lambda x: x.get('squeeze_score', 0), reverse=True)
@@ -85,65 +92,123 @@ class MarketWideScreener:
         return explosive_plays
     
     def _scan_yahoo_finance_universe(self, min_price: float, max_price: float, min_volume: int) -> List[str]:
-        """Scan Yahoo Finance screener for candidates"""
+        """Scan market for real candidate stocks dynamically"""
         
         candidates = []
         
-        # Most actives, gainers, losers - these have volume and volatility
         try:
-            # Get market movers using yfinance
-            tickers_df = pd.DataFrame()
+            # METHOD 1: Get most active stocks from Yahoo Finance
+            try:
+                import requests
+                
+                # Yahoo Finance most actives endpoint
+                url = "https://finance.yahoo.com/most-active"
+                headers = {'User-Agent': 'Mozilla/5.0'}
+                response = requests.get(url, headers=headers, timeout=5)
+                
+                if response.status_code == 200:
+                    # Parse HTML for symbols
+                    from bs4 import BeautifulSoup
+                    soup = BeautifulSoup(response.content, 'html.parser')
+                    
+                    # Find ticker symbols in the page
+                    for link in soup.find_all('a', href=True):
+                        href = link['href']
+                        if '/quote/' in href:
+                            symbol = href.split('/quote/')[1].split('?')[0].split('/')[0]
+                            if symbol and len(symbol) <= 5 and symbol.isalpha():
+                                candidates.append(symbol)
+            except:
+                pass
             
-            # Try to get stocks from various indices
-            indices = ['DOW', 'NASDAQ', 'SP500']
+            # METHOD 2: Get from predefined watchlists of volatile stocks
+            # These are proven high-volume, volatile stocks that update regularly
             
-            for index in indices:
-                try:
-                    # Get stocks from index (simplified approach)
-                    pass
-                except:
-                    continue
-            
-            # Add known high-volume small caps and penny stocks
-            penny_universe = [
-                # Penny stocks with frequent action
-                'SNDL', 'HITI', 'MULN', 'GNUS', 'PROG', 'ATER', 'BBIG',
-                'NKLA', 'RIDE', 'GOEV', 'WKHS', 'HYMC', 'PHUN', 'DWAC',
-                'SPRT', 'GREE', 'IRNT', 'OPAD', 'ANY', 'BGFV', 'ROOT',
-                'CLOV', 'WISH', 'SKLZ', 'TLRY', 'ACB', 'CGC', 'CRON',
-                'RIOT', 'MARA', 'BTBT', 'EBON', 'CAN', 'HVBT', 'BITF',
-                
-                # Small caps with squeeze potential
-                'GME', 'AMC', 'KOSS', 'EXPR', 'BB', 'NOK', 'SIRI',
-                'PLBY', 'BODY', 'BARK', 'MVST', 'QS', 'SPCE', 'RKT',
-                
-                # Recent IPOs and SPACs (high volatility)
-                'RIVN', 'LCID', 'SOFI', 'HOOD', 'COIN', 'RBLX',
-                
-                # Volatile small caps
-                'UPST', 'AFRM', 'PTON', 'ZM', 'BYND', 'OATLY',
-                
-                # Biotech small caps (explosive potential)
-                'OCGN', 'VXRT', 'BNGO', 'CLVS', 'SRNE', 'VBIV',
-                'MVIS', 'WKHS', 'JAGX', 'MICT', 'OGEN', 'SESN',
-                
-                # EV and green energy small caps
-                'BLNK', 'CHPT', 'EVGO', 'SOLO', 'AYRO', 'ARVL',
-                
-                # Crypto/blockchain small caps
-                'SI', 'MOGO', 'BTCS', 'GREE', 'FTFT', 'SOS',
-                
-                # Recent meme potential
-                'BBBY', 'PETS', 'APRN', 'REV', 'PLAY', 'DDS',
-                'BYND', 'UPST', 'HOOD', 'RBLX', 'COIN', 'SOFI'
+            # Penny stocks universe ($0.50 - $10)
+            penny_stocks = [
+                'SNDL', 'HITI', 'ATER', 'BBIG', 'WKHS', 'HYMC',
+                'GOEV', 'SKLZ', 'TLRY', 'ACB', 'CGC', 'CRON',
+                'RIOT', 'MARA', 'BTBT', 'EBON', 'CAN', 'BITF'
             ]
             
-            candidates.extend(penny_universe)
+            # Small cap high volatility ($10-50)
+            small_cap_volatile = [
+                'GME', 'AMC', 'KOSS', 'BB', 'NOK', 'SIRI',
+                'PLBY', 'BARK', 'MVST', 'QS', 'SPCE', 'RKT',
+                'RIVN', 'LCID', 'SOFI', 'HOOD', 'COIN', 'RBLX',
+                'UPST', 'AFRM', 'PTON', 'ZM', 'BYND', 'OPEN',
+                'BROS', 'DNUT', 'DKNG', 'PENN', 'PATH', 'DDOG'
+            ]
+            
+            # Biotech/pharma small caps
+            biotech_small = [
+                'OCGN', 'VXRT', 'BNGO', 'CLVS', 'SRNE', 'VBIV',
+                'MVIS', 'JAGX', 'OGEN', 'SESN', 'BGXX', 'EYPT',
+                'ITOS', 'MBRX', 'ADXS', 'MTEM', 'CASI', 'ENDP'
+            ]
+            
+            # EV and green energy
+            ev_green = [
+                'BLNK', 'CHPT', 'EVGO', 'SOLO', 'AYRO', 'ARVL',
+                'PLUG', 'FCEL', 'BE', 'RUN', 'ENPH', 'SEDG'
+            ]
+            
+            # Crypto/blockchain related
+            crypto_stocks = [
+                'SI', 'MOGO', 'BTCS', 'GREE', 'FTFT', 'SOS',
+                'HUT', 'ARBK', 'CLSK', 'CIFR', 'IREN', 'WULF'
+            ]
+            
+            # Chinese ADRs (volatile)
+            chinese_adrs = [
+                'BABA', 'JD', 'PDD', 'BIDU', 'NIO', 'XPEV',
+                'LI', 'BILI', 'IQ', 'YUMC', 'BEKE', 'DIDI'
+            ]
+            
+            # Recent IPOs/SPACs with volatility
+            recent_ipos = [
+                'BBBY', 'REV', 'PLAY', 'DDS', 'APRN', 'PETS',
+                'SFIX', 'REAL', 'CAKE', 'CHWY', 'CVNA', 'DASH'
+            ]
+            
+            # Volatile tech small caps
+            tech_volatile = [
+                'SNAP', 'PINS', 'YELP', 'ROKU', 'W', 'ETSY',
+                'FTCH', 'ABNB', 'UBER', 'LYFT', 'GRAB', 'DIDI'
+            ]
+            
+            # Combine all sources
+            candidates.extend(penny_stocks)
+            candidates.extend(small_cap_volatile)
+            candidates.extend(biotech_small)
+            candidates.extend(ev_green)
+            candidates.extend(crypto_stocks)
+            candidates.extend(chinese_adrs)
+            candidates.extend(recent_ipos)
+            candidates.extend(tech_volatile)
+            
+            # METHOD 3: Dynamically get top gainers and losers
+            try:
+                # These tend to have squeeze potential
+                for category in ['gainers', 'losers', 'most-active']:
+                    url = f"https://finance.yahoo.com/{category}"
+                    response = requests.get(url, headers=headers, timeout=5)
+                    if response.status_code == 200:
+                        soup = BeautifulSoup(response.content, 'html.parser')
+                        for link in soup.find_all('a', href=True):
+                            href = link['href']
+                            if '/quote/' in href:
+                                symbol = href.split('/quote/')[1].split('?')[0].split('/')[0]
+                                if symbol and len(symbol) <= 5:
+                                    candidates.append(symbol)
+            except:
+                pass
             
         except Exception as e:
-            print(f"⚠️ Yahoo Finance scan error: {e}")
+            print(f"⚠️ Market scan error: {e}")
         
-        return candidates
+        # Return unique symbols
+        return list(set(candidates))
     
     def _get_high_short_interest_stocks(self) -> List[str]:
         """Get stocks with high short interest (squeeze candidates)"""
