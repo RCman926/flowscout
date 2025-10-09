@@ -2546,129 +2546,183 @@ def options_trading_page():
 
 # Run the app
 def explosive_opportunities_page():
-    """Explosive stock opportunities screener page"""
+    """Explosive stock opportunities screener - MARKET-WIDE SCAN"""
     
-    st.title("🚀 EXPLOSIVE STOCK OPPORTUNITIES")
-    st.markdown("*Technical analysis engine to identify stocks with high profit potential*")
+    st.title("🚀 EXPLOSIVE STOCK OPPORTUNITIES - MARKET-WIDE SCAN")
+    st.markdown("*Scanning the entire market for short squeeze candidates and explosive plays*")
     
-    from explosive_stock_screener import explosive_screener
+    from market_wide_screener import market_screener
     
     # Control panel
     col1, col2, col3 = st.columns([2, 1, 1])
     
     with col1:
-        st.markdown("### 🎯 **OPPORTUNITY SCANNER**")
+        st.markdown("### 🎯 **MARKET-WIDE SQUEEZE SCANNER**")
+        st.caption("Focuses on: High short interest, small caps, OTC stocks, squeeze potential")
         
     with col2:
-        scan_button = st.button("🔍 **SCAN NOW**", type="primary", use_container_width=True)
+        scan_button = st.button("🔍 **SCAN MARKET**", type="primary", use_container_width=True)
         
     with col3:
-        auto_refresh = st.checkbox("🔄 Auto-refresh", value=True)
+        auto_refresh = st.checkbox("🔄 Auto-refresh", value=False)  # Manual by default (takes time)
     
     if scan_button or auto_refresh:
         st.markdown("---")
         
-        # Run the screening
-        opportunities = explosive_screener.screen_explosive_opportunities()
+        # Run market-wide scan
+        with st.spinner("🔍 Scanning entire market for squeeze candidates..."):
+            opportunities = market_screener.scan_entire_market()
         
         if opportunities:
-            st.success(f"🎯 **Found {len(opportunities)} explosive opportunities!**")
+            st.success(f"🎯 **Found {len(opportunities)} squeeze candidates with scores 60+!**")
             
             # Display top opportunities
-            for i, opp in enumerate(opportunities[:10]):  # Top 10 opportunities
+            for i, opp in enumerate(opportunities[:15]):  # Top 15 squeeze plays
                 with st.container():
                     # Create columns for layout
-                    main_col, signals_col, metrics_col = st.columns([2, 2, 1])
+                    main_col, squeeze_col, metrics_col = st.columns([2, 2, 1])
                     
                     with main_col:
-                        # Stock info and score
-                        score_color = "🚀" if opp['score'] >= 80 else "⚡" if opp['score'] >= 65 else "📈"
-                        daily_change_color = "🟢" if opp['daily_change'] > 0 else "🔴" if opp['daily_change'] < 0 else "⚪"
+                        # Stock info and squeeze score
+                        score = opp['squeeze_score']
+                        score_color = "🚀" if score >= 80 else "⚡" if score >= 70 else "📈"
+                        momentum_color = "🟢" if opp['price_momentum_5d'] > 0 else "🔴"
                         
-                        st.markdown(f"### {score_color} **{opp['symbol']}** - ${opp['current_price']:.2f}")
-                        st.markdown(f"**{opp['recommendation']}** | Score: **{opp['score']:.0f}/100**")
-                        st.markdown(f"{daily_change_color} Daily: **{opp['daily_change']:+.2f}%** | Target: **+{opp['target_upside']}** | Risk: {opp['risk_level']}")
+                        # Market cap display
+                        market_cap = opp['market_cap']
+                        if market_cap < 100_000_000:
+                            cap_display = f"${market_cap/1_000_000:.0f}M 💎"  # Micro cap
+                        elif market_cap < 1_000_000_000:
+                            cap_display = f"${market_cap/1_000_000:.0f}M"
+                        elif market_cap < 10_000_000_000:
+                            cap_display = f"${market_cap/1_000_000_000:.1f}B"
+                        else:
+                            cap_display = f"${market_cap/1_000_000_000:.0f}B"
+                        
+                        st.markdown(f"### {score_color} **{opp['symbol']}** - ${opp['price']:.2f}")
+                        st.markdown(f"**{opp.get('company_name', opp['symbol'])}** | Cap: {cap_display}")
+                        st.markdown(f"Squeeze Score: **{score:.0f}/100** | {momentum_color} 5D Momentum: **{opp['price_momentum_5d']:+.1f}%**")
                     
-                    with signals_col:
-                        # Key technical signals
-                        st.markdown("**🔍 Key Signals:**")
-                        for signal in opp['key_signals']:
-                            st.markdown(f"• {signal}")
+                    with squeeze_col:
+                        # Squeeze metrics
+                        st.markdown("**🔥 Squeeze Metrics:**")
+                        short_pct = opp['short_interest']
+                        if short_pct > 0:
+                            short_display = "🔴" if short_pct > 20 else "🟠" if short_pct > 10 else "🟡"
+                            st.markdown(f"{short_display} Short Interest: **{short_pct:.1f}%** of float")
+                        else:
+                            st.markdown(f"⚪ Short Interest: N/A")
+                        
+                        vol_surge = opp['volume_surge']
+                        vol_display = "🚀" if vol_surge > 3 else "⚡" if vol_surge > 2 else "📊"
+                        st.markdown(f"{vol_display} Volume Surge: **{vol_surge:.1f}x** avg")
+                        
+                        volatility = opp['volatility']
+                        vol_emoji = "🌪️" if volatility > 100 else "⚡" if volatility > 75 else "📈"
+                        st.markdown(f"{vol_emoji} Volatility: **{volatility:.0f}%**")
                     
                     with metrics_col:
-                        # Quick metrics
-                        signals = opp['signals']
-                        st.markdown("**📊 Metrics:**")
-                        st.markdown(f"RSI: **{signals.get('rsi', 50):.0f}**")
-                        st.markdown(f"Vol: **{signals.get('volume_surge', 1):.1f}x**")
-                        st.markdown(f"Trend: **{signals.get('trend_strength_20d', 0):+.1f}%**")
+                        # Quick stats
+                        st.markdown("**📊 Stats:**")
+                        st.markdown(f"Vol: **{opp['volume']:,.0f}**")
+                        if opp['short_ratio'] > 0:
+                            st.markdown(f"Days to Cover: **{opp['short_ratio']:.1f}**")
+                        if opp['float_shares'] > 0:
+                            float_m = opp['float_shares'] / 1_000_000
+                            st.markdown(f"Float: **{float_m:.1f}M**")
                     
                     # Expandable detailed analysis
-                    with st.expander(f"📈 **Detailed Analysis - {opp['symbol']}**"):
+                    with st.expander(f"📊 **Detailed Squeeze Analysis - {opp['symbol']}**"):
                         detail_col1, detail_col2 = st.columns(2)
                         
                         with detail_col1:
-                            st.markdown("**🎯 Technical Indicators:**")
-                            st.markdown(f"• RSI: {signals.get('rsi', 50):.1f} ({signals.get('rsi_signal', 'NEUTRAL')})")
-                            st.markdown(f"• MACD: {signals.get('macd_crossover', 'NONE')} crossover")
-                            st.markdown(f"• Volume surge: {signals.get('volume_surge', 1):.1f}x average")
-                            st.markdown(f"• Bollinger position: {signals.get('bb_position', 0.5):.2f}")
-                            st.markdown(f"• Williams %R: {signals.get('williams_r', -50):.0f}")
+                            st.markdown("**🎯 Squeeze Indicators:**")
+                            st.markdown(f"• Squeeze Score: **{score:.0f}/100**")
+                            st.markdown(f"• Short Interest: **{opp['short_interest']:.1f}%** of float")
+                            if opp['shares_short'] > 0:
+                                st.markdown(f"• Shares Short: **{opp['shares_short']:,.0f}**")
+                            st.markdown(f"• Days to Cover: **{opp['short_ratio']:.1f}** days")
+                            st.markdown(f"• Volume Surge: **{vol_surge:.1f}x** average")
+                            st.markdown(f"• 5D Momentum: **{opp['price_momentum_5d']:+.1f}%**")
                             
                         with detail_col2:
-                            st.markdown("**📊 Market Structure:**")
-                            st.markdown(f"• Support: ${signals.get('support_level', 0):.2f}")
-                            st.markdown(f"• Resistance: ${signals.get('resistance_level', 0):.2f}")
-                            st.markdown(f"• ATR: {signals.get('atr_percentage', 0):.2f}%")
-                            st.markdown(f"• Trend strength: {signals.get('trend_strength_20d', 0):+.1f}%")
-                            st.markdown(f"• OBV trend: {signals.get('obv_trend', 'NEUTRAL')}")
+                            st.markdown("**📊 Stock Fundamentals:**")
+                            st.markdown(f"• Current Price: **${opp['price']:.2f}**")
+                            st.markdown(f"• Market Cap: **{cap_display}**")
+                            if opp['float_shares'] > 0:
+                                float_display = f"{opp['float_shares']/1_000_000:.1f}M"
+                                st.markdown(f"• Float: **{float_display}** shares")
+                            st.markdown(f"• Avg Volume: **{opp['avg_volume']:,.0f}**")
+                            st.markdown(f"• Current Volume: **{opp['volume']:,.0f}**")
+                            st.markdown(f"• Volatility: **{volatility:.0f}%** (annual)")
+                        
+                        # Squeeze potential analysis
+                        st.markdown("**🚀 Squeeze Potential:**")
+                        if score >= 80:
+                            st.error("⚠️ **EXTREME SQUEEZE SETUP** - High short interest + volume surge + momentum")
+                        elif score >= 70:
+                            st.warning("⚡ **STRONG SQUEEZE POTENTIAL** - Multiple squeeze indicators aligned")
+                        else:
+                            st.info("📈 **MODERATE OPPORTUNITY** - Some squeeze indicators present")
                 
                 st.markdown("---")
         else:
             st.info("🔍 No explosive opportunities found in current scan. Market conditions may be choppy.")
     
     # Market context
-    st.markdown("### 📊 **SCREENING METHODOLOGY**")
+    st.markdown("### 📊 **SQUEEZE SCREENING METHODOLOGY**")
     
     methodology_col1, methodology_col2 = st.columns(2)
     
     with methodology_col1:
         st.markdown("""
-        **🎯 Technical Signal Categories:**
-        - **Momentum Signals** (25 pts): RSI, MACD, Williams %R
-        - **Breakout Signals** (25 pts): Bollinger Bands, Support/Resistance
-        - **Volume Signals** (20 pts): Volume surge, OBV trend
-        - **Trend Signals** (20 pts): Moving averages, trend strength
-        - **Volatility Signals** (10 pts): ATR, consolidation patterns
+        **🔥 Squeeze Score Components (0-100):**
+        - **Short Interest** (0-30 pts): % of float shorted
+        - **Volume Surge** (0-25 pts): Current vs avg volume
+        - **Price Momentum** (0-20 pts): 5-day price change %
+        - **Market Cap** (0-15 pts): Smaller = more explosive
+        - **Volatility** (0-10 pts): Annualized volatility %
         """)
     
     with methodology_col2:
         st.markdown("""
-        **🚀 Scoring System:**
-        - **80-100**: Explosive potential - High profit opportunity
-        - **65-79**: Strong buy - Good setup forming  
-        - **50-64**: Moderate buy - Decent opportunity
-        - **35-49**: Watch list - Wait for better setup
-        - **0-34**: Avoid - Poor technical setup
+        **🚀 Squeeze Score Levels:**
+        - **80-100**: EXTREME SQUEEZE - Multiple factors aligned
+        - **70-79**: STRONG POTENTIAL - High squeeze setup
+        - **60-69**: MODERATE - Some squeeze indicators
+        - **Below 60**: Filtered out (not shown)
         """)
     
     # Watchlist info
-    st.markdown("### 🎯 **SCREENED UNIVERSE**")
-    st.markdown("Scanning 60+ liquid stocks across all major sectors for explosive opportunities:")
+    st.markdown("### 🎯 **MARKET-WIDE SCAN COVERAGE**")
+    st.markdown("**Scanning 500+ stocks focusing on:**")
     
-    sectors_col1, sectors_col2, sectors_col3 = st.columns(3)
+    coverage_col1, coverage_col2, coverage_col3 = st.columns(3)
     
-    with sectors_col1:
-        st.markdown("**📱 Technology**: AAPL, MSFT, GOOGL, NVDA, AMD")
-        st.markdown("**🏥 Healthcare**: MRNA, BNTX, GILD, REGN")
+    with coverage_col1:
+        st.markdown("""
+        **🎯 High Short Interest Stocks**
+        - Known squeeze candidates
+        - GME, AMC, BBBY, etc.
+        - Heavily shorted names
+        """)
         
-    with sectors_col2:  
-        st.markdown("**🏦 Finance**: JPM, BAC, GS, V, MA")
-        st.markdown("**🛍️ Consumer**: COST, WMT, HD, NKE")
+    with coverage_col2:  
+        st.markdown("""
+        **💎 Small Caps & Penny Stocks**
+        - Market cap < $2B
+        - Price < $20
+        - High volatility plays
+        """)
         
-    with sectors_col3:
-        st.markdown("**⚡ Energy**: XOM, CVX, COP, SLB")
-        st.markdown("**🏭 Industrial**: CAT, DE, BA, GE")
+    with coverage_col3:
+        st.markdown("""
+        **⚡ Volatile Sectors**
+        - Biotech small caps
+        - EV stocks
+        - Crypto/Blockchain
+        - Recent IPOs/SPACs
+        """)
 
 
 def personalized_watchlists_page():
