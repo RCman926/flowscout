@@ -81,8 +81,8 @@ class MarketWideScreener:
         
         print(f"✅ Analyzed {analyzed_count} stocks total")
         
-        # Sort by squeeze score
-        explosive_plays.sort(key=lambda x: x.get('squeeze_score', 0), reverse=True)
+        # Sort by freshness score first (to show NEWEST opportunities), then squeeze score
+        explosive_plays.sort(key=lambda x: (x.get('freshness_score', 0), x.get('squeeze_score', 0)), reverse=True)
         
         self.screener_results = explosive_plays
         self.last_scan_time = datetime.now()
@@ -280,8 +280,8 @@ class MarketWideScreener:
     
     def _analyze_squeeze_potential(self, symbol: str) -> Optional[Dict]:
         """
-        Analyze a stock for squeeze potential
-        Returns detailed analysis with squeeze score
+        Analyze a stock for squeeze potential with FRESHNESS filter
+        Returns detailed analysis with squeeze score and squeeze thesis
         """
         
         try:
@@ -290,7 +290,7 @@ class MarketWideScreener:
             # Get stock info
             info = ticker.info
             
-            # Get price data
+            # Get price data (need more history for freshness detection)
             hist = ticker.history(period='3mo')
             
             if hist.empty or len(hist) < 20:
@@ -299,13 +299,60 @@ class MarketWideScreener:
             current_price = hist['Close'].iloc[-1]
             
             # === FILTER 1: Price Range ===
-            # Focus on stocks under $20 (more explosive potential)
+            # Focus on stocks under $50 (more explosive potential)
             if current_price > 50:
                 return None
             
             # === FILTER 2: Volume ===
-            avg_volume = hist['Volume'].tail(20).mean()
-            if avg_volume < 50000:  # Minimum liquidity
+            avg_volume_20d = hist['Volume'].tail(20).mean()
+            if avg_volume_20d < 50000:  # Minimum liquidity
+                return None
+            
+            # === FRESHNESS ANALYSIS (KEY FOR FINDING NEW OPPORTUNITIES) ===
+            
+            # Recent volume (last 3 days) vs older volume (days 4-20)
+            recent_volume = hist['Volume'].tail(3).mean()
+            older_volume = hist['Volume'].tail(20).head(17).mean()  # Days 4-20
+            
+            # Calculate freshness metrics
+            recent_surge = recent_volume / older_volume if older_volume > 0 else 1
+            
+            # Recent price action (just started moving?)
+            price_1d = hist['Close'].iloc[-1]
+            price_3d = hist['Close'].iloc[-3] if len(hist) >= 3 else price_1d
+            price_10d = hist['Close'].iloc[-10] if len(hist) >= 10 else price_1d
+            
+            recent_move_3d = ((price_1d - price_3d) / price_3d * 100) if price_3d > 0 else 0
+            longer_move_10d = ((price_1d - price_10d) / price_10d * 100) if price_10d > 0 else 0
+            
+            # Freshness score: High if recent activity >> historical activity
+            freshness_score = 0
+            
+            # Recent volume explosion (last 3 days)
+            if recent_surge > 3:
+                freshness_score += 40  # Strong fresh setup
+            elif recent_surge > 2:
+                freshness_score += 30
+            elif recent_surge > 1.5:
+                freshness_score += 20
+            
+            # Just started moving (recent move >> older move)
+            if recent_move_3d > 5 and recent_move_3d > longer_move_10d:
+                freshness_score += 30  # Fresh breakout
+            elif recent_move_3d > 3:
+                freshness_score += 15
+            
+            # Recent volume spike (today vs 20-day average)
+            current_volume = hist['Volume'].iloc[-1]
+            today_surge = current_volume / avg_volume_20d if avg_volume_20d > 0 else 1
+            if today_surge > 5:
+                freshness_score += 30
+            elif today_surge > 3:
+                freshness_score += 20
+            
+            # === FRESHNESS FILTER: Only show FRESH opportunities ===
+            # Require minimum freshness score to filter out old plays
+            if freshness_score < 30:  # Not fresh enough
                 return None
             
             # === CALCULATE SQUEEZE METRICS ===
@@ -319,9 +366,8 @@ class MarketWideScreener:
             shares_short = info.get('sharesShort', 0)
             float_shares = info.get('floatShares', 0)
             
-            # Calculate volume surge
-            current_volume = hist['Volume'].iloc[-1]
-            volume_surge = current_volume / avg_volume if avg_volume > 0 else 1
+            # Calculate volume surge (today vs average)
+            volume_surge = today_surge
             
             # Calculate price momentum
             price_5d_ago = hist['Close'].iloc[-5] if len(hist) >= 5 else current_price
@@ -385,6 +431,20 @@ class MarketWideScreener:
             elif volatility > 50:
                 squeeze_score += 6
             
+            # === GENERATE DETAILED SQUEEZE THESIS ===
+            squeeze_thesis = self._generate_squeeze_thesis(
+                symbol=symbol,
+                short_percent_float=short_percent_float,
+                volume_surge=volume_surge,
+                recent_surge=recent_surge,
+                recent_move_3d=recent_move_3d,
+                price_momentum=price_momentum,
+                market_cap=market_cap,
+                float_shares=float_shares,
+                freshness_score=freshness_score,
+                volatility=volatility
+            )
+            
             # === BUILD RESULT ===
             result = {
                 'symbol': symbol,
@@ -393,14 +453,18 @@ class MarketWideScreener:
                 'short_interest': short_percent_float or 0,
                 'short_ratio': short_ratio or 0,
                 'volume': current_volume,
-                'avg_volume': avg_volume,
+                'avg_volume': avg_volume_20d,
                 'volume_surge': volume_surge,
                 'price_momentum_5d': price_momentum,
                 'volatility': volatility,
                 'squeeze_score': squeeze_score,
                 'float_shares': float_shares or 0,
                 'shares_short': shares_short or 0,
-                'company_name': info.get('shortName', symbol)
+                'company_name': info.get('shortName', symbol),
+                'freshness_score': freshness_score,
+                'recent_surge_3d': recent_surge,
+                'recent_move_3d': recent_move_3d,
+                'squeeze_thesis': squeeze_thesis
             }
             
             return result
@@ -408,6 +472,86 @@ class MarketWideScreener:
         except Exception as e:
             # Silent fail for individual stocks
             return None
+    
+    def _generate_squeeze_thesis(self, symbol: str, short_percent_float: float, 
+                                  volume_surge: float, recent_surge: float,
+                                  recent_move_3d: float, price_momentum: float,
+                                  market_cap: float, float_shares: float,
+                                  freshness_score: int, volatility: float) -> str:
+        """
+        Generate detailed squeeze thesis explaining WHY this stock will squeeze
+        """
+        
+        thesis_parts = []
+        
+        # === FRESHNESS ANALYSIS ===
+        if freshness_score >= 60:
+            thesis_parts.append(f"🔥 **FRESH SETUP ALERT**: This is a NEW opportunity developing in the last 1-3 days (freshness score: {freshness_score}/100)")
+        elif freshness_score >= 40:
+            thesis_parts.append(f"⚡ **RECENT DEVELOPMENT**: Fresh activity detected in past few days (freshness score: {freshness_score}/100)")
+        else:
+            thesis_parts.append(f"📊 **EMERGING SETUP**: Early stage opportunity forming (freshness score: {freshness_score}/100)")
+        
+        # === VOLUME CATALYST ===
+        if recent_surge > 3:
+            thesis_parts.append(f"📈 **EXPLOSIVE VOLUME SURGE**: Last 3 days volume is {recent_surge:.1f}x higher than previous weeks - institutional money is entering NOW")
+        elif recent_surge > 2:
+            thesis_parts.append(f"🚀 **STRONG VOLUME INCREASE**: Recent volume surge of {recent_surge:.1f}x - smart money accumulating")
+        elif volume_surge > 3:
+            thesis_parts.append(f"⚡ **TODAY'S VOLUME SPIKE**: {volume_surge:.1f}x average volume - breakout in progress")
+        
+        # === PRICE ACTION ===
+        if recent_move_3d > 10:
+            thesis_parts.append(f"💰 **MOMENTUM IGNITING**: Up {recent_move_3d:+.1f}% in last 3 days - squeeze mechanics activating")
+        elif recent_move_3d > 5:
+            thesis_parts.append(f"📊 **PRICE BREAKOUT**: {recent_move_3d:+.1f}% move in 3 days - shorts starting to feel pressure")
+        elif price_momentum > 10:
+            thesis_parts.append(f"🎯 **STRONG MOMENTUM**: {price_momentum:+.1f}% move over 5 days - trend established")
+        
+        # === SHORT SQUEEZE MECHANICS ===
+        if short_percent_float > 20:
+            thesis_parts.append(f"🔴 **EXTREME SHORT INTEREST**: {short_percent_float:.1f}% of float shorted - massive squeeze potential if price rises")
+            if float_shares > 0 and float_shares < 50_000_000:
+                thesis_parts.append(f"⚠️ **TIGHT FLOAT**: Only {float_shares/1_000_000:.1f}M shares - shorts will struggle to cover in rising market")
+        elif short_percent_float > 10:
+            thesis_parts.append(f"🟠 **HIGH SHORT INTEREST**: {short_percent_float:.1f}% shorted - shorts vulnerable to squeeze")
+        elif short_percent_float > 5:
+            thesis_parts.append(f"🟡 **MODERATE SHORT INTEREST**: {short_percent_float:.1f}% shorted - potential for covering rally")
+        
+        # === MARKET CAP / EXPLOSIVE POTENTIAL ===
+        if market_cap < 100_000_000:
+            thesis_parts.append(f"💎 **MICRO CAP GEM**: ${market_cap/1_000_000:.0f}M market cap - small buying pressure creates HUGE moves")
+        elif market_cap < 500_000_000:
+            thesis_parts.append(f"🎯 **SMALL CAP ROCKET**: ${market_cap/1_000_000:.0f}M market cap - high beta explosive potential")
+        elif market_cap < 1_000_000_000:
+            thesis_parts.append(f"📊 **SMALL CAP PLAY**: ${market_cap/1_000_000:.0f}M market cap - room for significant upside")
+        
+        # === VOLATILITY / TRADING DYNAMICS ===
+        if volatility > 100:
+            thesis_parts.append(f"🌪️ **EXTREME VOLATILITY**: {volatility:.0f}% annualized - explosive intraday moves expected")
+        elif volatility > 75:
+            thesis_parts.append(f"⚡ **HIGH VOLATILITY**: {volatility:.0f}% annualized - quick moves likely")
+        
+        # === SQUEEZE TIMING ===
+        if freshness_score >= 50 and volume_surge > 3:
+            thesis_parts.append(f"⏰ **SQUEEZE TIMING**: Setup is FRESH with volume confirming - entry window is NOW before crowd notices")
+        elif freshness_score >= 40 and recent_move_3d > 5:
+            thesis_parts.append(f"🎯 **EARLY STAGE**: Just starting to move with fresh volume - get in before main move")
+        else:
+            thesis_parts.append(f"📈 **DEVELOPING SETUP**: Monitor for entry as setup develops")
+        
+        # === RISK FACTORS ===
+        risk_note = "\n\n⚠️ **RISK FACTORS**: "
+        if volatility > 100:
+            risk_note += "Extreme volatility means large swings. "
+        if market_cap < 100_000_000:
+            risk_note += "Micro cap = high risk/reward. "
+        if short_percent_float < 10:
+            risk_note += "Lower short interest = less squeeze power. "
+        
+        thesis_parts.append(risk_note + "Use stop losses and position sizing.")
+        
+        return "\n\n".join(thesis_parts)
     
     def get_top_squeeze_plays(self, top_n: int = 20) -> List[Dict]:
         """Get top squeeze plays from latest scan"""

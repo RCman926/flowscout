@@ -2632,7 +2632,29 @@ def explosive_opportunities_page():
                             st.markdown(f"Float: **{float_m:.1f}M**")
                     
                     # Expandable detailed analysis WITH CHARTS
-                    with st.expander(f"📊 **Detailed Squeeze Analysis - {opp['symbol']}**"):
+                    with st.expander(f"📊 **Detailed Squeeze Analysis - {opp['symbol']}**", expanded=True):
+                        
+                        # === SQUEEZE THESIS (WHY IT WILL SQUEEZE) ===
+                        st.markdown("### 🎯 WHY THIS STOCK WILL SQUEEZE")
+                        if 'squeeze_thesis' in opp and opp['squeeze_thesis']:
+                            st.markdown(opp['squeeze_thesis'])
+                        else:
+                            st.info("Squeeze thesis: High volume + price momentum + short interest = potential squeeze setup")
+                        
+                        st.markdown("---")
+                        
+                        # Freshness indicator
+                        if 'freshness_score' in opp:
+                            fresh_score = opp['freshness_score']
+                            if fresh_score >= 60:
+                                st.success(f"🔥 **FRESH OPPORTUNITY**: Freshness Score {fresh_score}/100 - Developing in last 1-3 days!")
+                            elif fresh_score >= 40:
+                                st.info(f"⚡ **RECENT SETUP**: Freshness Score {fresh_score}/100 - Activity detected")
+                            else:
+                                st.warning(f"📊 **EMERGING**: Freshness Score {fresh_score}/100")
+                        
+                        st.markdown("---")
+                        
                         detail_col1, detail_col2 = st.columns(2)
                         
                         with detail_col1:
@@ -2644,6 +2666,8 @@ def explosive_opportunities_page():
                             st.markdown(f"• Days to Cover: **{opp['short_ratio']:.1f}** days")
                             st.markdown(f"• Volume Surge: **{vol_surge:.1f}x** average")
                             st.markdown(f"• 5D Momentum: **{opp['price_momentum_5d']:+.1f}%**")
+                            if 'recent_move_3d' in opp:
+                                st.markdown(f"• 3D Move: **{opp['recent_move_3d']:+.1f}%** (recent)")
                             
                         with detail_col2:
                             st.markdown("**📊 Stock Fundamentals:**")
@@ -2655,6 +2679,8 @@ def explosive_opportunities_page():
                             st.markdown(f"• Avg Volume: **{opp['avg_volume']:,.0f}**")
                             st.markdown(f"• Current Volume: **{opp['volume']:,.0f}**")
                             st.markdown(f"• Volatility: **{volatility:.0f}%** (annual)")
+                            if 'recent_surge_3d' in opp:
+                                st.markdown(f"• 3-Day Vol Surge: **{opp['recent_surge_3d']:.1f}x**")
                         
                         # === SQUEEZE CHARTS ===
                         st.markdown("---")
