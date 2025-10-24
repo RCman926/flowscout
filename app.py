@@ -315,7 +315,7 @@ def options_trading_page():
     # === HEADER ===
     # Use timezone-aware market hours check
     market_open = is_market_open()
-    status_text = "MARKET OPEN" if market_open else "MARKET CLOSED"
+    status_text = "MARKET OPEN" if market_open else "OVERNIGHT"
     
     header_cols = st.columns([3, 1])
     with header_cols[0]:
@@ -650,7 +650,7 @@ def options_trading_page():
         aftermarket_price = current_price * (1 + (change_pct * 0.15) / 100)  # Smaller extension
         
         # Show pre/after market data in smaller text
-        market_status = "MARKET OPEN" if datetime.now().weekday() < 5 and 9 <= datetime.now().hour <= 16 else "MARKET CLOSED"
+        market_status = "MARKET OPEN" if datetime.now().weekday() < 5 and 9 <= datetime.now().hour <= 16 else "OVERNIGHT"
         
         if market_status == "MARKET OPEN":
             if current_price > 0:
