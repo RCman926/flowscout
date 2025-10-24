@@ -17,7 +17,9 @@ class ExtendedHoursTracker:
     
     def __init__(self):
         self.cache = {}
-        self.cache_duration = 10  # 10 seconds for real-time extended hours
+        self.cache_duration = 60  # 60 seconds to avoid Yahoo rate limiting
+        self.last_request_time = 0
+        self.min_request_interval = 2  # Minimum 2 seconds between requests
     
     def get_extended_hours_data(self, symbol: str) -> Dict:
         """
@@ -38,46 +40,67 @@ class ExtendedHoursTracker:
             return self.cache[cache_key]['data']
         
         try:
+            # Throttle requests to avoid rate limiting
+            current_time = time.time()
+            time_since_last_request = current_time - self.last_request_time
+            if time_since_last_request < self.min_request_interval:
+                time.sleep(self.min_request_interval - time_since_last_request)
+            
+            self.last_request_time = time.time()
+            
             ticker = yf.Ticker(symbol)
             
             # Get yesterday's close
             hist = ticker.history(period='2d')
-            if hist.empty:
+            if hist.empty or len(hist) == 0:
                 return self._get_empty_data(symbol)
             
             regular_close = hist['Close'].iloc[-1]
             
-            # Get real-time info (includes extended hours)
-            info = ticker.info
-            
-            # Initialize
+            # Initialize defaults
             current_price = regular_close
             extended_hours_active = False
             extended_hours_type = None
             extended_hours_change = 0
             extended_hours_volume = 0
+            pre_market_price = None
+            post_market_price = None
             
-            # Check for pre-market price
-            pre_market_price = info.get('preMarketPrice', None)
-            pre_market_volume = info.get('preMarketVolume', 0)
+            # Try to get extended hours data with retry logic
+            try:
+                # First try fast_info (faster, less rate limiting)
+                fast = ticker.fast_info
+                current_price = getattr(fast, 'last_price', regular_close)
+                
+                # Then try full info for extended hours (with timeout)
+                info = ticker.info
+                
+                # Check for pre-market price
+                pre_market_price = info.get('preMarketPrice', None)
+                pre_market_volume = info.get('preMarketVolume', 0)
+                
+                if pre_market_price and pre_market_price > 0:
+                    current_price = pre_market_price
+                    extended_hours_active = True
+                    extended_hours_type = 'PRE_MARKET'
+                    extended_hours_change = ((pre_market_price - regular_close) / regular_close * 100)
+                    extended_hours_volume = pre_market_volume
+                
+                # Check for post-market price (overrides pre-market if both exist)
+                post_market_price = info.get('postMarketPrice', None)
+                post_market_volume = info.get('postMarketVolume', 0)
+                
+                if post_market_price and post_market_price > 0:
+                    current_price = post_market_price
+                    extended_hours_active = True
+                    extended_hours_type = 'POST_MARKET'
+                    extended_hours_change = ((post_market_price - regular_close) / regular_close * 100)
+                    extended_hours_volume = post_market_volume
             
-            if pre_market_price and pre_market_price > 0:
-                current_price = pre_market_price
-                extended_hours_active = True
-                extended_hours_type = 'PRE_MARKET'
-                extended_hours_change = ((pre_market_price - regular_close) / regular_close * 100)
-                extended_hours_volume = pre_market_volume
-            
-            # Check for post-market price (overrides pre-market if both exist)
-            post_market_price = info.get('postMarketPrice', None)
-            post_market_volume = info.get('postMarketVolume', 0)
-            
-            if post_market_price and post_market_price > 0:
-                current_price = post_market_price
-                extended_hours_active = True
-                extended_hours_type = 'POST_MARKET'
-                extended_hours_change = ((post_market_price - regular_close) / regular_close * 100)
-                extended_hours_volume = post_market_volume
+            except Exception as info_error:
+                # If we can't get extended hours, use regular close
+                print(f"Extended hours data unavailable for {symbol} (rate limited or unavailable): {info_error}")
+                current_price = regular_close
             
             # Classify the move
             move_type = self._classify_extended_hours_move(extended_hours_change)
