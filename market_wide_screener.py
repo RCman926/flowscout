@@ -664,16 +664,8 @@ class MarketWideScreener:
                 institutional_metrics=institutional_metrics
             )
             
-            # === PRE-SQUEEZE DETECTION (Early Warning System) ===
-            pre_squeeze_signals = self._detect_pre_squeeze_signals(
-                hist=hist,
-                short_percent_float=short_percent_float,
-                current_price=current_price,
-                institutional_metrics=institutional_metrics
-            )
-            
             # === ADVANCED INSTITUTIONAL DATA (8 NEW FEATURES) ===
-            # Initialize with empty data
+            # Get REAL data FIRST (before early warning calculation)
             real_si_data = {}
             options_flow = {}
             borrow_rate_data = {}
@@ -685,7 +677,7 @@ class MarketWideScreener:
             
             if ADVANCED_DATA_AVAILABLE:
                 try:
-                    # 1. Real Short Interest Data
+                    # 1. Real Short Interest Data (GET THIS FIRST!)
                     real_si_data = advanced_data.get_real_short_interest(symbol)
                     
                     # 2. Real Options Flow
@@ -711,6 +703,17 @@ class MarketWideScreener:
                     
                 except Exception as e:
                     print(f"⚠️ Advanced data fetch failed for {symbol}: {e}")
+            
+            # === PRE-SQUEEZE DETECTION (Early Warning System) ===
+            # NOW calculate with REAL short interest data!
+            real_short_interest = real_si_data.get('short_percent_float', short_percent_float) if real_si_data else short_percent_float
+            
+            pre_squeeze_signals = self._detect_pre_squeeze_signals(
+                hist=hist,
+                short_percent_float=real_short_interest,  # Use REAL SI, not old yfinance data!
+                current_price=current_price,
+                institutional_metrics=institutional_metrics
+            )
             
             # === GENERATE DETAILED SQUEEZE THESIS ===
             squeeze_thesis = self._generate_squeeze_thesis(
@@ -1197,13 +1200,20 @@ class MarketWideScreener:
                     if hist_bb_widths:
                         avg_hist_width = np.mean(hist_bb_widths)
                         
-                        # If current width < 50% of historical = strong compression
-                        if bb_width_pct < avg_hist_width * 0.5:
-                            pre_squeeze_signals['volatility_compression'] = 100
-                        elif bb_width_pct < avg_hist_width * 0.7:
-                            pre_squeeze_signals['volatility_compression'] = 75
-                        elif bb_width_pct < avg_hist_width * 0.85:
-                            pre_squeeze_signals['volatility_compression'] = 50
+                        # More granular compression detection (made less strict)
+                        if avg_hist_width > 0:
+                            compression_ratio = bb_width_pct / avg_hist_width
+                            
+                            if compression_ratio < 0.4:  # Extremely tight (was 0.5)
+                                pre_squeeze_signals['volatility_compression'] = 100
+                            elif compression_ratio < 0.6:  # Very tight (was 0.7)
+                                pre_squeeze_signals['volatility_compression'] = 80
+                            elif compression_ratio < 0.75:  # Tight (was 0.85)
+                                pre_squeeze_signals['volatility_compression'] = 60
+                            elif compression_ratio < 0.9:  # Moderate compression (new)
+                                pre_squeeze_signals['volatility_compression'] = 40
+                            elif compression_ratio < 1.0:  # Slight compression (new)
+                                pre_squeeze_signals['volatility_compression'] = 20
             
             # === 2. ACCUMULATION DETECTION (Smart Money Buying) ===
             # OBV trending up while price consolidates = accumulation
