@@ -1,33 +1,6 @@
 # Overview
 
-This is a comprehensive institutional-grade options trading platform built with Streamlit that provides real-time market data analysis, options pricing, technical indicators, and alert management. The platform integrates with Interactive Brokers (IBKR) API for live trading data and implements advanced options analytics including Greeks calculation, volatility analysis, and risk management tools. The system is designed for professional traders who need sophisticated analysis capabilities with a clean, intuitive interface.
-
-## Platform Organization (Prediction Priority)
-
-The platform is now organized by importance for making trading predictions, with clear priority tiers:
-
-**🎯 TIER 1 - CORE AI PREDICTIONS (Highest Priority):**
-1. **Master Trading Signals** - Core AI prediction engine with 40+ advanced features (fractal analysis, Hurst exponent, market regime detection)
-2. **Signal Validation Dashboard** - Verifies signal quality and consistency before trading
-3. **AI Prediction Results Tracker** - Tracks AI accuracy and performance in real-time
-4. **AI Trading Assistant** - AI-powered trade recommendations and pattern analysis
-
-**🎯 TIER 2 - LIVE MARKET INTELLIGENCE (High Priority):**
-5. **Live Market Data** - Real-time price, volume, RSI with seamless 5-second updates
-6. **Live Options Flow** - Real-time institutional activity and unusual options patterns
-7. **Gamma Exposure & Key Levels** - Institutional positioning and dealer dynamics
-8. **Institutional Analytics Dashboard** - Smart money positioning and flow analysis
-9. **Execution Plan** - Trade setup with entry, stop-loss, and target levels
-
-**🎯 TIER 3 - STRATEGY & CONTEXT (Medium Priority):**
-10. **Options Flow Battle** - Visual call vs put analysis
-11. **Key Trading Levels** - Support, resistance, daily range
-12. **Strategy Builder** - Professional portfolio construction with risk-based allocation
-13. **Risk Management** - VaR, stress testing, correlation analysis
-
-**🎯 TIER 4 - DIAGNOSTIC & INFO (Lower Priority):**
-14. **Data Authentication Status** - Data quality monitoring and validation
-15. **Portfolio Summary** - Overview statistics and disclaimers
+This project is an institutional-grade options trading platform built with Streamlit, designed to provide real-time market data analysis, advanced options pricing, technical indicators, and alert management. It integrates with Interactive Brokers (IBKR) API for live trading data and features sophisticated options analytics including Greeks calculation, volatility analysis, and risk management tools. The platform aims to offer professional traders a powerful analytical toolkit within a clean and intuitive interface, focusing on high-priority AI predictions and live market intelligence for informed trading decisions.
 
 # User Preferences
 
@@ -42,146 +15,83 @@ UI/UX Preferences:
 # System Architecture
 
 ## Frontend Architecture
-- **Streamlit Web Application**: Single-page application with sidebar controls and main dashboard
-- **Real-time Updates**: Session state management for persistent data across user interactions
-- **Interactive Visualizations**: Plotly integration for dynamic charts and graphs
-- **Responsive Layout**: Wide layout configuration with expandable sidebar for trading controls
+- **Streamlit Web Application**: Single-page application with sidebar controls and a main dashboard for real-time updates and interactive Plotly visualizations.
+- **Responsive Layout**: Wide layout with an expandable sidebar.
 
 ## Backend Architecture
-- **Modular Component Design**: Separation of concerns across multiple specialized modules
-  - `options_engine.py`: Options pricing, Greeks calculation, and volatility analysis
-  - `market_data.py`: Real-time and historical market data fetching
-  - `technical_indicators.py`: Technical analysis calculations using TA-Lib
-  - `alerts.py`: Multi-channel notification system
-  - `utils.py`: Shared utility functions for formatting and calculations
+- **Modular Component Design**:
+  - `options_engine.py`: Options pricing, Greeks calculation, volatility analysis.
+  - `market_data.py`: Real-time and historical market data fetching.
+  - `technical_indicators.py`: Technical analysis using TA-Lib.
+  - `alerts.py`: Multi-channel notification system.
+  - `utils.py`: Shared utility functions.
 
 ## Data Processing
-- **Options Pricing Models**: Black-Scholes implementation for theoretical pricing
-- **Greeks Calculation**: Delta, Gamma, Theta, Vega, and Rho calculations
-- **Technical Analysis**: RSI, MACD, Bollinger Bands, Stochastic oscillators, and volume indicators
-- **Risk Management**: Position sizing, P&L tracking, and risk metrics
+- **Options Pricing Models**: Black-Scholes implementation.
+- **Greeks Calculation**: Delta, Gamma, Theta, Vega, Rho.
+- **Technical Analysis**: RSI, MACD, Bollinger Bands, Stochastic oscillators, volume indicators.
+- **Risk Management**: Position sizing, P&L tracking, risk metrics.
+- **AI Prediction Engine**: Master Trading Signals with 40+ advanced features (fractal analysis, Hurst exponent, market regime detection), Signal Validation, and Prediction Results Tracker.
 
 ## Real-time Data Architecture
-- **IBKR API Integration**: EClient/EWrapper pattern for live market data
-- **Caching Strategy**: 30-second cache duration for API calls to reduce latency
-- **Asynchronous Processing**: Async/await pattern for non-blocking data fetching
-- **Error Handling**: Comprehensive error management with fallback mechanisms
+- **IBKR API Integration**: EClient/EWrapper pattern for live market data.
+- **Caching Strategy**: 30-second cache duration for API calls.
+- **Asynchronous Processing**: Async/await for non-blocking data fetching.
+- **Error Handling**: Comprehensive error management with fallbacks.
+- **Data Quality Enforcement**: Zero tolerance for synthetic/fallback data, real-time authentication, and quality scoring.
+- **Web Scraping Infrastructure**: For live data from sources like Yahoo Finance, MarketWatch, CNBC, Bloomberg.
 
 ## Alert System Architecture
-- **Multi-channel Notifications**: Telegram bot integration and email alerts
-- **Alert Cooldown**: Spam prevention with 5-minute cooldown periods
-- **Alert History**: Logging and tracking of all sent notifications
-- **Configurable Triggers**: Price-based and technical indicator-based alert conditions
+- **Multi-channel Notifications**: Telegram bot integration and email alerts.
+- **Alert Cooldown**: 5-minute spam prevention.
+- **Alert History**: Logging and tracking.
+- **Configurable Triggers**: Price-based and technical indicator-based conditions.
+
+## System Design Choices
+- **Prediction Priority System**: Organizes features into Tiers 1-4 based on their importance for trading predictions (Core AI Predictions, Live Market Intelligence, Strategy & Context, Diagnostic & Info).
+- **Institutional-Grade Screener**: Advanced ML prediction model with 10 factors, professional technical analysis, risk/reward analysis, confidence scoring, and expected move predictions.
+- **Signal System Upgrade**: 6-Factor Professional Model (smart money flow, market structure, dark pool intelligence, volatility, cross-asset signals, technical confirmation), advanced ML signal fusion, Kelly Criterion integration, 5-level conviction system.
+- **Balanced Trading Strategy System**: Supports conservative, moderate, aggressive, and speculative strategies with professional position sizing.
+- **Institutional-Grade Analytics**: Gamma Exposure Engine, Institutional Flow Tracker (block trades, sweep orders, dark pool prints), advanced Greeks monitoring, High-Profit Options Chain.
 
 # External Dependencies
 
-## Multi-Broker Integration
-- **Interactive Brokers (IBKR)**: Primary institutional-grade API with TWS/Gateway integration
-- **TD Ameritrade**: REST API integration with real-time options data
-- **Charles Schwab**: Professional trading platform integration
-- **E*TRADE**: Retail broker API with options support
-- **Fidelity**: Commission-free options trading integration
-- **Robinhood**: Zero-commission retail platform
-- **Webull**: Advanced charting and options flow data
-- **Alpaca**: Stock trading API (no options support)
-- **Unified Data Engine**: Aggregates data from all connected brokers with quality scoring
+## Broker Integrations
+- **Interactive Brokers (IBKR)**: Primary institutional-grade API.
+- **TD Ameritrade**: REST API.
+- **Charles Schwab**: Professional trading platform.
+- **E*TRADE**: Retail broker API.
+- **Fidelity**: Commission-free options trading.
+- **Robinhood**: Zero-commission retail platform.
+- **Webull**: Advanced charting and options flow data.
+- **Alpaca**: Stock trading API.
+- **Unified Data Engine**: Aggregates data from connected brokers.
 
 ## Financial Data APIs
-- **Interactive Brokers API (IBKR)**: Primary source for real-time options and stock data
-- **Yahoo Finance (yfinance)**: Backup data source for historical price information
-- **Connection Requirements**: Local TWS/IB Gateway running on localhost:7497
+- **Interactive Brokers API (IBKR)**: Primary source for real-time options and stock data.
+- **Yahoo Finance (yfinance)**: Backup data source.
+- **Local TWS/IB Gateway**: Required for IBKR connection on `localhost:7497`.
 
 ## Technical Analysis Libraries
-- **TA-Lib**: Advanced technical indicator calculations
-- **SciPy**: Statistical functions for options pricing and analysis
-- **NumPy/Pandas**: Core data manipulation and numerical computing
+- **TA-Lib**: Advanced technical indicator calculations.
+- **SciPy**: Statistical functions.
+- **NumPy/Pandas**: Data manipulation and numerical computing.
 
 ## Visualization and UI
-- **Streamlit**: Web application framework with auto-refresh capabilities
-- **Plotly**: Interactive charting and visualization library
+- **Streamlit**: Web application framework.
+- **Plotly**: Interactive charting and visualization library.
 
 ## Communication Services
-- **Telegram Bot API**: Real-time alert delivery via Telegram
-- **SMTP Email**: Email-based alert system with Gmail integration
-- **Required Environment Variables**:
-  - `TELEGRAM_BOT_TOKEN`: Bot authentication token
-  - `SMTP_SERVER`, `SMTP_PORT`: Email server configuration
-  - `SENDER_EMAIL`, `SENDER_PASSWORD`: Email credentials
+- **Telegram Bot API**: For real-time alerts.
+- **SMTP Email**: For email-based alerts (requires `SMTP_SERVER`, `SMTP_PORT`, `SENDER_EMAIL`, `SENDER_PASSWORD`).
 
-## Social Trading Platform
-- **Community Data Management**: JSON-based storage for community insights and social trading data
-- **Signal Validation System**: Real-time tracking and validation of trading signals
-- **Leaderboard System**: Performance ranking and trader verification
-- **Copy Trading Integration**: Automated trader following and performance tracking
+## Social Trading Platform (Components integrated for community data)
+- **JSON-based Storage**: For community insights.
+- **Signal Validation System**: Tracking and validation of trading signals.
+- **Leaderboard System**: Performance ranking.
+- **Copy Trading Integration**: Automated trader following.
 
-## Machine Learning (Planned)
-- **TensorFlow/Keras**: Neural network models for price prediction
-- **Scikit-learn**: Random Forest and preprocessing utilities
-- **TextBlob**: Sentiment analysis for market news integration
-
-## Development and Deployment
-- **Python 3.8+**: Core runtime environment
-- **asyncio**: Asynchronous programming support
-- **Environment Variables**: Configuration management for API keys and credentials
-
-# Recent Updates (August 2025)
-
-## HIGHEST LEVEL Signal System Upgrade (August 27, 2025)
-- **REAL DATA ONLY System**: Upgraded to highest professional level - rejects all synthetic/fallback data
-- **6-Factor Professional Model**: Smart money flow (40%), market structure (25%), dark pool intelligence (15%), volatility intelligence (10%), cross-asset signals (5%), technical confirmation (5%)
-- **Advanced ML Signal Fusion**: Dynamic regime detection with machine learning-enhanced weight adjustment
-- **Kelly Criterion Integration**: Professional position sizing with Kelly fractions (0.10-0.25) 
-- **5-Level Conviction System**: MAXIMUM/HIGH/MEDIUM/LOW/NO_CONVICTION with position multipliers 0x-10x
-- **Data Quality Validation**: Real-time authentication, freshness validation, volume thresholds, quality scoring
-- **Professional Risk Matrix**: Position sizing from 0x to 10x based on conviction level with max 4% risk
-- **Institutional Thresholds**: 90%+ confidence for maximum conviction (vs 85% in previous system)
-- **Enhanced Pattern Recognition**: Block trades, sweep orders, dark pool prints with stealth positioning analysis
-- **Cross-Asset Integration**: Macro signals and intermarket correlations for institutional-grade analysis
-
-## Multi-Broker Integration & Animated Market Mood (August 27, 2025)
-- **Multi-Broker Integration**: Added comprehensive broker integration system supporting 8 major brokers (IBKR, TD Ameritrade, Schwab, E*TRADE, Fidelity, Robinhood, Webull, Alpaca)
-- **Unified Data Aggregation**: Real-time data collection and aggregation from multiple broker sources with quality indicators
-- **Broker Comparison Engine**: Automatic detection of best execution, lowest cost, and fastest data providers
-- **Animated Market Mood Indicator**: Real-time animated gauge showing market sentiment with 5-component analysis (Technical, Flow, Sentiment, Volatility, Momentum)
-- **Professional Mood Insights**: AI-generated trading insights based on current market mood (Extreme Fear to Extreme Greed scale)
-- **Visual Mood History**: Animated timeline of market mood changes with component breakdowns
-- **Enhanced Market Intelligence**: Real-time news feeds with automatic updates from Yahoo Finance and premium sources
-- **Automated Earnings Tracker**: Live earnings calendar with automatic beat/miss detection and percentage analysis
-- **Signal Alignment System**: Unified consensus indicator combining mood, sentiment, flow, and technical signals
-
-## Live Data Infrastructure Implementation (January 2025)
-- **API Bypass System**: Comprehensive web scraping infrastructure to get LIVE data from Yahoo Finance website (bypassing 15-minute API delay)
-- **Multi-Source Data Aggregation**: Real-time data from Yahoo Finance, MarketWatch, CNBC, and Bloomberg with quality indicators
-- **Data Authentication Proof**: Clear indicators showing LIVE vs DELAYED vs FALLBACK status with source attribution
-- **Cost-Effective Solution**: FREE real-time data solution vs institutional feeds costing $1,500-10,000/month
-- **Professional Risk Management**: Balanced portfolio allocation across Conservative (40%), Moderate (35%), Aggressive (20%), and Speculation (5%) strategies
-
-## Balanced Trading Strategy System
-- **Conservative Income Strategies**: 70-80% win rate targeting 25-50% returns through covered calls and cash-secured puts
-- **Moderate Growth Plays**: 50-60% win rate targeting 50-150% returns with near-ATM options
-- **Aggressive Swing Trades**: 35-45% win rate targeting 200-500% returns with OTM positions
-- **Speculation Plays**: 15-25% win rate targeting 500-2000% returns with far OTM lottery tickets
-- **Professional Position Sizing**: Account-based allocation with realistic win rates and target returns
-
-## Institutional-Grade Analytics Implementation
-- **Gamma Exposure Engine**: Live GEX levels showing dealer positioning and gamma flip points for support/resistance identification
-- **Institutional Flow Tracker**: Real-time detection of block trades (>100 contracts), sweep orders, and dark pool prints with sentiment analysis
-- **Advanced Greeks Monitoring**: Portfolio-level Delta, Gamma, Theta, Vega analysis with risk assessment and time decay tracking
-- **High-Profit Options Chain**: Comprehensive strike ladder with risk categorization from conservative to speculative
-- **Enhanced Position Sizing**: Multi-tiered approach balancing steady income with high-growth opportunities
-
-## Architecture Enhancements
-- **Real-Time Data Infrastructure**: Live web scraping bypasses with fallback mechanisms and data quality validation
-- **Professional Risk Management Module**: Comprehensive strategy generator across all risk levels with expected returns
-- **Modular Analytics Engines**: Separated gamma exposure, flow tracking, and Greeks calculation into specialized modules
-- **Beautiful UI Implementation**: Clean, professional interface with risk-level color coding and portfolio balance visualization
-
-## Zero Tolerance Data Policy Implementation (August 27, 2025)
-- **Data Quality Enforcer**: New module implementing absolute zero tolerance for synthetic, fallback, or simulated data
-- **Institutional Data Standards**: 95%+ quality scores for institutional grade, 85%+ for professional grade, automatic rejection below 70%
-- **Real-Time Authentication**: Every data point validated for authenticity with source verification and quality scoring
-- **Signal Validation Engine**: Cross-platform signal consistency checking with conflict detection and master signal hierarchy
-- **Data Infrastructure Status Dashboard**: Real-time display of data authentication status, quality scores, and rejection reasons
-- **Authentic Source Enforcement**: Only approved sources (Yahoo Finance authenticated, IBKR live, major broker APIs) accepted
-- **Signal Hierarchy System**: Trading Decision Center as master authority, Symbol Selector as supporting, Live Battle as context
-- **Quality Metrics Dashboard**: Real-time data quality monitoring with institutional-grade scoring and freshness tracking
+## Development Environment
+- **Python 3.8+**
+- **asyncio**: Asynchronous programming support.
+- **Environment Variables**: For API keys and credentials (e.g., `TELEGRAM_BOT_TOKEN`).
