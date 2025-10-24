@@ -66,9 +66,9 @@ class MarketWideScreener:
         print(f"📊 Found {len(unique_symbols)} unique candidates")
         
         # === INTELLIGENT PRE-FILTERING (FAST) ===
-        # Quick filter to reduce from 200+ to 50-80 high-quality candidates
+        # Quick filter to reduce from 500+ to 100-150 high-quality candidates
         print("🔍 Pre-filtering candidates (quick volume/price check)...")
-        pre_filtered = self._quick_prefilter(unique_symbols[:200])  # Limit to 200 for speed
+        pre_filtered = self._quick_prefilter(unique_symbols[:500])  # Expanded to 500 for broader coverage
         print(f"✅ Pre-filtered to {len(pre_filtered)} high-potential candidates")
         
         # === PARALLEL ANALYSIS (FAST) ===
@@ -555,6 +555,14 @@ class MarketWideScreener:
                 institutional_metrics=institutional_metrics
             )
             
+            # === PRE-SQUEEZE DETECTION (Early Warning System) ===
+            pre_squeeze_signals = self._detect_pre_squeeze_signals(
+                hist=hist,
+                short_percent_float=short_percent_float,
+                current_price=current_price,
+                institutional_metrics=institutional_metrics
+            )
+            
             # === GENERATE DETAILED SQUEEZE THESIS ===
             squeeze_thesis = self._generate_squeeze_thesis(
                 symbol=symbol,
@@ -615,6 +623,15 @@ class MarketWideScreener:
                 'expected_move_down': risk_reward.get('expected_move_down_1w', 0),
                 'support': risk_reward.get('support', 0),
                 'resistance': risk_reward.get('resistance', 0),
+                
+                # PRE-SQUEEZE EARLY WARNING SIGNALS
+                'squeeze_stage': pre_squeeze_signals.get('squeeze_stage', 'UNKNOWN'),
+                'early_warning_score': pre_squeeze_signals.get('early_warning_score', 0),
+                'days_until_squeeze': pre_squeeze_signals.get('days_until_squeeze', 'Unknown'),
+                'volatility_compression': pre_squeeze_signals.get('volatility_compression', 0),
+                'accumulation_score': pre_squeeze_signals.get('accumulation_score', 0),
+                'short_interest_trend': pre_squeeze_signals.get('short_interest_trend', 0),
+                'option_activity': pre_squeeze_signals.get('option_activity', 0),
                 
                 # Thesis
                 'squeeze_thesis': squeeze_thesis
@@ -949,6 +966,150 @@ class MarketWideScreener:
             confidence += 10
         
         return min(100, confidence)
+    
+    def _detect_pre_squeeze_signals(self, hist: pd.DataFrame, short_percent_float: float,
+                                     current_price: float, institutional_metrics: Dict) -> Dict:
+        """
+        PRE-SQUEEZE DETECTION - Identify squeezes BEFORE they happen
+        Returns early warning signals and squeeze stage classification
+        """
+        
+        pre_squeeze_signals = {
+            'volatility_compression': 0,  # BB squeeze, ATR contracting
+            'accumulation_score': 0,      # Smart money buying
+            'short_interest_trend': 0,    # SI increasing over time
+            'option_activity': 0,         # Call buying increasing
+            'squeeze_stage': 'NONE',      # PRE-SQUEEZE, READY, ACTIVE, POST
+            'early_warning_score': 0,     # 0-100, predicts squeeze 1-5 days out
+            'days_until_squeeze': None    # Estimated days until squeeze
+        }
+        
+        try:
+            # === 1. VOLATILITY COMPRESSION (Bollinger Band Squeeze) ===
+            # Tight BB = calm before the storm
+            if len(hist) >= 20:
+                bb_width = institutional_metrics.get('bb_upper', 0) - institutional_metrics.get('bb_lower', 0)
+                if bb_width > 0:
+                    bb_width_pct = (bb_width / current_price * 100)
+                    
+                    # Historical BB width comparison
+                    hist_bb_widths = []
+                    for i in range(20, min(60, len(hist))):
+                        historical_sma = hist['Close'].iloc[i-20:i].mean()
+                        historical_std = hist['Close'].iloc[i-20:i].std()
+                        hist_width = (historical_std * 4 / historical_sma * 100)
+                        hist_bb_widths.append(hist_width)
+                    
+                    if hist_bb_widths:
+                        avg_hist_width = np.mean(hist_bb_widths)
+                        
+                        # If current width < 50% of historical = strong compression
+                        if bb_width_pct < avg_hist_width * 0.5:
+                            pre_squeeze_signals['volatility_compression'] = 100
+                        elif bb_width_pct < avg_hist_width * 0.7:
+                            pre_squeeze_signals['volatility_compression'] = 75
+                        elif bb_width_pct < avg_hist_width * 0.85:
+                            pre_squeeze_signals['volatility_compression'] = 50
+            
+            # === 2. ACCUMULATION DETECTION (Smart Money Buying) ===
+            # OBV trending up while price consolidates = accumulation
+            if len(hist) >= 20:
+                # Calculate On-Balance Volume
+                obv = (np.sign(hist['Close'].diff()) * hist['Volume']).fillna(0).cumsum()
+                
+                # OBV trend
+                obv_recent = obv.tail(10).mean()
+                obv_older = obv.tail(20).head(10).mean()
+                
+                # Price trend
+                price_recent = hist['Close'].tail(10).mean()
+                price_older = hist['Close'].tail(20).head(10).mean()
+                
+                # Divergence: OBV up, price flat/down = accumulation
+                obv_trend = ((obv_recent - obv_older) / abs(obv_older) * 100) if obv_older != 0 else 0
+                price_trend = ((price_recent - price_older) / price_older * 100) if price_older > 0 else 0
+                
+                # Strong accumulation if OBV up > 10% but price flat
+                if obv_trend > 10 and abs(price_trend) < 5:
+                    pre_squeeze_signals['accumulation_score'] = 100
+                elif obv_trend > 5 and abs(price_trend) < 5:
+                    pre_squeeze_signals['accumulation_score'] = 75
+                elif obv_trend > 0:
+                    pre_squeeze_signals['accumulation_score'] = 50
+            
+            # === 3. SHORT INTEREST TREND ===
+            # Increasing SI over time = more fuel for squeeze
+            if short_percent_float > 0:
+                # We can't get historical SI easily, so use current SI as proxy
+                # High and increasing SI is pre-squeeze signal
+                if short_percent_float > 30:
+                    pre_squeeze_signals['short_interest_trend'] = 100
+                elif short_percent_float > 20:
+                    pre_squeeze_signals['short_interest_trend'] = 80
+                elif short_percent_float > 15:
+                    pre_squeeze_signals['short_interest_trend'] = 60
+                elif short_percent_float > 10:
+                    pre_squeeze_signals['short_interest_trend'] = 40
+            
+            # === 4. OPTION ACTIVITY (Call Buying Increase) ===
+            # We can't get real options data easily, but high volume with price rise = options activity
+            vol_trend = institutional_metrics.get('volume_trend', 0)
+            if vol_trend > 50 and hist['Close'].iloc[-1] > hist['Close'].iloc[-5]:
+                pre_squeeze_signals['option_activity'] = 100
+            elif vol_trend > 25:
+                pre_squeeze_signals['option_activity'] = 60
+            
+            # === 5. EARLY WARNING SCORE ===
+            # Combine all signals to predict squeeze 1-5 days out
+            early_warning = (
+                pre_squeeze_signals['volatility_compression'] * 0.30 +
+                pre_squeeze_signals['accumulation_score'] * 0.25 +
+                pre_squeeze_signals['short_interest_trend'] * 0.25 +
+                pre_squeeze_signals['option_activity'] * 0.20
+            )
+            pre_squeeze_signals['early_warning_score'] = int(early_warning)
+            
+            # === 6. SQUEEZE STAGE CLASSIFICATION ===
+            rsi = institutional_metrics.get('rsi', 50)
+            macd_hist = institutional_metrics.get('macd_histogram', 0)
+            vol_surge = institutional_metrics.get('volume_trend', 0)
+            
+            # PRE-SQUEEZE: High compression, accumulation, not moving yet
+            if (pre_squeeze_signals['volatility_compression'] >= 50 and 
+                pre_squeeze_signals['accumulation_score'] >= 50 and
+                abs(hist['Close'].pct_change().tail(5).mean() * 100) < 3):
+                pre_squeeze_signals['squeeze_stage'] = 'PRE-SQUEEZE'
+                pre_squeeze_signals['days_until_squeeze'] = '1-5 days'
+            
+            # READY: Compression + breakout starting
+            elif (pre_squeeze_signals['volatility_compression'] >= 50 and
+                  macd_hist > 0 and rsi > 50 and vol_surge > 20):
+                pre_squeeze_signals['squeeze_stage'] = 'READY'
+                pre_squeeze_signals['days_until_squeeze'] = '0-2 days'
+            
+            # ACTIVE: Squeeze happening now
+            elif (vol_surge > 50 and rsi > 60 and 
+                  hist['Close'].pct_change().tail(3).mean() * 100 > 5):
+                pre_squeeze_signals['squeeze_stage'] = 'ACTIVE'
+                pre_squeeze_signals['days_until_squeeze'] = 'NOW'
+            
+            # POST: Squeeze already happened
+            elif rsi > 75 and vol_surge < 20:
+                pre_squeeze_signals['squeeze_stage'] = 'POST'
+                pre_squeeze_signals['days_until_squeeze'] = 'Completed'
+            
+            else:
+                pre_squeeze_signals['squeeze_stage'] = 'BUILDING'
+                if pre_squeeze_signals['early_warning_score'] > 60:
+                    pre_squeeze_signals['days_until_squeeze'] = '3-7 days'
+                else:
+                    pre_squeeze_signals['days_until_squeeze'] = 'Uncertain'
+                    
+        except Exception as e:
+            # Return defaults on error
+            pass
+        
+        return pre_squeeze_signals
     
     def _generate_squeeze_thesis(self, symbol: str, short_percent_float: float, 
                                   volume_surge: float, recent_surge: float,

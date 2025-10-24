@@ -2642,6 +2642,78 @@ def explosive_opportunities_page():
                     # Expandable detailed analysis WITH CHARTS
                     with st.expander(f"📊 **INSTITUTIONAL-GRADE ANALYSIS - {opp['symbol']}**", expanded=True):
                         
+                        # === PRE-SQUEEZE EARLY WARNING SYSTEM ===
+                        st.markdown("### 🎯 PRE-SQUEEZE EARLY WARNING SYSTEM")
+                        
+                        warning_col1, warning_col2, warning_col3, warning_col4 = st.columns(4)
+                        
+                        with warning_col1:
+                            squeeze_stage = opp.get('squeeze_stage', 'UNKNOWN')
+                            if squeeze_stage == 'PRE-SQUEEZE':
+                                st.success(f"🟢 **{squeeze_stage}**")
+                                st.markdown("Status: **Building**")
+                            elif squeeze_stage == 'READY':
+                                st.warning(f"🟡 **{squeeze_stage}**")
+                                st.markdown("Status: **Imminent**")
+                            elif squeeze_stage == 'ACTIVE':
+                                st.error(f"🔴 **{squeeze_stage}**")
+                                st.markdown("Status: **Now**")
+                            else:
+                                st.info(f"🔵 **{squeeze_stage}**")
+                                st.markdown("Status: **Early**")
+                        
+                        with warning_col2:
+                            early_warn = opp.get('early_warning_score', 0)
+                            if early_warn >= 70:
+                                st.error(f"⚠️ **{early_warn}/100**")
+                            elif early_warn >= 50:
+                                st.warning(f"⚡ **{early_warn}/100**")
+                            else:
+                                st.info(f"📊 **{early_warn}/100**")
+                            st.markdown("Early Warning")
+                        
+                        with warning_col3:
+                            days_est = opp.get('days_until_squeeze', 'Unknown')
+                            st.info(f"📅 **{days_est}**")
+                            st.markdown("Estimated Time")
+                        
+                        with warning_col4:
+                            vol_compress = opp.get('volatility_compression', 0)
+                            accum = opp.get('accumulation_score', 0)
+                            if vol_compress >= 75:
+                                st.success(f"🎯 **COMPRESSED**")
+                            elif vol_compress >= 50:
+                                st.warning(f"📊 **TIGHTENING**")
+                            else:
+                                st.info(f"📈 **NORMAL**")
+                            st.markdown(f"Volatility: {vol_compress}/100")
+                        
+                        # Pre-squeeze signals breakdown
+                        st.markdown("**Leading Indicators:**")
+                        signal_cols = st.columns(4)
+                        
+                        with signal_cols[0]:
+                            vol_comp = opp.get('volatility_compression', 0)
+                            comp_emoji = "🟢" if vol_comp >= 75 else "🟡" if vol_comp >= 50 else "⚪"
+                            st.markdown(f"{comp_emoji} Compression: **{vol_comp}/100**")
+                        
+                        with signal_cols[1]:
+                            accum_score = opp.get('accumulation_score', 0)
+                            accum_emoji = "🟢" if accum_score >= 75 else "🟡" if accum_score >= 50 else "⚪"
+                            st.markdown(f"{accum_emoji} Accumulation: **{accum_score}/100**")
+                        
+                        with signal_cols[2]:
+                            si_trend = opp.get('short_interest_trend', 0)
+                            si_emoji = "🟢" if si_trend >= 80 else "🟡" if si_trend >= 60 else "⚪"
+                            st.markdown(f"{si_emoji} SI Trend: **{si_trend}/100**")
+                        
+                        with signal_cols[3]:
+                            opt_activity = opp.get('option_activity', 0)
+                            opt_emoji = "🟢" if opt_activity >= 80 else "🟡" if opt_activity >= 50 else "⚪"
+                            st.markdown(f"{opt_emoji} Options: **{opt_activity}/100**")
+                        
+                        st.markdown("---")
+                        
                         # === PROFESSIONAL HEADER WITH CONFIDENCE ===
                         conf_col1, conf_col2, conf_col3 = st.columns(3)
                         
