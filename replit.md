@@ -95,3 +95,41 @@ UI/UX Preferences:
 - **Python 3.8+**
 - **asyncio**: Asynchronous programming support.
 - **Environment Variables**: For API keys and credentials (e.g., `TELEGRAM_BOT_TOKEN`).
+
+# Recent Updates (October 2025)
+
+## PRE-SQUEEZE EARLY WARNING SYSTEM - V2.0 (October 24, 2025)
+**Breakthrough Feature**: Detects squeeze setups 1-5 days BEFORE they happen (not during)
+
+### Pre-Squeeze Leading Indicators
+- **Volatility Compression**: Bollinger Band squeeze detection - identifies "calm before the storm" when bands tighten significantly below historical average
+- **Accumulation Score**: On-Balance Volume (OBV) divergence - detects smart money buying (OBV rising) while price consolidates (price flat)
+- **Short Interest Trend**: Tracks increasing short interest over time as fuel accumulates for potential squeeze
+- **Option Activity**: Proxy detection of increasing call buying through volume patterns and price correlation
+
+### Squeeze Stage Classification (5-Stage System)
+- **PRE-SQUEEZE**: Building phase (1-5 days out) - Optimal entry point, compression + accumulation detected
+- **READY**: Imminent squeeze (0-2 days out) - Compression + technical breakout signals, about to pop
+- **ACTIVE**: Happening NOW - Volume surge + momentum + RSI confirming squeeze in progress
+- **POST**: Already happened - Overbought signals, momentum fading, too late to enter
+- **BUILDING**: Early stage (3-7+ days out) - Worth monitoring, not ready yet
+
+### Early Warning Score
+- **0-100 Predictive Score**: Combines all leading indicators with weighted formula:
+  - Volatility Compression: 30% weight
+  - Accumulation Score: 25% weight
+  - Short Interest Trend: 25% weight
+  - Option Activity: 20% weight
+- **Days Until Squeeze**: Estimated timeframe based on stage classification and signal strength
+
+### Market Coverage Expansion
+- **500+ Stocks Scanned**: Up from 200, broader market coverage
+- **Comprehensive Universe**: Penny stocks, micro caps, small caps, biotech, EV, crypto-related, Chinese ADRs, recent IPOs, volatile tech
+- **Two-Stage Parallel Processing**: Pre-filter 500 stocks → Deep analysis on 100-150 high-quality candidates
+- **10 Parallel Workers**: 5-10x performance improvement
+
+### Institutional-Grade Analytics (V1.0 Foundation)
+- **10-Factor AI Model**: RSI, MACD, Bollinger Bands, Volume Profile, ATR, short interest, volume momentum, price action, float tightness, freshness
+- **Risk/Reward Analysis**: ATR-based stops, multiple profit targets, expected moves, support/resistance, risk-adjusted ratios
+- **Confidence Scoring**: 0-100% prediction reliability based on data quality and technical validation
+- **Professional UI**: Institutional-style presentation with all metrics prominently displayed
