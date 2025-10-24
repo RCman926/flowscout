@@ -131,15 +131,8 @@ def options_trading_page():
             st.session_state.auto_refresh_enabled = auto_enabled
             # No st.rerun() - seamless state change
         
-        # Seamless status display - no visual disruption
-        if st.session_state.auto_refresh_enabled:
-            st.caption("⚡ Seamless updates: 5s intervals")
-            st.caption(f"🚀 Mode: PROFESSIONAL TRADING")
-        else:
-            st.caption("⏸️ Seamless updates: PAUSED")
-            st.caption(f"📊 Mode: MANUAL ONLY")
-        
-        st.caption(f"🔄 Live updates: {st.session_state.refresh_count}")
+        # Reduced clutter - minimal status only
+        st.caption(f"🔄 Updates: {st.session_state.refresh_count}")
         
         # === SIGNIFICANT MARKET NEWS ONLY ===
         st.markdown("### 📰 Market News")
@@ -261,12 +254,9 @@ def options_trading_page():
         # === LIVE STATUS ===
         st.markdown("### 📡 LIVE STATUS")
         if st.session_state.auto_refresh_enabled:
-            st.success("🟢 Seamless Updates: ACTIVE")
+            st.success("🟢 Live Updates: ACTIVE")
         else:
-            st.warning("🟡 Seamless Updates: PAUSED")
-        st.success("🟢 Market Data: LIVE")
-        st.success("🟢 Options Flow: STREAMING")
-        st.info("⚡ Mode: NO-FLASH TRADING")
+            st.warning("🟡 Updates: PAUSED")
     
     # Get selected symbol
     selected_symbol = st.session_state.get('selected_symbol', 'SPY')
@@ -372,31 +362,8 @@ def options_trading_page():
             st.caption(f"🔄 Freshness: {data_freshness}")
     
     with refresh_cols[1]:
-        # Seamless performance status display
-        if st.session_state.get('auto_refresh_enabled', True):
-            st.caption("⚡ Seamless: 5s intervals ⚡")
-            
-            # Show optimization stats seamlessly
-            if st.session_state.get('optimization_started', False):
-                try:
-                    opt_stats = get_optimization_dashboard_stats()
-                    cache_hit_rate = opt_stats['cache_performance']['hit_rate_percent']
-                    st.caption(f"🎯 Cache: {cache_hit_rate:.1f}%")
-                except:
-                    pass
-        else:
-            st.caption("⏸️ Seamless: PAUSED")
-            
-        # Data flow diagnostics for debugging
-        flow_quality = flow_data.get('quality_score', 0) if flow_data else 0
-        tech_quality = tech_data.get('quality_score', 0) if tech_data else 0
-        
-        if flow_quality > 70 and tech_quality > 70:
-            st.caption("✅ All systems: OPERATIONAL")
-        elif flow_quality > 50 or tech_quality > 50:
-            st.caption("⚠️ Partial data: DEGRADED")
-        else:
-            st.caption("❌ Data systems: ERROR")
+        # Minimal status - removed clutter per user request
+        pass
     
     # === SYMBOL SELECTOR ===
     st.markdown("---")
