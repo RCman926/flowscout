@@ -2,6 +2,8 @@
 Market-Wide Explosive Opportunity Screener
 Scans the entire market for high short interest squeeze candidates
 Focus: Small caps, OTC stocks, and real explosive potential plays
+UPGRADED WITH: Real SI data, options flow, borrow rates, dark pools, float rotation, 
+historical win rate, catalysts, social sentiment
 """
 
 import yfinance as yf
@@ -16,6 +18,14 @@ import warnings
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import json
 warnings.filterwarnings('ignore')
+
+# Import advanced data sources
+try:
+    from advanced_data_sources import advanced_data
+    ADVANCED_DATA_AVAILABLE = True
+except ImportError:
+    ADVANCED_DATA_AVAILABLE = False
+    print("⚠️ Advanced data sources not available - using basic mode")
 
 
 class MarketWideScreener:
@@ -563,6 +573,46 @@ class MarketWideScreener:
                 institutional_metrics=institutional_metrics
             )
             
+            # === ADVANCED INSTITUTIONAL DATA (8 NEW FEATURES) ===
+            # Initialize with empty data
+            real_si_data = {}
+            options_flow = {}
+            borrow_rate_data = {}
+            dark_pool_data = {}
+            float_rotation_data = {}
+            win_rate_data = {}
+            catalyst_data = {}
+            sentiment_data = {}
+            
+            if ADVANCED_DATA_AVAILABLE:
+                try:
+                    # 1. Real Short Interest Data
+                    real_si_data = advanced_data.get_real_short_interest(symbol)
+                    
+                    # 2. Real Options Flow
+                    options_flow = advanced_data.get_options_flow_data(symbol)
+                    
+                    # 3. Borrow Rate
+                    borrow_rate_data = advanced_data.get_borrow_rate(symbol)
+                    
+                    # 4. Dark Pool Detection
+                    dark_pool_data = advanced_data.detect_dark_pool_activity(symbol)
+                    
+                    # 5. Float Rotation
+                    float_rotation_data = advanced_data.analyze_float_rotation(symbol)
+                    
+                    # 6. Historical Win Rate
+                    win_rate_data = advanced_data.calculate_historical_win_rate(symbol)
+                    
+                    # 7. Upcoming Catalysts
+                    catalyst_data = advanced_data.get_upcoming_catalysts(symbol)
+                    
+                    # 8. Social Sentiment
+                    sentiment_data = advanced_data.get_social_sentiment(symbol)
+                    
+                except Exception as e:
+                    print(f"⚠️ Advanced data fetch failed for {symbol}: {e}")
+            
             # === GENERATE DETAILED SQUEEZE THESIS ===
             squeeze_thesis = self._generate_squeeze_thesis(
                 symbol=symbol,
@@ -632,6 +682,51 @@ class MarketWideScreener:
                 'accumulation_score': pre_squeeze_signals.get('accumulation_score', 0),
                 'short_interest_trend': pre_squeeze_signals.get('short_interest_trend', 0),
                 'option_activity': pre_squeeze_signals.get('option_activity', 0),
+                
+                # ADVANCED FEATURE 1: REAL SHORT INTEREST
+                'real_si_data_source': real_si_data.get('data_source', 'unavailable'),
+                'real_short_float': real_si_data.get('short_percent_float', 0),
+                'real_short_ratio': real_si_data.get('short_ratio', 0),
+                
+                # ADVANCED FEATURE 2: OPTIONS FLOW
+                'unusual_options_activity': options_flow.get('unusual_activity_score', 0),
+                'unusual_call_buying': options_flow.get('unusual_call_buying', False),
+                'sweep_orders': options_flow.get('sweep_orders_detected', 0),
+                'put_call_ratio': options_flow.get('put_call_ratio', 1),
+                
+                # ADVANCED FEATURE 3: BORROW RATE
+                'borrow_rate': borrow_rate_data.get('estimated_borrow_rate', 0),
+                'borrow_difficulty': borrow_rate_data.get('borrow_difficulty', 'UNKNOWN'),
+                
+                # ADVANCED FEATURE 4: DARK POOL
+                'dark_pool_score': dark_pool_data.get('dark_pool_score', 0),
+                'institutional_accumulation': dark_pool_data.get('accumulation_pattern', False),
+                'unusual_block_trades': dark_pool_data.get('unusual_block_trades', 0),
+                
+                # ADVANCED FEATURE 5: FLOAT ROTATION
+                'float_rotation_5d': float_rotation_data.get('rotation_rate_5d', 0),
+                'entire_float_trading': float_rotation_data.get('entire_float_trading', False),
+                'days_to_trade_float': float_rotation_data.get('days_to_trade_float', 999),
+                
+                # ADVANCED FEATURE 6: HISTORICAL WIN RATE
+                'historical_win_rate': win_rate_data.get('win_rate', 0),
+                'avg_historical_gain': win_rate_data.get('avg_gain_percent', 0),
+                'pattern_success_count': win_rate_data.get('success_count', 0),
+                'total_patterns_found': win_rate_data.get('total_patterns', 0),
+                'win_rate_confidence': win_rate_data.get('confidence_level', 'UNKNOWN'),
+                
+                # ADVANCED FEATURE 7: CATALYSTS
+                'catalyst_score': catalyst_data.get('catalyst_score', 0),
+                'has_upcoming_catalyst': catalyst_data.get('has_upcoming_catalyst', False),
+                'next_catalyst': catalyst_data.get('next_catalyst', None),
+                'days_until_catalyst': catalyst_data.get('days_until_catalyst', 999),
+                
+                # ADVANCED FEATURE 8: SOCIAL SENTIMENT
+                'social_sentiment_score': sentiment_data.get('sentiment_score', 0),
+                'social_buzz_level': sentiment_data.get('buzz_level', 'LOW'),
+                'is_trending': sentiment_data.get('is_trending', False),
+                'wsb_candidate': sentiment_data.get('wsb_candidate', False),
+                'retail_interest': sentiment_data.get('retail_interest', 'LOW'),
                 
                 # Thesis
                 'squeeze_thesis': squeeze_thesis
