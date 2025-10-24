@@ -2560,11 +2560,24 @@ def explosive_opportunities_page():
                     try:
                         ticker = yf.Ticker(opp['symbol'])
                         info = ticker.info
+                        
+                        # Get extended hours data including overnight (8pm-4am)
+                        hist_extended = ticker.history(period='1d', interval='1h', prepost=True)
+                        
+                        # Get most recent price from extended hours (could be overnight)
+                        latest_price = None
+                        latest_time = None
+                        if not hist_extended.empty:
+                            latest_price = hist_extended['Close'].iloc[-1]
+                            latest_time = hist_extended.index[-1]
+                        
                         aftermarket_data = {
                             'postMarketPrice': info.get('postMarketPrice'),
                             'postMarketChange': info.get('postMarketChange'),
                             'postMarketChangePercent': info.get('postMarketChangePercent'),
-                            'preMarketPrice': info.get('preMarketPrice')
+                            'preMarketPrice': info.get('preMarketPrice'),
+                            'overnightPrice': latest_price,  # Most recent extended hours price
+                            'overnightTime': latest_time
                         }
                         st.session_state.aftermarket_cache[opp['symbol']] = aftermarket_data
                     except:
@@ -2598,14 +2611,32 @@ def explosive_opportunities_page():
                         else:
                             cap_display = f"${market_cap/1_000_000_000:.0f}B"
                         
-                        # Show current price with aftermarket context
+                        # Show current price with aftermarket/overnight context
                         current_price = opp['price']
                         post_price = aftermarket.get('postMarketPrice')
                         post_change_pct = aftermarket.get('postMarketChangePercent')
                         pre_price = aftermarket.get('preMarketPrice')
+                        overnight_price = aftermarket.get('overnightPrice')
+                        overnight_time = aftermarket.get('overnightTime')
                         
-                        # Display header with session info
-                        if post_price and post_price > 0:
+                        # Determine most recent price and session
+                        if overnight_price and overnight_time:
+                            # Check if overnight price is from actual overnight hours (8pm-4am)
+                            hour = overnight_time.hour
+                            if (hour >= 20 or hour < 4):  # 8pm-4am = overnight
+                                session_label = f"🌑 Overnight ({overnight_time.strftime('%I:%M %p')})"
+                                display_price = overnight_price
+                                change_pct = ((overnight_price - current_price) / current_price * 100) if current_price > 0 else 0
+                                change_emoji = "🟢" if change_pct > 0 else "🔴"
+                                st.markdown(f"### {score_color} **{opp['symbol']}** - ${current_price:.2f} | {session_label}: ${display_price:.2f} {change_emoji} ({change_pct:+.1f}%)")
+                            elif post_price and post_price > 0:
+                                change_emoji = "🟢" if post_change_pct > 0 else "🔴"
+                                st.markdown(f"### {score_color} **{opp['symbol']}** - ${current_price:.2f} | 🌙 After-Hours: ${post_price:.2f} {change_emoji} ({post_change_pct:+.1f}%)")
+                            elif pre_price and pre_price > 0:
+                                st.markdown(f"### {score_color} **{opp['symbol']}** - ${current_price:.2f} | 🌅 Pre-Market: ${pre_price:.2f}")
+                            else:
+                                st.markdown(f"### {score_color} **{opp['symbol']}** - ${current_price:.2f}")
+                        elif post_price and post_price > 0:
                             change_emoji = "🟢" if post_change_pct > 0 else "🔴"
                             st.markdown(f"### {score_color} **{opp['symbol']}** - ${current_price:.2f} | 🌙 After-Hours: ${post_price:.2f} {change_emoji} ({post_change_pct:+.1f}%)")
                         elif pre_price and pre_price > 0:
@@ -2762,9 +2793,22 @@ def explosive_opportunities_page():
                         # === BUY-IN RECOMMENDATION ===
                         st.markdown("### 💰 Entry Strategy")
                         
-                        # Use aftermarket price if available, otherwise regular close
-                        reference_price = post_price if (post_price and post_price > 0) else price
-                        price_label = "After-Hours" if (post_price and post_price > 0) else "Close"
+                        # Use most recent price (overnight > pre-market > after-hours > close)
+                        reference_price = price
+                        price_label = "Close"
+                        
+                        if overnight_price and overnight_time:
+                            hour = overnight_time.hour
+                            if (hour >= 20 or hour < 4):  # Overnight session
+                                reference_price = overnight_price
+                                price_label = f"Overnight ({overnight_time.strftime('%I:%M %p')})"
+                        
+                        if pre_price and pre_price > 0 and price_label == "Close":
+                            reference_price = pre_price
+                            price_label = "Pre-Market"
+                        elif post_price and post_price > 0 and price_label == "Close":
+                            reference_price = post_price
+                            price_label = "After-Hours"
                         
                         support_level = opp.get('recent_support', 0)
                         resistance_level = opp.get('recent_resistance', 0)
