@@ -646,24 +646,30 @@ def options_trading_page():
         # Update price display seamlessly
         seamless_updater.update_price_display('price_metric', market_data)
         
-        # Add pre/after market pricing display
-        # Calculate estimated pre/after market prices (would come from real data in production)
-        premarket_price = current_price * (1 + (change_pct * 0.3) / 100)  # Partial of daily move
-        aftermarket_price = current_price * (1 + (change_pct * 0.15) / 100)  # Smaller extension
-        
-        # Show pre/after market data in smaller text
-        market_status = "MARKET OPEN" if datetime.now().weekday() < 5 and 9 <= datetime.now().hour <= 16 else "OVERNIGHT"
-        
-        if market_status == "MARKET OPEN":
-            if current_price > 0:
-                st.caption(f"Pre-market: ${premarket_price:.2f} ({(premarket_price-current_price)/current_price*100:+.1f}%)")
+        # Add REAL extended hours pricing (pre-market, after-hours, overnight)
+        try:
+            from extended_hours_tracker import ExtendedHoursTracker
+            ext_tracker = ExtendedHoursTracker()
+            ext_data = ext_tracker.get_extended_hours_data(selected_symbol)
+            
+            if ext_data['extended_hours_active']:
+                ext_price = ext_data['current_price']
+                ext_change = ext_data['extended_hours_change']
+                ext_type = ext_data['extended_hours_type']
+                
+                # Display based on session type
+                if ext_type == 'OVERNIGHT':
+                    st.caption(f"🌑 Overnight: ${ext_price:.2f} ({ext_change:+.1f}%)")
+                elif ext_type == 'AFTER_HOURS':
+                    st.caption(f"🌙 After-Hours: ${ext_price:.2f} ({ext_change:+.1f}%)")
+                elif ext_type == 'PRE_MARKET':
+                    st.caption(f"🌅 Pre-Market: ${ext_price:.2f} ({ext_change:+.1f}%)")
             else:
-                st.caption(f"Pre-market: ${premarket_price:.2f}")
-        else:
-            if current_price > 0:
-                st.caption(f"After-hours: ${aftermarket_price:.2f} ({(aftermarket_price-current_price)/current_price*100:+.1f}%)")
-            else:
-                st.caption(f"After-hours: ${aftermarket_price:.2f}")
+                # Market closed, no extended hours data
+                st.caption(f"📊 Last Close: ${current_price:.2f}")
+        except Exception as ext_error:
+            # Fallback to regular price
+            st.caption(f"📊 Price: ${current_price:.2f}")
     
     with overview_cols[1]:
         avg_volume = market_data.get('avg_volume', market_data.get('volume', 1000000))
@@ -3363,66 +3369,124 @@ def personalized_watchlists_page():
     tab1, tab2, tab3, tab4 = st.tabs(["📋 My Watchlists", "🚨 Price Alerts", "⚙️ Manage", "🔔 Notifications"])
     
     with tab1:
-        st.markdown("### 📋 **MY WATCHLISTS**")
+        st.markdown("### 📋 **MY CURRENT POSITIONS - FULL ANALYSIS**")
         
         if not watchlists:
             st.info("🎯 No watchlists yet. Create your first watchlist in the 'Manage' tab!")
         else:
-            # Display watchlists
-            for watchlist_name, watchlist_data in watchlists.items():
-                with st.expander(f"📋 **{watchlist_name}** ({len(watchlist_data['symbols'])} symbols)", expanded=True):
+            # Initialize market screener for full analysis
+            if 'market_screener' not in st.session_state:
+                from market_wide_screener import MarketWideScreener
+                st.session_state.market_screener = MarketWideScreener()
+            
+            market_screener = st.session_state.market_screener
+            
+            # Get all symbols from watchlists
+            all_symbols = []
+            for wl in watchlists.values():
+                all_symbols.extend(wl['symbols'])
+            
+            if all_symbols:
+                st.info(f"📊 Running full squeeze analysis on {len(all_symbols)} stocks...")
+                
+                # Run full analysis on watchlist symbols
+                with st.spinner("Analyzing your positions..."):
+                    opportunities = []
+                    for symbol in all_symbols:
+                        try:
+                            analysis = market_screener._analyze_single_stock(symbol)
+                            if analysis:
+                                opportunities.append(analysis)
+                        except Exception as e:
+                            st.warning(f"Could not analyze {symbol}: {e}")
+                
+                if opportunities:
+                    # Sort by squeeze score
+                    opportunities.sort(key=lambda x: x.get('squeeze_score', 0), reverse=True)
                     
-                    if not watchlist_data['symbols']:
-                        st.info("No symbols in this watchlist")
-                        continue
-                    
-                    # Get real-time prices
-                    prices = watchlist_manager.get_real_time_prices(watchlist_data['symbols'])
-                    
-                    # Performance summary
-                    performance = watchlist_manager.get_watchlist_performance(watchlist_name)
-                    if performance:
-                        perf_col1, perf_col2, perf_col3, perf_col4 = st.columns(4)
-                        
-                        with perf_col1:
-                            st.metric("Performance", f"{performance['avg_change_percent']:+.2f}%")
-                        with perf_col2:
-                            st.metric("Grade", performance['performance_grade'])
-                        with perf_col3:
-                            st.metric("Winners", f"{performance['winning_stocks']}/{performance['total_symbols']}")
-                        with perf_col4:
-                            st.metric("Total Volume", f"{performance['total_volume']:,}")
-                    
-                    # Stock table
-                    stock_data = []
-                    for symbol in watchlist_data['symbols']:
-                        if symbol in prices:
-                            price_info = prices[symbol]
-                            stock_data.append({
-                                'Symbol': symbol,
-                                'Price': f"${price_info.get('current_price', 0):.2f}",
-                                'Change': f"{price_info.get('change', 0):+.2f}",
-                                'Change %': f"{price_info.get('change_percent', 0):+.2f}%",
-                                'Volume': f"{price_info.get('volume', 0):,}",
-                                'Status': '🟢' if price_info.get('change', 0) > 0 else '🔴' if price_info.get('change', 0) < 0 else '⚪'
-                            })
-                        else:
-                            stock_data.append({
-                                'Symbol': symbol,
-                                'Price': "Loading...",
-                                'Change': "-",
-                                'Change %': "-", 
-                                'Volume': "-",
-                                'Status': '⚪'
-                            })
-                    
-                    if stock_data:
-                        df = pd.DataFrame(stock_data)
-                        st.dataframe(df, hide_index=True, use_container_width=True)
-                    
-                    # Description
-                    if watchlist_data.get('description'):
-                        st.caption(f"📝 {watchlist_data['description']}")
+                    # Display each stock with full analysis (same as market scanner)
+                    for i, opp in enumerate(opportunities):
+                        with st.container():
+                            st.markdown("---")
+                            
+                            # Display full analysis (copy from market scanner display logic)
+                            symbol = opp['symbol']
+                            score = opp['squeeze_score']
+                            price = opp['price']
+                            
+                            # Header
+                            score_emoji = "🚀" if score >= 80 else "⚡" if score >= 70 else "📈"
+                            st.markdown(f"## {score_emoji} **{symbol}** - ${price:.2f}")
+                            st.markdown(f"**{opp.get('company_name', symbol)}** | Market Cap: ${opp['market_cap']/1_000_000:.0f}M")
+                            
+                            # Key metrics
+                            met_col1, met_col2, met_col3, met_col4 = st.columns(4)
+                            
+                            with met_col1:
+                                st.metric("Squeeze Score", f"{score:.0f}/100")
+                            with met_col2:
+                                prob = opp.get('squeeze_probability', 0)
+                                st.metric("AI Probability", f"{prob:.0f}%")
+                            with met_col3:
+                                si = opp.get('real_short_float', 0)
+                                st.metric("Short Interest", f"{si:.1f}%")
+                            with met_col4:
+                                rr = opp.get('risk_reward_ratio', 0)
+                                st.metric("Risk/Reward", f"{rr:.1f}:1")
+                            
+                            # Support/Resistance
+                            st.markdown("**📊 Key Levels:**")
+                            level_col1, level_col2, level_col3 = st.columns(3)
+                            
+                            with level_col1:
+                                support = opp.get('recent_support', 0)
+                                st.markdown(f"**Support:** ${support:.2f}")
+                            with level_col2:
+                                resistance = opp.get('recent_resistance', 0)
+                                st.markdown(f"**Resistance:** ${resistance:.2f}")
+                            with level_col3:
+                                stop = opp.get('stop_loss', 0)
+                                st.markdown(f"**Stop Loss:** ${stop:.2f}")
+                            
+                            # Entry strategy
+                            st.markdown("**💰 Entry Strategy:**")
+                            ideal = opp.get('buy_in_ideal', 0)
+                            low = opp.get('buy_in_low', 0)
+                            high = opp.get('buy_in_high', 0)
+                            rationale = opp.get('buy_rationale', '')
+                            
+                            st.markdown(f"**Ideal Entry:** ${ideal:.2f}")
+                            st.markdown(f"**Buy Zone:** ${low:.2f} - ${high:.2f}")
+                            st.caption(f"{rationale}")
+                            
+                            # Targets
+                            st.markdown("**🎯 Price Targets:**")
+                            t1 = opp.get('target_1', 0)
+                            t2 = opp.get('target_2', 0)
+                            t3 = opp.get('target_3', 0)
+                            st.markdown(f"• Target 1: ${t1:.2f} (+{((t1-price)/price*100):.0f}%)")
+                            st.markdown(f"• Target 2: ${t2:.2f} (+{((t2-price)/price*100):.0f}%)")
+                            st.markdown(f"• Target 3: ${t3:.2f} (+{((t3-price)/price*100):.0f}%)")
+                            
+                            # Technical indicators
+                            st.markdown("**🔬 Technical Indicators:**")
+                            rsi = opp.get('rsi', 50)
+                            macd = opp.get('macd_histogram', 0)
+                            bb = opp.get('bb_position', 50)
+                            
+                            tech_col1, tech_col2, tech_col3 = st.columns(3)
+                            with tech_col1:
+                                st.markdown(f"RSI: **{rsi:.0f}**")
+                            with tech_col2:
+                                macd_signal = "🟢 Bullish" if macd > 0 else "🔴 Bearish"
+                                st.markdown(f"MACD: {macd_signal}")
+                            with tech_col3:
+                                bb_level = "Upper" if bb > 80 else "Middle" if bb > 20 else "Lower"
+                                st.markdown(f"BB Position: {bb_level}")
+                else:
+                    st.warning("No analysis available for your positions")
+            else:
+                st.info("No symbols in watchlist")
     
     with tab2:
         st.markdown("### 🚨 **PRICE ALERTS**")

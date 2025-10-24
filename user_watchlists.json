@@ -1,30 +1,12 @@
 {
-  "My Stocks": {
-    "symbols": [
-      "AAPL",
-      "TSLA",
-      "NVDA"
-    ],
-    "created": "2025-09-29T15:49:08.638422",
-    "description": "My favorite tech stocks"
-  },
-  "Penny Stocks": {
-    "symbols": [
-      "SNDL",
-      "HITI",
-      "MULN"
-    ],
-    "created": "2025-09-29T15:49:08.638432",
-    "description": "High-risk penny stock plays"
-  },
   "My Current Positions": {
     "symbols": [
       "BBIG",
       "BBAI",
       "RZLV"
     ],
-    "created": "2025-10-24T04:15:40.276900",
-    "description": "My active positions - tracking BBIG, BBAI, RZLV",
-    "last_modified": "2025-10-24T04:15:40.276907"
+    "created": "2025-10-24T04:18:11.891204",
+    "description": "My active positions",
+    "last_modified": "2025-10-24T04:18:11.891210"
   }
 }

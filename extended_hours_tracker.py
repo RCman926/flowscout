@@ -98,6 +98,43 @@ class ExtendedHoursTracker:
                     extended_hours_type = 'AFTER_HOURS'
                     extended_hours_change = ((post_market_price - regular_close) / regular_close * 100)
                     extended_hours_volume = post_market_volume
+                
+                # Check for overnight price (8pm-4am) - fetch hourly data with prepost=True
+                # This overrides after-hours if we're in overnight session
+                try:
+                    # Get current hour (ET timezone assumed)
+                    current_hour = datetime.now().hour
+                    
+                    # Check if we're in overnight session (8pm-4am)
+                    is_overnight_session = current_hour >= 20 or current_hour < 4
+                    
+                    if is_overnight_session:
+                        # Fetch hourly data with extended hours
+                        hourly_data = ticker.history(period='1d', interval='1h', prepost=True)
+                        
+                        if not hourly_data.empty:
+                            # Get most recent price
+                            latest_price = hourly_data['Close'].iloc[-1]
+                            latest_time = hourly_data.index[-1]
+                            
+                            # Extract hour from timestamp
+                            if hasattr(latest_time, 'hour'):
+                                latest_hour = latest_time.hour
+                            else:
+                                # For pandas Timestamp
+                                latest_hour = latest_time.to_pydatetime().hour
+                            
+                            # Verify it's actually overnight data
+                            if latest_hour >= 20 or latest_hour < 4:
+                                current_price = latest_price
+                                extended_hours_active = True
+                                extended_hours_type = 'OVERNIGHT'
+                                extended_hours_change = ((latest_price - regular_close) / regular_close * 100)
+                                extended_hours_volume = int(hourly_data['Volume'].iloc[-1]) if 'Volume' in hourly_data.columns else 0
+                
+                except Exception as overnight_error:
+                    # Overnight data not available, keep after-hours or pre-market
+                    pass
             
             except Exception as info_error:
                 # If we can't get extended hours, use regular close
