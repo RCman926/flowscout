@@ -3383,6 +3383,7 @@ def personalized_watchlists_page():
             if all_symbols:
                 import yfinance as yf
                 import numpy as np
+                import json
                 
                 # Analyze each stock
                 for symbol in all_symbols:
