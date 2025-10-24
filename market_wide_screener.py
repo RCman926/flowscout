@@ -114,9 +114,9 @@ class MarketWideScreener:
                     if analysis and self._is_explosive_opportunity(analysis):
                         explosive_plays.append(analysis)
                     
-                    # Add small delay to avoid rate limiting (0.3s per stock)
+                    # Add delay to avoid rate limiting (1s per stock - more conservative)
                     import time
-                    time.sleep(0.3)
+                    time.sleep(1.0)
                 except Exception as e:
                     pass  # Skip failed analyses
         
