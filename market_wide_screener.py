@@ -1153,28 +1153,40 @@ class MarketWideScreener:
                 reward_1 = ((target_1 - current_price) / current_price * 100)
                 reward_2 = ((target_2 - current_price) / current_price * 100)
                 
-                # BUY-IN RECOMMENDATION (NEW FEATURE)
-                # Calculate optimal entry zone based on support and current price
-                # Use practical support level (ignore if too low)
-                practical_support = recent_support if recent_support > current_price * 0.5 else current_price * 0.92
+                # BUY-IN RECOMMENDATION - PROFESSIONAL APPROACH
+                # Calculate optimal entry zones based on technical analysis and risk management
                 
-                # Buy zone: between practical support and slightly below current price
-                buy_in_low = practical_support
-                buy_in_high = current_price * 0.98  # 2% below current price
-                buy_in_ideal = (buy_in_low + buy_in_high) / 2
+                support_cushion = ((current_price - recent_support) / recent_support * 100) if recent_support > 0 else 0
+                distance_to_resistance = ((recent_resistance - current_price) / current_price * 100) if recent_resistance > current_price else 0
                 
-                # Generate rationale based on market conditions
-                if recent_support > current_price * 0.5:  # Valid support level
-                    support_cushion = ((current_price - recent_support) / recent_support * 100)
-                    if support_cushion > 20:
-                        buy_rationale = f"Wait for pullback to ${buy_in_ideal:.2f} near support ${recent_support:.2f} ({support_cushion:.0f}% cushion)"
-                    elif support_cushion > 10:
-                        buy_rationale = f"Good entry zone ${buy_in_low:.2f}-${buy_in_high:.2f}, support at ${recent_support:.2f}"
-                    else:
-                        buy_rationale = f"Near support floor ${recent_support:.2f}, watch for bounce confirmation"
+                # Strategy depends on where we are in the range
+                if current_price > recent_resistance * 0.95:
+                    # Already at or above resistance - WAIT for pullback
+                    buy_in_ideal = (recent_support + recent_resistance) / 2  # Mid-range
+                    buy_in_low = recent_support * 1.03  # Just above support
+                    buy_in_high = buy_in_ideal * 1.05  # 5% above ideal
+                    buy_rationale = f"Already extended above resistance ${recent_resistance:.2f}. Wait for pullback to ${buy_in_ideal:.2f} (mid-range) or support ${recent_support:.2f} for better risk/reward."
+                
+                elif current_price < recent_support * 1.05:
+                    # Near or below support - BUYING OPPORTUNITY
+                    buy_in_ideal = recent_support * 1.02  # Just above support
+                    buy_in_low = recent_support * 0.98  # Slightly below support
+                    buy_in_high = recent_support * 1.05  # 5% above support
+                    buy_rationale = f"At strong support ${recent_support:.2f}. Ideal entry on bounce confirmation. Stop below ${recent_support * 0.95:.2f}. Target resistance ${recent_resistance:.2f} (+{distance_to_resistance:.0f}%)."
+                
+                elif support_cushion > 15:
+                    # Mid-range but closer to resistance - WAIT for pullback
+                    buy_in_ideal = recent_support * 1.08  # 8% above support
+                    buy_in_low = recent_support * 1.03  # Just above support
+                    buy_in_high = recent_support * 1.12  # 12% above support
+                    buy_rationale = f"Price extended {support_cushion:.0f}% above support ${recent_support:.2f}. Better entry on pullback to ${buy_in_ideal:.2f} zone. Resistance at ${recent_resistance:.2f}."
+                
                 else:
-                    # No valid support, use current price as reference
-                    buy_rationale = f"Enter near current price ${current_price:.2f} or on dip to ${buy_in_ideal:.2f}"
+                    # Mid-range, reasonable entry - GOOD ZONE
+                    buy_in_ideal = current_price * 0.98  # 2% below current
+                    buy_in_low = recent_support * 1.05  # 5% above support
+                    buy_in_high = current_price * 1.02  # 2% above current
+                    buy_rationale = f"Good entry zone. Support ${recent_support:.2f} ({support_cushion:.0f}% below), resistance ${recent_resistance:.2f} ({distance_to_resistance:.0f}% above). Aim for ${buy_in_ideal:.2f}, stop below ${recent_support:.2f}."
                 
                 risk_reward = {
                     'stop_loss': stop_loss,
