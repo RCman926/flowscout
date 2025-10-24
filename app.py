@@ -2755,27 +2755,33 @@ def explosive_opportunities_page():
                             st.markdown("**🛡️ RISK MANAGEMENT:**")
                             stop = opp.get('stop_loss', 0)
                             risk_pct = opp.get('risk_percent', 0)
-                            support = opp.get('support', 0)
+                            recent_support = opp.get('recent_support', 0)
                             st.markdown(f"• Stop Loss: **${stop:.2f}**")
                             st.markdown(f"• Risk: **{risk_pct:.1f}%**")
-                            st.markdown(f"• Support: **${support:.2f}**")
+                            st.markdown(f"• Recent Support (10d): **${recent_support:.2f}**")
                         
                         with rr_col2:
                             st.markdown("**🎯 PROFIT TARGETS:**")
                             t1 = opp.get('target_1', 0)
                             t2 = opp.get('target_2', 0)
-                            resistance = opp.get('resistance', 0)
-                            st.markdown(f"• Target 1: **${t1:.2f}**")
-                            st.markdown(f"• Target 2: **${t2:.2f}**")
-                            st.markdown(f"• Resistance: **${resistance:.2f}**")
+                            t3 = opp.get('target_3', 0)
+                            recent_resistance = opp.get('recent_resistance', 0)
+                            price = opp.get('price', 0)
+                            gain1 = ((t1 - price) / price * 100) if price > 0 else 0
+                            gain2 = ((t2 - price) / price * 100) if price > 0 else 0
+                            gain3 = ((t3 - price) / price * 100) if price > 0 else 0
+                            st.markdown(f"• Target 1: **${t1:.2f}** (+{gain1:.0f}%)")
+                            st.markdown(f"• Target 2: **${t2:.2f}** (+{gain2:.0f}%)")
+                            st.markdown(f"• Target 3: **${t3:.2f}** (+{gain3:.0f}%)")
                         
                         with rr_col3:
-                            st.markdown("**📈 EXPECTED MOVE (1W):**")
-                            exp_up = opp.get('expected_move_up', 0)
-                            exp_down = opp.get('expected_move_down', 0)
-                            st.markdown(f"• Upside: **${exp_up:.2f}**")
-                            st.markdown(f"• Downside: **${exp_down:.2f}**")
-                            st.markdown(f"• R/R: **{rr_ratio:.1f}:1**")
+                            st.markdown("**🚀 SQUEEZE POTENTIAL:**")
+                            moon_shot = opp.get('moon_shot', 0)
+                            moon_gain = ((moon_shot - price) / price * 100) if price > 0 else 0
+                            short_interest = opp.get('real_short_float', 0)
+                            st.markdown(f"• Moon Shot: **${moon_shot:.2f}** (+{moon_gain:.0f}%)")
+                            st.markdown(f"• Short Interest: **{short_interest:.1f}%**")
+                            st.markdown(f"• R/R Ratio: **{rr_ratio:.1f}:1**")
                         
                         st.markdown("---")
                         

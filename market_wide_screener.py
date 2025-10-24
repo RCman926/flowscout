@@ -770,11 +770,14 @@ class MarketWideScreener:
                 'target_1': risk_reward.get('target_1', 0),
                 'target_2': risk_reward.get('target_2', 0),
                 'target_3': risk_reward.get('target_3', 0),
+                'moon_shot': risk_reward.get('moon_shot', 0),  # NEW: Extreme squeeze target
                 'risk_reward_ratio': risk_reward.get('risk_reward_ratio_1', 0),
                 'expected_move_up': risk_reward.get('expected_move_up_1w', 0),
                 'expected_move_down': risk_reward.get('expected_move_down_1w', 0),
-                'support': risk_reward.get('support', 0),
-                'resistance': risk_reward.get('resistance', 0),
+                'recent_support': risk_reward.get('recent_support', 0),  # NEW: 10-day support
+                'recent_resistance': risk_reward.get('recent_resistance', 0),  # NEW: 10-day resistance
+                'support_20d': risk_reward.get('support_20d', 0),  # Reference only
+                'resistance_20d': risk_reward.get('resistance_20d', 0),  # Reference only
                 
                 # PRE-SQUEEZE EARLY WARNING SIGNALS
                 'squeeze_stage': pre_squeeze_signals.get('squeeze_stage', 'UNKNOWN'),
@@ -1084,9 +1087,14 @@ class MarketWideScreener:
                 moderate_target = current_price + (risk_amount * 3)
                 target_2 = min(moderate_target, current_price * 1.30, recent_resistance * 1.10)
                 
-                # Target 3: Aggressive squeeze target (20-day high OR 50% gain, capped)
+                # Target 3: Aggressive squeeze target (50-100% gain potential)
                 aggressive_target = current_price + (risk_amount * 4)
-                target_3 = min(aggressive_target, resistance * 1.10, current_price * 1.50)
+                target_3 = min(aggressive_target, current_price * 1.75)  # Up to 75% gain
+                
+                # Target 4: MOON SHOT - Extreme squeeze scenario (like GME)
+                # Based on short interest squeeze potential
+                # For stocks with SI >30%, this shows what COULD happen
+                moon_shot = current_price * 2.5  # 150% gain potential for high SI stocks
                 
                 # Expected move (1-week based on volatility)
                 weekly_vol = volatility / np.sqrt(52)  # Weekly volatility
@@ -1103,14 +1111,17 @@ class MarketWideScreener:
                     'target_1': target_1,
                     'target_2': target_2,
                     'target_3': target_3,
+                    'moon_shot': moon_shot,  # NEW: Extreme squeeze target
                     'reward_1_percent': reward_1,
                     'reward_2_percent': reward_2,
                     'risk_reward_ratio_1': reward_1 / risk if risk > 0 else 0,
                     'risk_reward_ratio_2': reward_2 / risk if risk > 0 else 0,
                     'expected_move_up_1w': expected_move_up,
                     'expected_move_down_1w': expected_move_down,
-                    'support': support,
-                    'resistance': resistance
+                    'recent_support': recent_support,  # NEW: 10-day support (practical)
+                    'recent_resistance': recent_resistance,  # NEW: 10-day resistance (practical)
+                    'support_20d': support,  # Renamed: 20-day low for reference
+                    'resistance_20d': resistance  # Renamed: 20-day high for reference
                 }
             else:
                 # Minimal data - conservative estimates
