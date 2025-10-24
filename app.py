@@ -2614,7 +2614,7 @@ def explosive_opportunities_page():
                     with squeeze_col:
                         # Squeeze metrics
                         st.markdown("**🔥 Squeeze Metrics:**")
-                        short_pct = opp['short_interest']
+                        short_pct = opp.get('real_short_float', 0)
                         if short_pct > 0:
                             short_display = "🔴" if short_pct > 20 else "🟠" if short_pct > 10 else "🟡"
                             st.markdown(f"{short_display} Short Interest: **{short_pct:.1f}%** of float")
@@ -2984,7 +2984,7 @@ def explosive_opportunities_page():
                         with detail_col1:
                             st.markdown("**🎯 Squeeze Indicators:**")
                             st.markdown(f"• Squeeze Score: **{score:.0f}/100**")
-                            st.markdown(f"• Short Interest: **{opp['short_interest']:.1f}%** of float")
+                            st.markdown(f"• Short Interest: **{opp.get('real_short_float', 0):.1f}%** of float")
                             if opp['shares_short'] > 0:
                                 st.markdown(f"• Shares Short: **{opp['shares_short']:,.0f}**")
                             st.markdown(f"• Days to Cover: **{opp['short_ratio']:.1f}** days")
