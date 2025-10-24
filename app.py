@@ -3391,22 +3391,44 @@ def personalized_watchlists_page():
                             st.markdown("---")
                             
                             ticker = yf.Ticker(symbol)
+                            
+                            # Try multiple data sources for price
                             hist = ticker.history(period='6mo')
                             info = ticker.info
                             
-                            if hist.empty:
-                                st.warning(f"❌ No data available for {symbol}")
+                            if hist.empty or len(hist) < 2:
+                                st.warning(f"❌ No historical data available for {symbol}")
                                 continue
                             
-                            # Current price
+                            # Current price with fallback
                             current_price = hist['Close'].iloc[-1]
+                            
+                            # If price is 0 or invalid, try info
+                            if current_price <= 0 or np.isnan(current_price):
+                                current_price = info.get('currentPrice', info.get('regularMarketPrice', 0))
+                            
+                            if current_price <= 0:
+                                st.warning(f"❌ Invalid price data for {symbol}")
+                                continue
+                            
                             prev_close = hist['Close'].iloc[-2] if len(hist) > 1 else current_price
                             change = current_price - prev_close
                             change_pct = (change / prev_close * 100) if prev_close > 0 else 0
                             
-                            # Header
+                            # === ENHANCED HEADER ===
                             change_emoji = "🟢" if change_pct > 0 else "🔴" if change_pct < 0 else "⚪"
-                            st.markdown(f"## 📊 **{symbol}** - ${current_price:.2f} {change_emoji} ({change_pct:+.1f}%)")
+                            
+                            # Color based on performance
+                            if change_pct > 5:
+                                header_color = "🟩"
+                            elif change_pct > 0:
+                                header_color = "🟢"
+                            elif change_pct > -5:
+                                header_color = "🔴"
+                            else:
+                                header_color = "🟥"
+                            
+                            st.markdown(f"## {header_color} **{symbol}** - ${current_price:.2f} {change_emoji} ({change_pct:+.1f}%)")
                             
                             company_name = info.get('longName', info.get('shortName', symbol))
                             market_cap = info.get('marketCap', 0)
@@ -3416,7 +3438,14 @@ def personalized_watchlists_page():
                                 cap_display = f"${market_cap/1_000_000:.0f}M"
                             else:
                                 cap_display = "N/A"
-                            st.markdown(f"**{company_name}** | Market Cap: {cap_display}")
+                            
+                            # Get fundamental data
+                            book_value = info.get('bookValue', 0)
+                            revenue = info.get('totalRevenue', 0)
+                            eps = info.get('trailingEps', 0)
+                            
+                            st.markdown(f"**{company_name}**")
+                            st.caption(f"Market Cap: {cap_display} | Book Value: ${book_value:.2f}/share | EPS: ${eps:.2f}")
                             
                             # Key metrics row
                             met_col1, met_col2, met_col3, met_col4 = st.columns(4)
@@ -3546,6 +3575,111 @@ def personalized_watchlists_page():
                             reward = target - current_price
                             rr_ratio = reward / risk if risk > 0 else 0
                             st.caption(f"Risk/Reward: **{rr_ratio:.1f}:1** (Risk ${risk:.2f}, Reward ${reward:.2f})")
+                            
+                            st.markdown("---")
+                            
+                            # === VALUATION & LONG-TERM PREDICTIONS ===
+                            st.markdown("### 🎯 **VALUATION & PRICE PREDICTIONS**")
+                            
+                            pred_col1, pred_col2 = st.columns(2)
+                            
+                            with pred_col1:
+                                st.markdown("**📊 Analyst Targets & Fair Value:**")
+                                
+                                # Get analyst targets
+                                target_high = info.get('targetHighPrice', 0)
+                                target_low = info.get('targetLowPrice', 0)
+                                target_mean = info.get('targetMeanPrice', 0)
+                                target_median = info.get('targetMedianPrice', 0)
+                                
+                                # Calculate upside
+                                if target_mean > 0:
+                                    upside = ((target_mean - current_price) / current_price * 100)
+                                    upside_color = "🟢" if upside > 20 else "🟡" if upside > 0 else "🔴"
+                                    st.markdown(f"{upside_color} **Analyst Target:** ${target_mean:.2f} (**{upside:+.0f}% upside**)")
+                                else:
+                                    st.markdown("⚪ Analyst Target: Not available")
+                                
+                                if target_high > 0 and target_low > 0:
+                                    st.caption(f"Range: ${target_low:.2f} - ${target_high:.2f}")
+                                
+                                # Fundamental valuation
+                                if book_value > 0:
+                                    pb_ratio = current_price / book_value
+                                    if pb_ratio < 1:
+                                        st.markdown(f"📈 **P/B Ratio:** {pb_ratio:.2f} (🟢 **Trading below book value - UNDERVALUED**)")
+                                    elif pb_ratio < 2:
+                                        st.markdown(f"📊 **P/B Ratio:** {pb_ratio:.2f} (Fair value)")
+                                    else:
+                                        st.markdown(f"📉 **P/B Ratio:** {pb_ratio:.2f} (Above book value)")
+                                
+                                # 52-week range
+                                week_52_high = info.get('fiftyTwoWeekHigh', 0)
+                                week_52_low = info.get('fiftyTwoWeekLow', 0)
+                                if week_52_high > 0 and week_52_low > 0:
+                                    recovery_potential = ((week_52_high - current_price) / current_price * 100)
+                                    st.markdown(f"**52-Week High:** ${week_52_high:.2f} (**{recovery_potential:+.0f}% recovery potential**)")
+                                    st.caption(f"52-Week Range: ${week_52_low:.2f} - ${week_52_high:.2f}")
+                            
+                            with pred_col2:
+                                st.markdown("**🔮 Long-Term Forecast (12-24 months):**")
+                                
+                                # Calculate conservative, moderate, aggressive scenarios
+                                # Based on historical volatility and growth
+                                
+                                # Historical growth
+                                if len(hist) >= 60:
+                                    price_3m_ago = hist['Close'].iloc[-60]
+                                    historical_growth = ((current_price - price_3m_ago) / price_3m_ago * 100) if price_3m_ago > 0 else 0
+                                    annual_growth_rate = historical_growth * 4  # Annualized
+                                else:
+                                    annual_growth_rate = 0
+                                
+                                # Scenarios
+                                conservative_12m = current_price * 1.15  # 15% conservative
+                                moderate_12m = current_price * 1.35  # 35% moderate
+                                aggressive_12m = current_price * 1.60  # 60% aggressive
+                                
+                                # If recovering from 52-week high
+                                if week_52_high > 0 and current_price < week_52_high * 0.7:
+                                    # Stock is down 30%+ from highs - recovery play
+                                    moderate_12m = week_52_high * 0.85  # 85% recovery
+                                    aggressive_12m = week_52_high * 1.10  # Exceed previous high
+                                
+                                st.markdown(f"🟢 **Conservative:** ${conservative_12m:.2f} (+{((conservative_12m-current_price)/current_price*100):.0f}%)")
+                                st.markdown(f"🟡 **Moderate:** ${moderate_12m:.2f} (+{((moderate_12m-current_price)/current_price*100):.0f}%)")
+                                st.markdown(f"🔴 **Aggressive:** ${aggressive_12m:.2f} (+{((aggressive_12m-current_price)/current_price*100):.0f}%)")
+                                
+                                # If analyst target exists, compare
+                                if target_mean > 0:
+                                    if target_mean > moderate_12m:
+                                        st.success(f"✅ **Analyst target (${target_mean:.2f}) aligns with aggressive scenario**")
+                                    elif target_mean > conservative_12m:
+                                        st.info(f"✅ **Analyst target (${target_mean:.2f}) aligns with moderate scenario**")
+                                
+                                # Valuation verdict
+                                st.markdown("---")
+                                
+                                # Count bullish signals
+                                bullish_signals = 0
+                                if book_value > 0 and current_price < book_value:
+                                    bullish_signals += 1
+                                if target_mean > 0 and target_mean > current_price * 1.2:
+                                    bullish_signals += 1
+                                if week_52_high > 0 and current_price < week_52_high * 0.7:
+                                    bullish_signals += 1
+                                if rsi < 40:
+                                    bullish_signals += 1
+                                
+                                if bullish_signals >= 3:
+                                    st.success(f"🚀 **VERDICT: SIGNIFICANTLY UNDERVALUED** ({bullish_signals}/4 bullish signals)")
+                                    st.caption("Multiple indicators suggest strong upside potential")
+                                elif bullish_signals >= 2:
+                                    st.info(f"📊 **VERDICT: UNDERVALUED** ({bullish_signals}/4 bullish signals)")
+                                    st.caption("Good risk/reward with recovery potential")
+                                else:
+                                    st.warning(f"⚠️ **VERDICT: FAIRLY VALUED** ({bullish_signals}/4 bullish signals)")
+                                    st.caption("Limited upside at current levels")
                     
                     except Exception as e:
                         st.error(f"❌ Error analyzing {symbol}: {e}")
