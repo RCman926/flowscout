@@ -3394,7 +3394,7 @@ def personalized_watchlists_page():
                     opportunities = []
                     for symbol in all_symbols:
                         try:
-                            analysis = market_screener._analyze_single_stock(symbol)
+                            analysis = market_screener._analyze_squeeze_potential(symbol)
                             if analysis:
                                 opportunities.append(analysis)
                         except Exception as e:
