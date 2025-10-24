@@ -3447,6 +3447,210 @@ def personalized_watchlists_page():
                             st.markdown(f"**{company_name}**")
                             st.caption(f"Market Cap: {cap_display} | Book Value: ${book_value:.2f}/share | EPS: ${eps:.2f}")
                             
+                            # === YOUR POSITION TRACKING ===
+                            st.markdown("---")
+                            st.markdown("### 💼 **YOUR POSITION**")
+                            
+                            # Load position data
+                            try:
+                                with open('my_positions.json', 'r') as f:
+                                    positions = json.load(f)
+                            except:
+                                positions = {}
+                            
+                            if symbol in positions:
+                                pos = positions[symbol]
+                                
+                                pos_col1, pos_col2, pos_col3, pos_col4 = st.columns(4)
+                                
+                                if pos['type'] == 'stock':
+                                    entry_price = pos['entry_price']
+                                    pnl_dollars = current_price - entry_price
+                                    pnl_percent = (pnl_dollars / entry_price * 100)
+                                    
+                                    with pos_col1:
+                                        st.metric("Entry Price", f"${entry_price:.2f}")
+                                    
+                                    with pos_col2:
+                                        pnl_color = "🟢" if pnl_percent > 0 else "🔴"
+                                        st.metric("P&L", f"${pnl_dollars:.2f}", f"{pnl_percent:+.1f}%")
+                                    
+                                    with pos_col3:
+                                        st.metric("Breakeven", f"${entry_price:.2f}")
+                                    
+                                    with pos_col4:
+                                        days_held = (datetime.now() - datetime.fromisoformat(pos['entry_date'])).days
+                                        st.metric("Days Held", f"{days_held}")
+                                    
+                                    # Quick decision indicator
+                                    if pnl_percent > 25:
+                                        st.success(f"🚀 **Excellent position!** Up {pnl_percent:+.1f}% - Consider taking partial profits")
+                                    elif pnl_percent > 10:
+                                        st.info(f"✅ **Good position!** Up {pnl_percent:+.1f}% - Hold or add on dips")
+                                    elif pnl_percent > 0:
+                                        st.info(f"📊 **Slight profit** {pnl_percent:+.1f}% - Hold position")
+                                    elif pnl_percent > -10:
+                                        st.warning(f"⚠️ **Small loss** {pnl_percent:+.1f}% - Monitor support levels")
+                                    else:
+                                        st.error(f"🔴 **Significant loss** {pnl_percent:+.1f}% - Review if thesis still valid")
+                                
+                                elif pos['type'] == 'call_option':
+                                    entry_price = pos['entry_price']
+                                    strike = pos['strike']
+                                    expiry = pos['expiry']
+                                    
+                                    # Get current option value (estimate from stock price)
+                                    intrinsic_value = max(0, current_price - strike)
+                                    time_value = max(0, current_price * 0.15)  # Rough estimate
+                                    option_value_estimate = intrinsic_value + time_value
+                                    
+                                    pnl_dollars = option_value_estimate - entry_price
+                                    pnl_percent = (pnl_dollars / entry_price * 100) if entry_price > 0 else 0
+                                    
+                                    with pos_col1:
+                                        st.metric("Entry Price", f"${entry_price:.2f}")
+                                    
+                                    with pos_col2:
+                                        st.metric("Strike", f"${strike:.2f}")
+                                    
+                                    with pos_col3:
+                                        st.metric("Expiry", expiry)
+                                    
+                                    with pos_col4:
+                                        days_to_expiry = (datetime.fromisoformat(expiry) - datetime.now()).days
+                                        st.metric("Days to Expiry", f"{days_to_expiry}")
+                                    
+                                    # Option analysis
+                                    if current_price > strike:
+                                        itm_amount = current_price - strike
+                                        st.success(f"✅ **IN THE MONEY** by ${itm_amount:.2f}! Intrinsic value: ${intrinsic_value:.2f}")
+                                    elif current_price > strike * 0.95:
+                                        st.info(f"📊 **NEAR THE MONEY** - ${strike - current_price:.2f} to breakeven")
+                                    else:
+                                        st.warning(f"⚠️ **OUT OF THE MONEY** - Needs ${strike - current_price:.2f} move to strike")
+                                    
+                                    st.caption(f"Estimated P&L: ${pnl_dollars:.2f} ({pnl_percent:+.1f}%) | Note: Options pricing is estimated")
+                            else:
+                                st.info("💡 No position tracked. Add your entry price in my_positions.json")
+                            
+                            st.markdown("---")
+                            
+                            # === UPCOMING CATALYSTS ===
+                            st.markdown("### 📅 **UPCOMING CATALYSTS**")
+                            
+                            cat_col1, cat_col2 = st.columns(2)
+                            
+                            with cat_col1:
+                                # Earnings date
+                                earnings_date = info.get('earningsDate')
+                                if earnings_date and len(earnings_date) > 0:
+                                    next_earnings = earnings_date[0]
+                                    if hasattr(next_earnings, 'strftime'):
+                                        earnings_str = next_earnings.strftime('%Y-%m-%d')
+                                        days_to_earnings = (next_earnings - datetime.now()).days
+                                        if days_to_earnings < 0:
+                                            st.markdown(f"📊 **Earnings:** Recently reported")
+                                        elif days_to_earnings < 7:
+                                            st.error(f"🚨 **Earnings:** {earnings_str} (**{days_to_earnings} days!**)")
+                                        elif days_to_earnings < 30:
+                                            st.warning(f"📅 **Earnings:** {earnings_str} ({days_to_earnings} days)")
+                                        else:
+                                            st.info(f"📅 **Earnings:** {earnings_str} ({days_to_earnings} days)")
+                                    else:
+                                        st.markdown(f"📅 **Earnings:** Check financial calendar")
+                                else:
+                                    st.markdown("📅 **Earnings:** Date not available")
+                                
+                                # Analyst recommendations
+                                rec_key = info.get('recommendationKey', 'none')
+                                if rec_key == 'strong_buy':
+                                    st.success("⭐ **Analyst Rating:** STRONG BUY")
+                                elif rec_key == 'buy':
+                                    st.info("✅ **Analyst Rating:** BUY")
+                                elif rec_key == 'hold':
+                                    st.warning("📊 **Analyst Rating:** HOLD")
+                                elif rec_key == 'sell':
+                                    st.error("🔴 **Analyst Rating:** SELL")
+                                else:
+                                    st.markdown("📊 **Analyst Rating:** Not available")
+                            
+                            with cat_col2:
+                                # Recent news/events
+                                try:
+                                    news = ticker.news
+                                    if news and len(news) > 0:
+                                        st.markdown("**📰 Latest News:**")
+                                        for i, article in enumerate(news[:2]):  # Show top 2
+                                            title = article.get('title', 'No title')
+                                            st.caption(f"• {title[:70]}...")
+                                            if i >= 1:
+                                                break
+                                    else:
+                                        st.markdown("📰 **News:** No recent headlines")
+                                except:
+                                    st.markdown("📰 **News:** Not available")
+                                
+                                # Insider activity
+                                insider_pct = info.get('heldPercentInsiders', 0)
+                                inst_pct = info.get('heldPercentInstitutions', 0)
+                                if insider_pct > 0:
+                                    if insider_pct > 10:
+                                        st.success(f"👔 **Insider Ownership:** {insider_pct*100:.1f}% (High conviction!)")
+                                    else:
+                                        st.info(f"👔 **Insider Ownership:** {insider_pct*100:.1f}%")
+                                if inst_pct > 0:
+                                    st.caption(f"🏢 Institutional: {inst_pct*100:.1f}%")
+                            
+                            st.markdown("---")
+                            
+                            # === EXIT STRATEGY ===
+                            st.markdown("### 🎯 **EXIT STRATEGY & PROFIT TARGETS**")
+                            
+                            exit_col1, exit_col2 = st.columns(2)
+                            
+                            with exit_col1:
+                                st.markdown("**💰 Take Profit Levels:**")
+                                
+                                if symbol in positions and positions[symbol]['type'] == 'stock':
+                                    entry = positions[symbol]['entry_price']
+                                    
+                                    tp1 = entry * 1.10  # +10%
+                                    tp2 = entry * 1.25  # +25%
+                                    tp3 = entry * 1.50  # +50%
+                                    
+                                    tp1_hit = "✅" if current_price >= tp1 else "⏳"
+                                    tp2_hit = "✅" if current_price >= tp2 else "⏳"
+                                    tp3_hit = "✅" if current_price >= tp3 else "⏳"
+                                    
+                                    st.markdown(f"{tp1_hit} **TP1 (Quick):** ${tp1:.2f} (+10%) - Take 25% off")
+                                    st.markdown(f"{tp2_hit} **TP2 (Good):** ${tp2:.2f} (+25%) - Take 50% off")
+                                    st.markdown(f"{tp3_hit} **TP3 (Home Run):** ${tp3:.2f} (+50%) - Take 75% off")
+                                else:
+                                    st.markdown("Set entry price to see profit targets")
+                            
+                            with exit_col2:
+                                st.markdown("**🛑 Stop Loss Levels:**")
+                                
+                                if symbol in positions and positions[symbol]['type'] == 'stock':
+                                    entry = positions[symbol]['entry_price']
+                                    
+                                    sl_tight = entry * 0.95  # -5%
+                                    sl_normal = entry * 0.90  # -10%
+                                    sl_wide = entry * 0.85   # -15%
+                                    
+                                    if current_price <= sl_wide:
+                                        st.error(f"🚨 **Wide Stop Hit:** ${sl_wide:.2f} (-15%) - EXIT NOW")
+                                    elif current_price <= sl_normal:
+                                        st.error(f"⚠️ **Normal Stop Hit:** ${sl_normal:.2f} (-10%) - Consider exiting")
+                                    elif current_price <= sl_tight:
+                                        st.warning(f"⚠️ **Tight Stop:** ${sl_tight:.2f} (-5%) - Watch closely")
+                                    else:
+                                        st.success(f"✅ Above stops - Tight: ${sl_tight:.2f} | Normal: ${sl_normal:.2f}")
+                                else:
+                                    st.markdown("Set entry price to see stop levels")
+                            
+                            st.markdown("---")
+                            
                             # Key metrics row
                             met_col1, met_col2, met_col3, met_col4 = st.columns(4)
                             
