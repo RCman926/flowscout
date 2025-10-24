@@ -350,7 +350,7 @@ def options_trading_page():
         formatted_time = et_time.strftime("%I:%M:%S %p ET")
         
         # Determine market status using timezone-aware helper
-        market_status = "MARKET OPEN" if is_market_open(et_time) else "MARKET CLOSED"
+        market_status = "MARKET OPEN" if is_market_open(et_time) else "OVERNIGHT"
         
         # Always show current Eastern Time for LIVE feel
         st.caption(f"📅 {formatted_time} ({market_status}) - NOW")
