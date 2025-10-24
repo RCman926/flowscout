@@ -74,6 +74,138 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# === BEAUTIFUL CUSTOM STYLING ===
+st.markdown("""
+<style>
+    /* Main background gradient */
+    .stApp {
+        background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+    }
+    
+    /* Headers with gradient */
+    h1, h2, h3 {
+        background: linear-gradient(90deg, #60a5fa, #a78bfa, #ec4899);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        font-weight: 700;
+        letter-spacing: -0.5px;
+    }
+    
+    /* Cards with glass morphism */
+    .stMarkdown, [data-testid="stMetric"], div[data-baseweb="card"] {
+        background: rgba(30, 41, 59, 0.7);
+        backdrop-filter: blur(10px);
+        border-radius: 12px;
+        border: 1px solid rgba(96, 165, 250, 0.2);
+        padding: 16px;
+        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+    }
+    
+    /* Buttons with gradient hover */
+    .stButton>button {
+        background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        padding: 0.5rem 1.5rem;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+    }
+    
+    .stButton>button:hover {
+        background: linear-gradient(90deg, #2563eb, #7c3aed);
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(59, 130, 246, 0.5);
+    }
+    
+    /* Sidebar styling */
+    [data-testid="stSidebar"] {
+        background: linear-gradient(180deg, #1e293b, #0f172a);
+        border-right: 1px solid rgba(96, 165, 250, 0.2);
+    }
+    
+    /* Metrics with glow effect */
+    [data-testid="stMetricValue"] {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #60a5fa;
+        text-shadow: 0 0 20px rgba(96, 165, 250, 0.5);
+    }
+    
+    /* Success/Error boxes with gradient borders */
+    .stSuccess, .stError, .stWarning, .stInfo {
+        border-radius: 10px;
+        border-left: 4px solid;
+        padding: 1rem;
+        backdrop-filter: blur(5px);
+    }
+    
+    .stSuccess {
+        background: rgba(16, 185, 129, 0.1);
+        border-left-color: #10b981;
+    }
+    
+    .stError {
+        background: rgba(239, 68, 68, 0.1);
+        border-left-color: #ef4444;
+    }
+    
+    .stWarning {
+        background: rgba(245, 158, 11, 0.1);
+        border-left-color: #f59e0b;
+    }
+    
+    .stInfo {
+        background: rgba(59, 130, 246, 0.1);
+        border-left-color: #3b82f6;
+    }
+    
+    /* Input fields */
+    .stTextInput>div>div>input, .stSelectbox>div>div>select {
+        background: rgba(30, 41, 59, 0.8);
+        border: 1px solid rgba(96, 165, 250, 0.3);
+        border-radius: 8px;
+        color: #e2e8f0;
+        padding: 0.75rem;
+    }
+    
+    /* Tabs */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 8px;
+        background: rgba(30, 41, 59, 0.5);
+        border-radius: 10px;
+        padding: 4px;
+    }
+    
+    .stTabs [data-baseweb="tab"] {
+        border-radius: 8px;
+        padding: 0.75rem 1.5rem;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+    
+    .stTabs [aria-selected="true"] {
+        background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+        color: white;
+    }
+    
+    /* Captions with better visibility */
+    .stCaption {
+        color: #94a3b8;
+        font-size: 0.875rem;
+    }
+    
+    /* Dividers */
+    hr {
+        border: none;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, rgba(96, 165, 250, 0.5), transparent);
+        margin: 2rem 0;
+    }
+</style>
+""", unsafe_allow_html=True)
+
 # === PROFESSIONAL AUTO-REFRESH SYSTEM ===
 # Robust auto-refresh using streamlit-autorefresh for live trading updates
 
