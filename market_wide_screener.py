@@ -1059,15 +1059,51 @@ class MarketWideScreener:
             # Calculate ATR-based stops and targets
             atr = institutional_metrics.get('atr_percent', volatility / 100)
             
-            # Support/Resistance levels (from RECENT price action - last 10 days)
+            # Support/Resistance levels (using swing analysis, not just min/max)
             if len(hist) >= 20:
-                # Use last 10 days for practical support/resistance (not extremes)
-                recent_support = hist['Low'].tail(10).min()
-                recent_resistance = hist['High'].tail(10).max()
+                # Calculate PROPER support/resistance using swing highs/lows
+                # This filters out outliers and finds actual trading levels
+                
+                # Get recent price data (last 10 days)
+                recent_lows = hist['Low'].tail(10)
+                recent_highs = hist['High'].tail(10)
+                recent_closes = hist['Close'].tail(10)
+                
+                # Find swing lows (local minima) - actual support zones
+                swing_lows = []
+                for i in range(1, len(recent_lows) - 1):
+                    if recent_lows.iloc[i] < recent_lows.iloc[i-1] and recent_lows.iloc[i] < recent_lows.iloc[i+1]:
+                        swing_lows.append(recent_lows.iloc[i])
+                
+                # Find swing highs (local maxima) - actual resistance zones
+                swing_highs = []
+                for i in range(1, len(recent_highs) - 1):
+                    if recent_highs.iloc[i] > recent_highs.iloc[i-1] and recent_highs.iloc[i] > recent_highs.iloc[i+1]:
+                        swing_highs.append(recent_highs.iloc[i])
+                
+                # Use swing levels if found, otherwise use percentile (filters outliers)
+                if swing_lows:
+                    recent_support = max(swing_lows)  # Highest swing low = strongest support
+                else:
+                    recent_support = recent_lows.quantile(0.2)  # 20th percentile (filters outliers)
+                
+                if swing_highs:
+                    recent_resistance = min(swing_highs)  # Lowest swing high = nearest resistance
+                else:
+                    recent_resistance = recent_highs.quantile(0.8)  # 80th percentile (filters outliers)
+                
+                # Ensure support is reasonable (not a flash crash)
+                min_reasonable_support = current_price * 0.70  # Support can't be more than 30% below current
+                recent_support = max(recent_support, min_reasonable_support)
                 
                 # Long-term support/resistance for reference (20 days)
-                support = hist['Low'].tail(20).min()
-                resistance = hist['High'].tail(20).max()
+                long_lows = hist['Low'].tail(20)
+                long_highs = hist['High'].tail(20)
+                support = long_lows.quantile(0.15)  # 15th percentile (strong long-term support)
+                resistance = long_highs.quantile(0.85)  # 85th percentile (strong long-term resistance)
+                
+                # Ensure long-term support is reasonable
+                support = max(support, current_price * 0.60)
                 
                 # PRACTICAL STOP LOSS (use ATR-based, capped at reasonable levels)
                 # ATR stop: 2x ATR below current price (typically 5-12%)
