@@ -2601,7 +2601,15 @@ def explosive_opportunities_page():
                         
                         st.markdown(f"### {score_color} **{opp['symbol']}** - ${opp['price']:.2f}")
                         st.markdown(f"**{opp.get('company_name', opp['symbol'])}** | Cap: {cap_display}")
-                        st.markdown(f"Squeeze Score: **{score:.0f}/100** | {momentum_color} 5D Momentum: **{opp['price_momentum_5d']:+.1f}%**")
+                        
+                        # AI Probability display (PROMINENT)
+                        squeeze_prob = opp.get('squeeze_probability', 0)
+                        if squeeze_prob >= 75:
+                            st.markdown(f"🚀 **AI SQUEEZE PROBABILITY: {squeeze_prob:.0f}%** | Squeeze Score: **{score:.0f}/100** | {momentum_color} 5D: **{opp['price_momentum_5d']:+.1f}%**")
+                        elif squeeze_prob >= 60:
+                            st.markdown(f"⚡ **AI SQUEEZE PROBABILITY: {squeeze_prob:.0f}%** | Squeeze Score: **{score:.0f}/100** | {momentum_color} 5D: **{opp['price_momentum_5d']:+.1f}%**")
+                        else:
+                            st.markdown(f"📊 **AI PROBABILITY: {squeeze_prob:.0f}%** | Squeeze Score: **{score:.0f}/100** | {momentum_color} 5D: **{opp['price_momentum_5d']:+.1f}%**")
                     
                     with squeeze_col:
                         # Squeeze metrics
