@@ -2640,7 +2640,99 @@ def explosive_opportunities_page():
                             st.markdown(f"Float: **{float_m:.1f}M**")
                     
                     # Expandable detailed analysis WITH CHARTS
-                    with st.expander(f"📊 **Detailed Squeeze Analysis - {opp['symbol']}**", expanded=True):
+                    with st.expander(f"📊 **INSTITUTIONAL-GRADE ANALYSIS - {opp['symbol']}**", expanded=True):
+                        
+                        # === PROFESSIONAL HEADER WITH CONFIDENCE ===
+                        conf_col1, conf_col2, conf_col3 = st.columns(3)
+                        
+                        with conf_col1:
+                            prob = opp.get('squeeze_probability', 0)
+                            if prob >= 75:
+                                st.error(f"🚀 **PROBABILITY: {prob:.0f}%**")
+                            elif prob >= 60:
+                                st.warning(f"⚡ **PROBABILITY: {prob:.0f}%**")
+                            else:
+                                st.info(f"📊 **PROBABILITY: {prob:.0f}%**")
+                        
+                        with conf_col2:
+                            conf = opp.get('confidence', 0)
+                            if conf >= 75:
+                                st.success(f"✅ **CONFIDENCE: {conf:.0f}%**")
+                            elif conf >= 50:
+                                st.info(f"📊 **CONFIDENCE: {conf:.0f}%**")
+                            else:
+                                st.warning(f"⚠️ **CONFIDENCE: {conf:.0f}%**")
+                        
+                        with conf_col3:
+                            rr_ratio = opp.get('risk_reward_ratio', 0)
+                            if rr_ratio >= 3:
+                                st.success(f"💎 **R/R RATIO: {rr_ratio:.1f}:1**")
+                            elif rr_ratio >= 2:
+                                st.info(f"📈 **R/R RATIO: {rr_ratio:.1f}:1**")
+                            else:
+                                st.warning(f"⚠️ **R/R RATIO: {rr_ratio:.1f}:1**")
+                        
+                        st.markdown("---")
+                        
+                        # === RISK/REWARD ANALYSIS (INSTITUTIONAL) ===
+                        st.markdown("### 📊 RISK/REWARD ANALYSIS")
+                        
+                        rr_col1, rr_col2, rr_col3 = st.columns(3)
+                        
+                        with rr_col1:
+                            st.markdown("**🛡️ RISK MANAGEMENT:**")
+                            stop = opp.get('stop_loss', 0)
+                            risk_pct = opp.get('risk_percent', 0)
+                            support = opp.get('support', 0)
+                            st.markdown(f"• Stop Loss: **${stop:.2f}**")
+                            st.markdown(f"• Risk: **{risk_pct:.1f}%**")
+                            st.markdown(f"• Support: **${support:.2f}**")
+                        
+                        with rr_col2:
+                            st.markdown("**🎯 PROFIT TARGETS:**")
+                            t1 = opp.get('target_1', 0)
+                            t2 = opp.get('target_2', 0)
+                            resistance = opp.get('resistance', 0)
+                            st.markdown(f"• Target 1: **${t1:.2f}**")
+                            st.markdown(f"• Target 2: **${t2:.2f}**")
+                            st.markdown(f"• Resistance: **${resistance:.2f}**")
+                        
+                        with rr_col3:
+                            st.markdown("**📈 EXPECTED MOVE (1W):**")
+                            exp_up = opp.get('expected_move_up', 0)
+                            exp_down = opp.get('expected_move_down', 0)
+                            st.markdown(f"• Upside: **${exp_up:.2f}**")
+                            st.markdown(f"• Downside: **${exp_down:.2f}**")
+                            st.markdown(f"• R/R: **{rr_ratio:.1f}:1**")
+                        
+                        st.markdown("---")
+                        
+                        # === TECHNICAL INDICATORS (INSTITUTIONAL) ===
+                        st.markdown("### 🔬 TECHNICAL INDICATORS")
+                        
+                        tech_col1, tech_col2, tech_col3 = st.columns(3)
+                        
+                        with tech_col1:
+                            rsi = opp.get('rsi', 50)
+                            rsi_status = "Oversold" if rsi < 30 else "Overbought" if rsi > 70 else "Neutral"
+                            rsi_color = "🟢" if 30 <= rsi <= 70 else "🔴"
+                            st.markdown(f"**RSI:** {rsi:.1f} {rsi_color}")
+                            st.markdown(f"Status: {rsi_status}")
+                        
+                        with tech_col2:
+                            macd = opp.get('macd_histogram', 0)
+                            macd_signal = "Bullish" if macd > 0 else "Bearish"
+                            macd_color = "🟢" if macd > 0 else "🔴"
+                            st.markdown(f"**MACD:** {macd:.3f} {macd_color}")
+                            st.markdown(f"Signal: {macd_signal}")
+                        
+                        with tech_col3:
+                            bb_pos = opp.get('bb_position', 50)
+                            bb_status = "Lower Band" if bb_pos < 20 else "Upper Band" if bb_pos > 80 else "Mid-Range"
+                            st.markdown(f"**BB Position:** {bb_pos:.1f}%")
+                            st.markdown(f"Status: {bb_status}")
+                        
+                        st.markdown("---")
                         
                         # === SQUEEZE THESIS (WHY IT WILL SQUEEZE) ===
                         st.markdown("### 🎯 WHY THIS STOCK WILL SQUEEZE")
@@ -2648,18 +2740,6 @@ def explosive_opportunities_page():
                             st.markdown(opp['squeeze_thesis'])
                         else:
                             st.info("Squeeze thesis: High volume + price momentum + short interest = potential squeeze setup")
-                        
-                        st.markdown("---")
-                        
-                        # Freshness indicator
-                        if 'freshness_score' in opp:
-                            fresh_score = opp['freshness_score']
-                            if fresh_score >= 60:
-                                st.success(f"🔥 **FRESH OPPORTUNITY**: Freshness Score {fresh_score}/100 - Developing in last 1-3 days!")
-                            elif fresh_score >= 40:
-                                st.info(f"⚡ **RECENT SETUP**: Freshness Score {fresh_score}/100 - Activity detected")
-                            else:
-                                st.warning(f"📊 **EMERGING**: Freshness Score {fresh_score}/100")
                         
                         st.markdown("---")
                         
