@@ -2760,51 +2760,67 @@ def explosive_opportunities_page():
                         st.markdown("---")
                         
                         # === BUY-IN RECOMMENDATION ===
-                        st.markdown("### 💰 Buy-In Recommendation")
+                        st.markdown("### 💰 Entry Strategy")
                         
-                        buy_in_ideal = opp.get('buy_in_ideal', 0)
-                        buy_in_low = opp.get('buy_in_low', 0)
-                        buy_in_high = opp.get('buy_in_high', 0)
-                        buy_rationale = opp.get('buy_rationale', 'Entry analysis unavailable')
-                        price = opp.get('price', 0)
+                        # Use aftermarket price if available, otherwise regular close
+                        reference_price = post_price if (post_price and post_price > 0) else price
+                        price_label = "After-Hours" if (post_price and post_price > 0) else "Close"
                         
-                        if buy_in_ideal > 0:
-                            entry_col1, entry_col2 = st.columns([1, 2])
+                        support_level = opp.get('recent_support', 0)
+                        resistance_level = opp.get('recent_resistance', 0)
+                        
+                        # Calculate where we are in the range
+                        if support_level > 0 and resistance_level > support_level:
+                            range_position = ((reference_price - support_level) / (resistance_level - support_level) * 100)
                             
-                            with entry_col1:
-                                st.markdown(f"**Ideal Entry:** ${buy_in_ideal:.2f}")
-                                st.markdown(f"**Buy Zone:** ${buy_in_low:.2f} - ${buy_in_high:.2f}")
-                                
-                                # Show aftermarket context
-                                if post_price and post_price > 0:
-                                    st.markdown(f"**After-Hours:** ${post_price:.2f}")
+                            # Strategy based on position
+                            if reference_price > resistance_level:
+                                # Above resistance - WAIT
+                                ideal_entry = resistance_level * 0.95
+                                zone_low = support_level * 1.05
+                                zone_high = resistance_level * 0.98
+                                strategy = f"Stock trading above resistance ${resistance_level:.2f}. Wait for pullback to ${ideal_entry:.2f} zone for better risk/reward."
+                                action = "⏸️ WAIT"
                             
-                            with entry_col2:
-                                st.markdown(f"**Rationale:** {buy_rationale}")
-                                
-                                # Analyze current price vs ideal
-                                if price > 0:
-                                    distance = ((price - buy_in_ideal) / price * 100)
-                                    if distance > 5:
-                                        st.caption(f"Regular close ${price:.2f} is {distance:.1f}% above ideal - consider waiting")
-                                    elif distance > -5:
-                                        st.caption(f"Regular close ${price:.2f} is near ideal entry")
-                                    else:
-                                        st.caption(f"Regular close ${price:.2f} is below ideal - good opportunity")
-                                
-                                # Add aftermarket context if available
-                                if post_price and post_price > 0:
-                                    ah_distance = ((post_price - buy_in_ideal) / post_price * 100)
-                                    if post_change_pct > 10:
-                                        st.caption(f"⚠️ After-hours up {post_change_pct:+.1f}% to ${post_price:.2f} - may gap up tomorrow, making entry harder")
-                                    elif post_change_pct < -10:
-                                        st.caption(f"📉 After-hours down {post_change_pct:.1f}% to ${post_price:.2f} - potential better entry tomorrow")
-                                    elif ah_distance > 5:
-                                        st.caption(f"After-hours ${post_price:.2f} still {ah_distance:.1f}% above ideal")
-                                    else:
-                                        st.caption(f"After-hours ${post_price:.2f} near ideal entry zone")
+                            elif reference_price < support_level * 1.10:
+                                # At support - BUY ZONE
+                                ideal_entry = support_level * 1.02
+                                zone_low = support_level * 0.98
+                                zone_high = support_level * 1.08
+                                strategy = f"At support level ${support_level:.2f}. Good entry zone with stop below ${support_level * 0.95:.2f}. Target resistance ${resistance_level:.2f}."
+                                action = "🟢 BUY ZONE"
+                            
+                            elif range_position > 70:
+                                # Upper range - WAIT
+                                ideal_entry = (support_level + resistance_level) / 2
+                                zone_low = support_level * 1.10
+                                zone_high = ideal_entry * 1.05
+                                strategy = f"Extended {range_position:.0f}% through range (${support_level:.2f}-${resistance_level:.2f}). Better entry on pullback to ${ideal_entry:.2f}."
+                                action = "⚠️ EXTENDED"
+                            
+                            else:
+                                # Mid-range - REASONABLE
+                                ideal_entry = reference_price * 0.98
+                                zone_low = support_level * 1.05
+                                zone_high = reference_price * 1.02
+                                strategy = f"Trading {range_position:.0f}% through range. Support ${support_level:.2f}, resistance ${resistance_level:.2f}. Reasonable entry zone."
+                                action = "✅ REASONABLE"
+                            
+                            # Display
+                            st.markdown(f"**{action}** | {price_label} Price: **${reference_price:.2f}**")
+                            st.markdown(f"**Entry Zone:** ${zone_low:.2f} - ${zone_high:.2f} (Target: ${ideal_entry:.2f})")
+                            st.markdown(f"**Strategy:** {strategy}")
+                            
+                            # Aftermarket context if different from close
+                            if post_price and post_price > 0 and abs(post_change_pct) > 5:
+                                if post_change_pct > 10:
+                                    st.caption(f"⚠️ Strong after-hours move +{post_change_pct:.1f}% - likely to gap up tomorrow, harder to get ideal entry")
+                                elif post_change_pct < -10:
+                                    st.caption(f"📉 Weak after-hours -{abs(post_change_pct):.1f}% - potential better entry on tomorrow's open")
+                                else:
+                                    st.caption(f"After-hours: {post_change_pct:+.1f}%")
                         else:
-                            st.markdown(f"**Suggested Entry:** ${price:.2f} (current price)")
+                            st.markdown(f"**Current:** ${reference_price:.2f} | Insufficient data for entry analysis")
                         
                         st.markdown("---")
                         

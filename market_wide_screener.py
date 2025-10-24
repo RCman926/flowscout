@@ -1097,13 +1097,24 @@ class MarketWideScreener:
                 recent_support = max(recent_support, min_reasonable_support)
                 
                 # Long-term support/resistance for reference (20 days)
+                # Filter out extreme outliers (squeeze spikes) for practical levels
                 long_lows = hist['Low'].tail(20)
                 long_highs = hist['High'].tail(20)
-                support = long_lows.quantile(0.15)  # 15th percentile (strong long-term support)
-                resistance = long_highs.quantile(0.85)  # 85th percentile (strong long-term resistance)
                 
-                # Ensure long-term support is reasonable
+                # Remove extreme spikes (>50% from median in one day)
+                median_high = long_highs.median()
+                filtered_highs = [h for h in long_highs if h < median_high * 1.5]  # Remove 50%+ spikes
+                
+                if filtered_highs:
+                    resistance = max(filtered_highs)  # Highest non-spike high
+                else:
+                    resistance = long_highs.quantile(0.70)  # 70th percentile
+                
+                support = long_lows.quantile(0.15)  # 15th percentile (strong long-term support)
+                
+                # Ensure levels are reasonable relative to current price
                 support = max(support, current_price * 0.60)
+                resistance = min(resistance, current_price * 2.0)  # Resistance can't be >100% above current
                 
                 # PRACTICAL STOP LOSS (use ATR-based, capped at reasonable levels)
                 # ATR stop: 2x ATR below current price (typically 5-12%)
