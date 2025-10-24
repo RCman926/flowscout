@@ -3456,8 +3456,11 @@ def personalized_watchlists_page():
                             
                             # === COMPACT HEADER ===
                             change_emoji = "🟢" if change_pct > 0 else "🔴" if change_pct < 0 else "⚪"
+                            pb_ratio = current_price / book_value if book_value > 0 else 0
+                            pb_display = f"{pb_ratio:.2f}" if book_value > 0 else "N/A"
+                            
                             st.markdown(f"## {change_emoji} **{symbol}** - ${current_price:.2f} ({change_pct:+.1f}%)")
-                            st.caption(f"{company_name} | {cap_display} | P/B: {current_price/book_value:.2f if book_value > 0 else 'N/A'} | RSI: {rsi:.0f}")
+                            st.caption(f"{company_name} | {cap_display} | P/B: {pb_display} | RSI: {rsi:.0f}")
                             
                             # === YOUR POSITION TRACKING ===
                             st.markdown("---")
