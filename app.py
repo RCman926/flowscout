@@ -2713,6 +2713,35 @@ def explosive_opportunities_page():
                         
                         st.markdown("---")
                         
+                        # === BUY-IN RECOMMENDATION (NEW FEATURE) ===
+                        st.markdown("### 💰 BUY-IN RECOMMENDATION")
+                        
+                        buy_in_ideal = opp.get('buy_in_ideal', 0)
+                        buy_in_low = opp.get('buy_in_low', 0)
+                        buy_in_high = opp.get('buy_in_high', 0)
+                        buy_rationale = opp.get('buy_rationale', 'Entry analysis unavailable')
+                        price = opp.get('price', 0)
+                        
+                        if buy_in_ideal > 0:
+                            # Show recommended entry zone
+                            st.success(f"🎯 **RECOMMENDED ENTRY: ${buy_in_ideal:.2f}**")
+                            st.info(f"📍 Buy Zone: **${buy_in_low:.2f} - ${buy_in_high:.2f}**")
+                            st.caption(f"💡 Rationale: {buy_rationale}")
+                            
+                            # Show distance from current price
+                            if price > 0:
+                                distance = ((price - buy_in_ideal) / price * 100)
+                                if distance > 5:
+                                    st.warning(f"⚠️ Current price (${price:.2f}) is {distance:.1f}% above ideal entry - consider waiting")
+                                elif distance > -5:
+                                    st.info(f"✅ Current price (${price:.2f}) is near ideal entry")
+                                else:
+                                    st.error(f"🚀 Current price (${price:.2f}) is below ideal entry - good opportunity!")
+                        else:
+                            st.info(f"💡 Consider entry near current price: **${price:.2f}**")
+                        
+                        st.markdown("---")
+                        
                         # === RISK/REWARD ANALYSIS (INSTITUTIONAL) ===
                         st.markdown("### 📊 RISK/REWARD ANALYSIS")
                         

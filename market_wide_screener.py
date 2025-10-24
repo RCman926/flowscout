@@ -778,6 +778,10 @@ class MarketWideScreener:
                 'recent_resistance': risk_reward.get('recent_resistance', 0),  # NEW: 10-day resistance
                 'support_20d': risk_reward.get('support_20d', 0),  # Reference only
                 'resistance_20d': risk_reward.get('resistance_20d', 0),  # Reference only
+                'buy_in_ideal': risk_reward.get('buy_in_ideal', 0),  # NEW: Buy-in recommendation
+                'buy_in_low': risk_reward.get('buy_in_low', 0),  # NEW: Buy zone low
+                'buy_in_high': risk_reward.get('buy_in_high', 0),  # NEW: Buy zone high
+                'buy_rationale': risk_reward.get('buy_rationale', ''),  # NEW: Buy-in rationale
                 
                 # PRE-SQUEEZE EARLY WARNING SIGNALS
                 'squeeze_stage': pre_squeeze_signals.get('squeeze_stage', 'UNKNOWN'),
@@ -1105,6 +1109,29 @@ class MarketWideScreener:
                 reward_1 = ((target_1 - current_price) / current_price * 100)
                 reward_2 = ((target_2 - current_price) / current_price * 100)
                 
+                # BUY-IN RECOMMENDATION (NEW FEATURE)
+                # Calculate optimal entry zone based on support and current price
+                # Use practical support level (ignore if too low)
+                practical_support = recent_support if recent_support > current_price * 0.5 else current_price * 0.92
+                
+                # Buy zone: between practical support and slightly below current price
+                buy_in_low = practical_support
+                buy_in_high = current_price * 0.98  # 2% below current price
+                buy_in_ideal = (buy_in_low + buy_in_high) / 2
+                
+                # Generate rationale based on market conditions
+                if recent_support > current_price * 0.5:  # Valid support level
+                    support_cushion = ((current_price - recent_support) / recent_support * 100)
+                    if support_cushion > 20:
+                        buy_rationale = f"Wait for pullback to ${buy_in_ideal:.2f} near support ${recent_support:.2f} ({support_cushion:.0f}% cushion)"
+                    elif support_cushion > 10:
+                        buy_rationale = f"Good entry zone ${buy_in_low:.2f}-${buy_in_high:.2f}, support at ${recent_support:.2f}"
+                    else:
+                        buy_rationale = f"Near support floor ${recent_support:.2f}, watch for bounce confirmation"
+                else:
+                    # No valid support, use current price as reference
+                    buy_rationale = f"Enter near current price ${current_price:.2f} or on dip to ${buy_in_ideal:.2f}"
+                
                 risk_reward = {
                     'stop_loss': stop_loss,
                     'risk_percent': risk,
@@ -1121,7 +1148,11 @@ class MarketWideScreener:
                     'recent_support': recent_support,  # NEW: 10-day support (practical)
                     'recent_resistance': recent_resistance,  # NEW: 10-day resistance (practical)
                     'support_20d': support,  # Renamed: 20-day low for reference
-                    'resistance_20d': resistance  # Renamed: 20-day high for reference
+                    'resistance_20d': resistance,  # Renamed: 20-day high for reference
+                    'buy_in_ideal': buy_in_ideal,  # NEW: Recommended entry price
+                    'buy_in_low': buy_in_low,  # NEW: Buy zone low
+                    'buy_in_high': buy_in_high,  # NEW: Buy zone high
+                    'buy_rationale': buy_rationale  # NEW: Why this buy-in makes sense
                 }
             else:
                 # Minimal data - conservative estimates
