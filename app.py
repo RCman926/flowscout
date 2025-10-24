@@ -3783,6 +3783,194 @@ def personalized_watchlists_page():
                             
                             st.markdown("---")
                             
+                            # === WHY THIS COULD EXPLODE ===
+                            st.markdown("### 🚀 **WHY THIS COULD EXPLODE - FUNDAMENTAL ANALYSIS**")
+                            
+                            explosion_col1, explosion_col2 = st.columns(2)
+                            
+                            with explosion_col1:
+                                st.markdown("**💎 Market Cap Opportunity:**")
+                                
+                                # Market cap analysis
+                                if market_cap > 0:
+                                    if market_cap < 500_000_000:
+                                        cap_category = "MICRO CAP"
+                                        multiplier = "10-50x"
+                                        st.success(f"🚀 **{cap_category}** (${market_cap/1_000_000:.0f}M)")
+                                        st.markdown(f"• Small enough to {multiplier} multiply")
+                                        st.markdown(f"• High growth potential vs large caps")
+                                        st.markdown(f"• Can move fast on good news")
+                                    elif market_cap < 2_000_000_000:
+                                        cap_category = "SMALL CAP"
+                                        multiplier = "5-10x"
+                                        st.info(f"📊 **{cap_category}** (${market_cap/1_000_000_000:.2f}B)")
+                                        st.markdown(f"• Room to grow to {multiplier}")
+                                        st.markdown(f"• Sweet spot for explosive moves")
+                                    else:
+                                        cap_category = "MID/LARGE CAP"
+                                        st.warning(f"📈 **{cap_category}** (${market_cap/1_000_000_000:.2f}B)")
+                                        st.markdown(f"• Slower growth, more stable")
+                                
+                                # Revenue and profitability
+                                if revenue > 0:
+                                    st.markdown(f"\n**💰 Revenue:** ${revenue/1_000_000_000:.2f}B")
+                                    if market_cap > 0:
+                                        ps_ratio = market_cap / revenue
+                                        if ps_ratio < 1:
+                                            st.success(f"• P/S Ratio: {ps_ratio:.2f} (🟢 VERY CHEAP!)")
+                                        elif ps_ratio < 3:
+                                            st.info(f"• P/S Ratio: {ps_ratio:.2f} (Fair value)")
+                                        else:
+                                            st.caption(f"• P/S Ratio: {ps_ratio:.2f}")
+                                
+                                # Earnings growth
+                                revenue_growth = info.get('revenueGrowth', 0)
+                                if revenue_growth:
+                                    growth_pct = revenue_growth * 100
+                                    if growth_pct > 20:
+                                        st.success(f"📈 Revenue Growth: +{growth_pct:.0f}% (🔥 HIGH GROWTH!)")
+                                    elif growth_pct > 0:
+                                        st.info(f"📈 Revenue Growth: +{growth_pct:.0f}%")
+                            
+                            with explosion_col2:
+                                st.markdown("**📰 Recent News & Catalysts:**")
+                                
+                                # Get recent news
+                                try:
+                                    news_items = ticker.news
+                                    if news_items and len(news_items) > 0:
+                                        # Show top 3 news items
+                                        for i, article in enumerate(news_items[:3]):
+                                            title = article.get('title', 'No title')
+                                            # Classify news sentiment
+                                            title_lower = title.lower()
+                                            if any(word in title_lower for word in ['partnership', 'deal', 'contract', 'revenue', 'growth', 'expands', 'launches', 'wins']):
+                                                st.success(f"🟢 {title[:65]}...")
+                                            elif any(word in title_lower for word in ['lawsuit', 'investigation', 'decline', 'loss', 'cuts']):
+                                                st.error(f"🔴 {title[:65]}...")
+                                            else:
+                                                st.info(f"📰 {title[:65]}...")
+                                    else:
+                                        st.caption("No recent major news")
+                                except:
+                                    st.caption("News not available")
+                                
+                                # Industry and sector
+                                sector = info.get('sector', 'Unknown')
+                                industry = info.get('industry', 'Unknown')
+                                if sector != 'Unknown':
+                                    st.markdown(f"\n**🏢 Sector:** {sector}")
+                                    st.caption(f"Industry: {industry}")
+                                    
+                                    # Industry-specific catalysts
+                                    if 'Technology' in sector or 'tech' in industry.lower():
+                                        st.caption("💡 Tech sector = High growth potential")
+                                    elif 'Healthcare' in sector or 'biotech' in industry.lower():
+                                        st.caption("💊 Healthcare = Catalyst-driven moves")
+                                    elif 'Financial' in sector:
+                                        st.caption("🏦 Financial = Interest rate sensitive")
+                            
+                            st.markdown("---")
+                            
+                            # === MY AI PREDICTION ===
+                            st.markdown("### 🤖 **AI PREDICTION: WHY THIS MOVES HIGHER**")
+                            
+                            # Build prediction based on multiple factors
+                            bullish_factors = []
+                            bearish_factors = []
+                            
+                            # Factor 1: Valuation
+                            if book_value > 0 and current_price < book_value:
+                                bullish_factors.append("📊 **Trading below book value** - Fundamental floor supports price")
+                            
+                            if market_cap > 0 and revenue > 0:
+                                ps_ratio = market_cap / revenue
+                                if ps_ratio < 1.5:
+                                    bullish_factors.append(f"💰 **P/S Ratio {ps_ratio:.2f}** - Extremely cheap vs revenue")
+                            
+                            # Factor 2: Analyst expectations
+                            if target_mean > 0 and target_mean > current_price * 1.5:
+                                upside = ((target_mean - current_price) / current_price * 100)
+                                bullish_factors.append(f"🎯 **Analysts see {upside:.0f}% upside** - Professional consensus bullish")
+                            
+                            # Factor 3: Recovery play
+                            if week_52_high > 0 and current_price < week_52_high * 0.6:
+                                recovery_pct = ((week_52_high - current_price) / current_price * 100)
+                                bullish_factors.append(f"📈 **{recovery_pct:.0f}% below 52-week high** - Recovery play with proven higher prices")
+                            
+                            # Factor 4: Market cap opportunity
+                            if market_cap > 0 and market_cap < 1_000_000_000:
+                                bullish_factors.append(f"🚀 **Small market cap (${market_cap/1_000_000:.0f}M)** - Can 5-10x more easily than large caps")
+                            
+                            # Factor 5: Growth
+                            if revenue_growth and revenue_growth > 0.15:
+                                bullish_factors.append(f"📊 **{revenue_growth*100:.0f}% revenue growth** - Company expanding rapidly")
+                            
+                            # Factor 6: Technical oversold
+                            if rsi < 35:
+                                bullish_factors.append(f"⚡ **RSI {rsi:.0f} = Oversold** - Due for technical bounce")
+                            
+                            # Factor 7: Insider/Institutional conviction
+                            insider_pct = info.get('heldPercentInsiders', 0)
+                            if insider_pct > 0.1:
+                                bullish_factors.append(f"👔 **{insider_pct*100:.0f}% insider ownership** - Management has skin in the game")
+                            
+                            # Bearish factors
+                            if pe_ratio and pe_ratio < 0:
+                                bearish_factors.append("⚠️ **Not profitable yet** - Burning cash")
+                            
+                            if current_price > week_52_high * 0.9:
+                                bearish_factors.append("⚠️ **Near 52-week high** - Limited upside room")
+                            
+                            if rsi > 70:
+                                bearish_factors.append("⚠️ **Overbought RSI** - May pull back short-term")
+                            
+                            # Display prediction
+                            prediction_score = len(bullish_factors) - len(bearish_factors)
+                            
+                            if prediction_score >= 4:
+                                st.success("🚀 **STRONG BUY SIGNAL** - Multiple bullish catalysts aligned")
+                                confidence = "VERY HIGH"
+                            elif prediction_score >= 2:
+                                st.info("📊 **BUY SIGNAL** - More upside than downside")
+                                confidence = "HIGH"
+                            elif prediction_score >= 0:
+                                st.warning("🟡 **NEUTRAL/HOLD** - Mixed signals")
+                                confidence = "MODERATE"
+                            else:
+                                st.error("🔴 **CAUTIOUS** - More risks than rewards")
+                                confidence = "LOW"
+                            
+                            # Show factors
+                            pred_col1, pred_col2 = st.columns(2)
+                            
+                            with pred_col1:
+                                st.markdown("**🟢 Bullish Factors:**")
+                                if bullish_factors:
+                                    for factor in bullish_factors:
+                                        st.markdown(f"• {factor}")
+                                else:
+                                    st.caption("No strong bullish signals")
+                            
+                            with pred_col2:
+                                st.markdown("**🔴 Risk Factors:**")
+                                if bearish_factors:
+                                    for factor in bearish_factors:
+                                        st.markdown(f"• {factor}")
+                                else:
+                                    st.success("✅ No major red flags")
+                            
+                            # Bottom line prediction
+                            st.markdown("---")
+                            st.markdown(f"**📈 CONFIDENCE LEVEL:** {confidence} ({len(bullish_factors)} bullish vs {len(bearish_factors)} bearish)")
+                            
+                            if len(bullish_factors) >= 3:
+                                st.success("💡 **BOTTOM LINE:** This has significant upside potential based on fundamentals, not just technical analysis. The combination of low valuation, analyst targets, and market cap opportunity creates a compelling risk/reward.")
+                            elif len(bullish_factors) >= 1:
+                                st.info("💡 **BOTTOM LINE:** Some upside potential exists, but monitor closely. Consider position sizing accordingly.")
+                            
+                            st.markdown("---")
+                            
                             # === VALUATION & LONG-TERM PREDICTIONS ===
                             st.markdown("### 🎯 **VALUATION & PRICE PREDICTIONS**")
                             
