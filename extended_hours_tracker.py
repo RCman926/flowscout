@@ -24,18 +24,20 @@ class ExtendedHoursTracker:
     def get_extended_hours_data(self, symbol: str) -> Dict:
         """
         Get real-time extended hours data including pre-market and after-hours
+        Market hours: Pre-market (4am-9:30am), Regular (9:30am-4pm), After-hours (4pm-8pm)
+        Overnight (8pm-4am) is ignored as it's not actionable
         
         Returns:
             - current_price: Latest price (extended hours if available)
             - regular_close: Yesterday's regular market close
             - extended_hours_change: % change from regular close
             - is_extended_hours: Whether extended hours is active
-            - extended_hours_type: 'PRE_MARKET' or 'POST_MARKET' or None
+            - extended_hours_type: 'PRE_MARKET' or 'AFTER_HOURS' or None
         """
         
         cache_key = f"extended_{symbol}"
         
-        # Check cache (10 second cache for real-time)
+        # Check cache (60 second cache to avoid rate limiting)
         if self._check_cache(cache_key):
             return self.cache[cache_key]['data']
         
@@ -75,7 +77,7 @@ class ExtendedHoursTracker:
                 # Then try full info for extended hours (with timeout)
                 info = ticker.info
                 
-                # Check for pre-market price
+                # Check for pre-market price (4am-9:30am)
                 pre_market_price = info.get('preMarketPrice', None)
                 pre_market_volume = info.get('preMarketVolume', 0)
                 
@@ -86,14 +88,14 @@ class ExtendedHoursTracker:
                     extended_hours_change = ((pre_market_price - regular_close) / regular_close * 100)
                     extended_hours_volume = pre_market_volume
                 
-                # Check for post-market price (overrides pre-market if both exist)
+                # Check for post-market price (4pm-8pm) - overrides pre-market if both exist
                 post_market_price = info.get('postMarketPrice', None)
                 post_market_volume = info.get('postMarketVolume', 0)
                 
                 if post_market_price and post_market_price > 0:
                     current_price = post_market_price
                     extended_hours_active = True
-                    extended_hours_type = 'POST_MARKET'
+                    extended_hours_type = 'AFTER_HOURS'
                     extended_hours_change = ((post_market_price - regular_close) / regular_close * 100)
                     extended_hours_volume = post_market_volume
             
