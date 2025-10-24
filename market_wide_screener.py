@@ -296,52 +296,75 @@ class MarketWideScreener:
         
         return otc_stocks
     
+    def _quick_prefilter_single(self, symbol: str) -> Optional[str]:
+        """
+        Single stock pre-filter check (for parallel processing)
+        Returns symbol if it passes, None otherwise
+        """
+        try:
+            # Ultra-fast check: only get last 5 days of data
+            ticker = yf.Ticker(symbol)
+            hist = ticker.history(period='5d')
+            
+            if hist.empty or len(hist) < 3:
+                return None
+            
+            # Quick volume check
+            recent_vol = hist['Volume'].tail(2).mean()
+            older_vol = hist['Volume'].head(3).mean() if len(hist) >= 5 else recent_vol
+            
+            # Quick price check
+            recent_price = hist['Close'].iloc[-1]
+            old_price = hist['Close'].iloc[0] if len(hist) >= 3 else recent_price
+            
+            # Pre-filter criteria (loose requirements)
+            volume_surge = recent_vol / older_vol if older_vol > 0 else 1
+            price_change = ((recent_price - old_price) / old_price * 100) if old_price > 0 else 0
+            
+            # PASS if: volume surge OR price momentum OR both
+            passes = False
+            
+            if volume_surge > 1.3:  # 30% volume increase
+                passes = True
+            if abs(price_change) > 3:  # 3% price move
+                passes = True
+            if recent_vol > 100000:  # Minimum liquidity
+                passes = True
+            
+            if passes and 0.5 < recent_price < 100:  # Price range filter
+                return symbol
+            
+            return None
+                
+        except Exception as e:
+            # Skip problematic tickers
+            return None
+    
     def _quick_prefilter(self, symbols: List[str]) -> List[str]:
         """
-        FAST pre-filtering to eliminate obvious low-quality candidates
+        PARALLEL pre-filtering to eliminate obvious low-quality candidates
         Only fetches minimal data to check volume/price surge
         Reduces candidates from 200+ to 50-80 high-quality ones
         """
         
         high_quality_candidates = []
         
-        for symbol in symbols:
-            try:
-                # Ultra-fast check: only get last 5 days of data
-                ticker = yf.Ticker(symbol)
-                hist = ticker.history(period='5d')
-                
-                if hist.empty or len(hist) < 3:
-                    continue
-                
-                # Quick volume check
-                recent_vol = hist['Volume'].tail(2).mean()
-                older_vol = hist['Volume'].head(3).mean() if len(hist) >= 5 else recent_vol
-                
-                # Quick price check
-                recent_price = hist['Close'].iloc[-1]
-                old_price = hist['Close'].iloc[0] if len(hist) >= 3 else recent_price
-                
-                # Pre-filter criteria (loose requirements)
-                volume_surge = recent_vol / older_vol if older_vol > 0 else 1
-                price_change = ((recent_price - old_price) / old_price * 100) if old_price > 0 else 0
-                
-                # PASS if: volume surge OR price momentum OR both
-                passes = False
-                
-                if volume_surge > 1.3:  # 30% volume increase
-                    passes = True
-                if abs(price_change) > 3:  # 3% price move
-                    passes = True
-                if recent_vol > 100000:  # Minimum liquidity
-                    passes = True
-                
-                if passes and 0.5 < recent_price < 100:  # Price range filter
-                    high_quality_candidates.append(symbol)
-                    
-            except Exception as e:
-                # Skip problematic tickers
-                continue
+        # PARALLEL PRE-FILTERING (FAST!)
+        with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
+            # Submit all pre-filter tasks in parallel
+            future_to_symbol = {
+                executor.submit(self._quick_prefilter_single, symbol): symbol 
+                for symbol in symbols
+            }
+            
+            # Collect results
+            for future in as_completed(future_to_symbol):
+                try:
+                    result = future.result()
+                    if result:
+                        high_quality_candidates.append(result)
+                except Exception:
+                    pass
         
         return high_quality_candidates
     
