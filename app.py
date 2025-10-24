@@ -3316,8 +3316,12 @@ def explosive_opportunities_page():
 def personalized_watchlists_page():
     """Personalized watchlists with real-time alerts page"""
     
+    # Auto-refresh every 30 seconds for live updates
+    from streamlit_autorefresh import st_autorefresh
+    count = st_autorefresh(interval=30000, limit=None, key="watchlist_refresh")
+    
     st.title("⭐ MY WATCHLISTS")
-    st.markdown("**Create personalized watchlists and get real-time price alerts**")
+    st.markdown("**🔄 Auto-refreshing every 30 seconds | Create personalized watchlists and get real-time price alerts**")
     
     # Initialize explosive screener if needed (for symbol validation)
     if 'explosive_screener' not in st.session_state:
