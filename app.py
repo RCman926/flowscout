@@ -2800,7 +2800,7 @@ def explosive_opportunities_page():
                         st.markdown("### 💰 Entry Strategy")
                         
                         # Use most recent price (overnight > pre-market > after-hours > close)
-                        reference_price = price
+                        reference_price = current_price
                         price_label = "Close"
                         
                         if overnight_price and overnight_time:
@@ -3369,122 +3369,186 @@ def personalized_watchlists_page():
     tab1, tab2, tab3, tab4 = st.tabs(["📋 My Watchlists", "🚨 Price Alerts", "⚙️ Manage", "🔔 Notifications"])
     
     with tab1:
-        st.markdown("### 📋 **MY CURRENT POSITIONS - FULL ANALYSIS**")
+        st.markdown("### 📋 **MY CURRENT POSITIONS**")
+        st.caption("Standard trading analysis for buy/sell decisions")
         
         if not watchlists:
             st.info("🎯 No watchlists yet. Create your first watchlist in the 'Manage' tab!")
         else:
-            # Initialize market screener for full analysis
-            if 'market_screener' not in st.session_state:
-                from market_wide_screener import MarketWideScreener
-                st.session_state.market_screener = MarketWideScreener()
-            
-            market_screener = st.session_state.market_screener
-            
             # Get all symbols from watchlists
             all_symbols = []
             for wl in watchlists.values():
                 all_symbols.extend(wl['symbols'])
             
             if all_symbols:
-                st.info(f"📊 Running full squeeze analysis on {len(all_symbols)} stocks...")
+                import yfinance as yf
+                import numpy as np
                 
-                # Run full analysis on watchlist symbols
-                with st.spinner("Analyzing your positions..."):
-                    opportunities = []
-                    for symbol in all_symbols:
-                        try:
-                            analysis = market_screener._analyze_squeeze_potential(symbol)
-                            if analysis:
-                                opportunities.append(analysis)
-                        except Exception as e:
-                            st.warning(f"Could not analyze {symbol}: {e}")
-                
-                if opportunities:
-                    # Sort by squeeze score
-                    opportunities.sort(key=lambda x: x.get('squeeze_score', 0), reverse=True)
-                    
-                    # Display each stock with full analysis (same as market scanner)
-                    for i, opp in enumerate(opportunities):
+                # Analyze each stock
+                for symbol in all_symbols:
+                    try:
                         with st.container():
                             st.markdown("---")
                             
-                            # Display full analysis (copy from market scanner display logic)
-                            symbol = opp['symbol']
-                            score = opp['squeeze_score']
-                            price = opp['price']
+                            ticker = yf.Ticker(symbol)
+                            hist = ticker.history(period='6mo')
+                            info = ticker.info
+                            
+                            if hist.empty:
+                                st.warning(f"❌ No data available for {symbol}")
+                                continue
+                            
+                            # Current price
+                            current_price = hist['Close'].iloc[-1]
+                            prev_close = hist['Close'].iloc[-2] if len(hist) > 1 else current_price
+                            change = current_price - prev_close
+                            change_pct = (change / prev_close * 100) if prev_close > 0 else 0
                             
                             # Header
-                            score_emoji = "🚀" if score >= 80 else "⚡" if score >= 70 else "📈"
-                            st.markdown(f"## {score_emoji} **{symbol}** - ${price:.2f}")
-                            st.markdown(f"**{opp.get('company_name', symbol)}** | Market Cap: ${opp['market_cap']/1_000_000:.0f}M")
+                            change_emoji = "🟢" if change_pct > 0 else "🔴" if change_pct < 0 else "⚪"
+                            st.markdown(f"## 📊 **{symbol}** - ${current_price:.2f} {change_emoji} ({change_pct:+.1f}%)")
                             
-                            # Key metrics
+                            company_name = info.get('longName', info.get('shortName', symbol))
+                            market_cap = info.get('marketCap', 0)
+                            if market_cap > 1_000_000_000:
+                                cap_display = f"${market_cap/1_000_000_000:.2f}B"
+                            elif market_cap > 1_000_000:
+                                cap_display = f"${market_cap/1_000_000:.0f}M"
+                            else:
+                                cap_display = "N/A"
+                            st.markdown(f"**{company_name}** | Market Cap: {cap_display}")
+                            
+                            # Key metrics row
                             met_col1, met_col2, met_col3, met_col4 = st.columns(4)
                             
                             with met_col1:
-                                st.metric("Squeeze Score", f"{score:.0f}/100")
+                                volume = hist['Volume'].iloc[-1]
+                                avg_vol = hist['Volume'].tail(20).mean()
+                                vol_ratio = volume / avg_vol if avg_vol > 0 else 1
+                                st.metric("Volume", f"{volume/1_000_000:.1f}M", f"{vol_ratio:.1f}x avg")
+                            
                             with met_col2:
-                                prob = opp.get('squeeze_probability', 0)
-                                st.metric("AI Probability", f"{prob:.0f}%")
+                                pe_ratio = info.get('trailingPE', 0)
+                                if pe_ratio and pe_ratio > 0:
+                                    st.metric("P/E Ratio", f"{pe_ratio:.1f}")
+                                else:
+                                    st.metric("P/E Ratio", "N/A")
+                            
                             with met_col3:
-                                si = opp.get('real_short_float', 0)
-                                st.metric("Short Interest", f"{si:.1f}%")
+                                # 5-day performance
+                                if len(hist) >= 5:
+                                    price_5d_ago = hist['Close'].iloc[-5]
+                                    perf_5d = ((current_price - price_5d_ago) / price_5d_ago * 100)
+                                    st.metric("5-Day", f"{perf_5d:+.1f}%")
+                                else:
+                                    st.metric("5-Day", "N/A")
+                            
                             with met_col4:
-                                rr = opp.get('risk_reward_ratio', 0)
-                                st.metric("Risk/Reward", f"{rr:.1f}:1")
+                                # 1-month performance
+                                if len(hist) >= 20:
+                                    price_1m_ago = hist['Close'].iloc[-20]
+                                    perf_1m = ((current_price - price_1m_ago) / price_1m_ago * 100)
+                                    st.metric("1-Month", f"{perf_1m:+.1f}%")
+                                else:
+                                    st.metric("1-Month", "N/A")
                             
-                            # Support/Resistance
-                            st.markdown("**📊 Key Levels:**")
+                            # Support/Resistance calculation
+                            st.markdown("**📊 Key Price Levels:**")
+                            
+                            # Calculate support and resistance from recent swings
+                            recent_high = hist['High'].tail(20).max()
+                            recent_low = hist['Low'].tail(20).min()
+                            
                             level_col1, level_col2, level_col3 = st.columns(3)
-                            
                             with level_col1:
-                                support = opp.get('recent_support', 0)
-                                st.markdown(f"**Support:** ${support:.2f}")
+                                st.markdown(f"**Support:** ${recent_low:.2f}")
                             with level_col2:
-                                resistance = opp.get('recent_resistance', 0)
-                                st.markdown(f"**Resistance:** ${resistance:.2f}")
+                                st.markdown(f"**Resistance:** ${recent_high:.2f}")
                             with level_col3:
-                                stop = opp.get('stop_loss', 0)
-                                st.markdown(f"**Stop Loss:** ${stop:.2f}")
+                                # Suggested stop loss (5% below current)
+                                stop_loss = current_price * 0.95
+                                st.markdown(f"**Stop Loss:** ${stop_loss:.2f}")
                             
-                            # Entry strategy
-                            st.markdown("**💰 Entry Strategy:**")
-                            ideal = opp.get('buy_in_ideal', 0)
-                            low = opp.get('buy_in_low', 0)
-                            high = opp.get('buy_in_high', 0)
-                            rationale = opp.get('buy_rationale', '')
-                            
-                            st.markdown(f"**Ideal Entry:** ${ideal:.2f}")
-                            st.markdown(f"**Buy Zone:** ${low:.2f} - ${high:.2f}")
-                            st.caption(f"{rationale}")
-                            
-                            # Targets
-                            st.markdown("**🎯 Price Targets:**")
-                            t1 = opp.get('target_1', 0)
-                            t2 = opp.get('target_2', 0)
-                            t3 = opp.get('target_3', 0)
-                            st.markdown(f"• Target 1: ${t1:.2f} (+{((t1-price)/price*100):.0f}%)")
-                            st.markdown(f"• Target 2: ${t2:.2f} (+{((t2-price)/price*100):.0f}%)")
-                            st.markdown(f"• Target 3: ${t3:.2f} (+{((t3-price)/price*100):.0f}%)")
-                            
-                            # Technical indicators
+                            # Technical Indicators
                             st.markdown("**🔬 Technical Indicators:**")
-                            rsi = opp.get('rsi', 50)
-                            macd = opp.get('macd_histogram', 0)
-                            bb = opp.get('bb_position', 50)
                             
-                            tech_col1, tech_col2, tech_col3 = st.columns(3)
+                            # Calculate RSI
+                            delta = hist['Close'].diff()
+                            gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
+                            loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
+                            rs = gain / loss
+                            rsi_series = 100 - (100 / (1 + rs))
+                            rsi = rsi_series.iloc[-1] if len(rsi_series) > 0 else 50
+                            
+                            # Calculate MACD
+                            exp1 = hist['Close'].ewm(span=12, adjust=False).mean()
+                            exp2 = hist['Close'].ewm(span=26, adjust=False).mean()
+                            macd = exp1 - exp2
+                            signal = macd.ewm(span=9, adjust=False).mean()
+                            macd_histogram = (macd - signal).iloc[-1] if len(macd) > 0 else 0
+                            
+                            # Moving averages
+                            ma20 = hist['Close'].tail(20).mean() if len(hist) >= 20 else current_price
+                            ma50 = hist['Close'].tail(50).mean() if len(hist) >= 50 else current_price
+                            
+                            tech_col1, tech_col2, tech_col3, tech_col4 = st.columns(4)
+                            
                             with tech_col1:
-                                st.markdown(f"RSI: **{rsi:.0f}**")
+                                rsi_color = "🔴 Overbought" if rsi > 70 else "🟢 Oversold" if rsi < 30 else "⚪ Neutral"
+                                st.markdown(f"RSI: **{rsi:.0f}** ({rsi_color})")
+                            
                             with tech_col2:
-                                macd_signal = "🟢 Bullish" if macd > 0 else "🔴 Bearish"
+                                macd_signal = "🟢 Bullish" if macd_histogram > 0 else "🔴 Bearish"
                                 st.markdown(f"MACD: {macd_signal}")
+                            
                             with tech_col3:
-                                bb_level = "Upper" if bb > 80 else "Middle" if bb > 20 else "Lower"
-                                st.markdown(f"BB Position: {bb_level}")
-                else:
-                    st.warning("No analysis available for your positions")
+                                ma20_signal = "🟢 Above" if current_price > ma20 else "🔴 Below"
+                                st.markdown(f"20-MA: ${ma20:.2f} ({ma20_signal})")
+                            
+                            with tech_col4:
+                                ma50_signal = "🟢 Above" if current_price > ma50 else "🔴 Below"
+                                st.markdown(f"50-MA: ${ma50:.2f} ({ma50_signal})")
+                            
+                            # Trading recommendation
+                            st.markdown("**💰 Trading Recommendation:**")
+                            
+                            # Calculate position in range
+                            range_width = recent_high - recent_low
+                            position_in_range = ((current_price - recent_low) / range_width * 100) if range_width > 0 else 50
+                            
+                            if current_price < recent_low * 1.05 and rsi < 40:
+                                action = "🟢 **BUY ZONE**"
+                                rationale = f"Price near support (${recent_low:.2f}) with oversold RSI ({rsi:.0f}). Good entry point."
+                                ideal_entry = recent_low * 1.02
+                                target = recent_high * 0.95
+                            elif current_price > recent_high * 0.95 and rsi > 60:
+                                action = "🔴 **SELL/WAIT**"
+                                rationale = f"Price near resistance (${recent_high:.2f}) with elevated RSI ({rsi:.0f}). Consider taking profits or waiting for pullback."
+                                ideal_entry = (recent_low + recent_high) / 2
+                                target = recent_high
+                            elif position_in_range > 60:
+                                action = "⚠️ **HOLD/WAIT**"
+                                rationale = f"Price {position_in_range:.0f}% through range. Wait for better entry near ${recent_low * 1.05:.2f}."
+                                ideal_entry = recent_low * 1.05
+                                target = recent_high * 0.9
+                            else:
+                                action = "🟡 **ACCUMULATE**"
+                                rationale = f"Price in middle of range (${recent_low:.2f}-${recent_high:.2f}). Can accumulate on weakness."
+                                ideal_entry = (recent_low + current_price) / 2
+                                target = recent_high
+                            
+                            st.markdown(f"{action}")
+                            st.caption(rationale)
+                            st.markdown(f"**Ideal Entry:** ${ideal_entry:.2f} | **Target:** ${target:.2f} | **Stop:** ${stop_loss:.2f}")
+                            
+                            # Risk/Reward
+                            risk = current_price - stop_loss
+                            reward = target - current_price
+                            rr_ratio = reward / risk if risk > 0 else 0
+                            st.caption(f"Risk/Reward: **{rr_ratio:.1f}:1** (Risk ${risk:.2f}, Reward ${reward:.2f})")
+                    
+                    except Exception as e:
+                        st.error(f"❌ Error analyzing {symbol}: {e}")
             else:
                 st.info("No symbols in watchlist")
     
