@@ -325,7 +325,7 @@ def options_trading_page():
         if market_open:
             st.success(f"● {status_text}")
         else:
-            st.error(f"● {status_text}")
+            st.info(f"🌙 {status_text}")  # Blue for overnight (not red error)
     
     # === ENHANCED TIMESTAMP AND DIAGNOSTICS DISPLAY ===
     refresh_cols = st.columns([3, 2])
