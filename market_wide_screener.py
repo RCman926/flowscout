@@ -1044,24 +1044,49 @@ class MarketWideScreener:
             # Calculate ATR-based stops and targets
             atr = institutional_metrics.get('atr_percent', volatility / 100)
             
-            # Support/Resistance levels (from recent price action)
+            # Support/Resistance levels (from RECENT price action - last 10 days)
             if len(hist) >= 20:
+                # Use last 10 days for practical support/resistance (not extremes)
+                recent_support = hist['Low'].tail(10).min()
+                recent_resistance = hist['High'].tail(10).max()
+                
+                # Long-term support/resistance for reference (20 days)
                 support = hist['Low'].tail(20).min()
                 resistance = hist['High'].tail(20).max()
                 
-                # Risk: Distance to support or 2x ATR, whichever is tighter
-                atr_stop = current_price * (1 - atr * 2 / 100)
-                support_stop = support * 0.98  # 2% below support
-                stop_loss = max(atr_stop, support_stop)
+                # PRACTICAL STOP LOSS (use ATR-based, capped at reasonable levels)
+                # ATR stop: 2x ATR below current price (typically 5-12%)
+                atr_multiplier = min(atr * 2, 12)  # Cap at 12% max
+                atr_stop = current_price * (1 - atr_multiplier / 100)
+                
+                # Recent support stop: 3% below recent 10-day low
+                support_stop = recent_support * 0.97
+                
+                # Use the HIGHER of the two (tighter stop, closer to price)
+                # This ensures we don't use a stop that's way below recent support
+                preliminary_stop = max(atr_stop, support_stop)
+                
+                # Final constraints: Keep stop between 5-12% below current price
+                stop_loss = max(preliminary_stop, current_price * 0.88)  # Max 12% stop
+                stop_loss = min(stop_loss, current_price * 0.95)  # Min 5% stop
+                
                 risk = ((current_price - stop_loss) / current_price * 100)
                 
-                # Reward targets based on squeeze potential
-                # Target 1: 1.5x ATR
-                target_1 = current_price * (1 + atr * 1.5 / 100)
-                # Target 2: Recent resistance
-                target_2 = resistance * 1.05  # 5% above resistance
-                # Target 3: 3x risk (aggressive)
-                target_3 = current_price + (current_price - stop_loss) * 3
+                # PRACTICAL PROFIT TARGETS (realistic, not wishful thinking)
+                risk_amount = current_price - stop_loss
+                
+                # Target 1: Conservative (2x risk OR recent resistance, whichever is closer)
+                conservative_target = current_price + (risk_amount * 2)
+                recent_res_target = min(recent_resistance * 1.05, current_price * 1.25)  # Cap at 25%
+                target_1 = min(conservative_target, recent_res_target)
+                
+                # Target 2: Moderate (3x risk OR 30% gain, whichever is lower - more realistic)
+                moderate_target = current_price + (risk_amount * 3)
+                target_2 = min(moderate_target, current_price * 1.30, recent_resistance * 1.10)
+                
+                # Target 3: Aggressive squeeze target (20-day high OR 50% gain, capped)
+                aggressive_target = current_price + (risk_amount * 4)
+                target_3 = min(aggressive_target, resistance * 1.10, current_price * 1.50)
                 
                 # Expected move (1-week based on volatility)
                 weekly_vol = volatility / np.sqrt(52)  # Weekly volatility
