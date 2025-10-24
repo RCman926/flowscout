@@ -2545,9 +2545,38 @@ def explosive_opportunities_page():
         if opportunities:
             st.success(f"🎯 **Found {len(opportunities)} squeeze candidates!**")
             
+            # Fetch aftermarket prices for context
+            if 'aftermarket_cache' not in st.session_state:
+                st.session_state.aftermarket_cache = {}
+                st.session_state.aftermarket_last_fetch = 0
+            
+            import time
+            current_time = time.time()
+            need_fetch = (current_time - st.session_state.aftermarket_last_fetch) > 120  # 2 min cache
+            
+            if need_fetch:
+                import yfinance as yf
+                for opp in opportunities[:15]:
+                    try:
+                        ticker = yf.Ticker(opp['symbol'])
+                        info = ticker.info
+                        aftermarket_data = {
+                            'postMarketPrice': info.get('postMarketPrice'),
+                            'postMarketChange': info.get('postMarketChange'),
+                            'postMarketChangePercent': info.get('postMarketChangePercent'),
+                            'preMarketPrice': info.get('preMarketPrice')
+                        }
+                        st.session_state.aftermarket_cache[opp['symbol']] = aftermarket_data
+                    except:
+                        pass
+                st.session_state.aftermarket_last_fetch = current_time
+            
             # Display top opportunities
             for i, opp in enumerate(opportunities[:15]):  # Top 15 squeeze plays
                 with st.container():
+                    # Get aftermarket data for this symbol
+                    symbol = opp['symbol']
+                    aftermarket = st.session_state.aftermarket_cache.get(symbol, {})
                     
                     # Create columns for layout
                     main_col, squeeze_col, metrics_col = st.columns([2, 2, 1])
@@ -2569,9 +2598,21 @@ def explosive_opportunities_page():
                         else:
                             cap_display = f"${market_cap/1_000_000_000:.0f}B"
                         
-                        # Show current price
+                        # Show current price with aftermarket context
                         current_price = opp['price']
-                        st.markdown(f"### {score_color} **{opp['symbol']}** - ${current_price:.2f}")
+                        post_price = aftermarket.get('postMarketPrice')
+                        post_change_pct = aftermarket.get('postMarketChangePercent')
+                        pre_price = aftermarket.get('preMarketPrice')
+                        
+                        # Display header with session info
+                        if post_price and post_price > 0:
+                            change_emoji = "🟢" if post_change_pct > 0 else "🔴"
+                            st.markdown(f"### {score_color} **{opp['symbol']}** - ${current_price:.2f} | 🌙 After-Hours: ${post_price:.2f} {change_emoji} ({post_change_pct:+.1f}%)")
+                        elif pre_price and pre_price > 0:
+                            st.markdown(f"### {score_color} **{opp['symbol']}** - ${current_price:.2f} | 🌅 Pre-Market: ${pre_price:.2f}")
+                        else:
+                            st.markdown(f"### {score_color} **{opp['symbol']}** - ${current_price:.2f}")
+                        
                         st.markdown(f"**{opp.get('company_name', opp['symbol'])}** | Cap: {cap_display}")
                         
                         # AI Probability display (PROMINENT)
@@ -2733,18 +2774,35 @@ def explosive_opportunities_page():
                             with entry_col1:
                                 st.markdown(f"**Ideal Entry:** ${buy_in_ideal:.2f}")
                                 st.markdown(f"**Buy Zone:** ${buy_in_low:.2f} - ${buy_in_high:.2f}")
+                                
+                                # Show aftermarket context
+                                if post_price and post_price > 0:
+                                    st.markdown(f"**After-Hours:** ${post_price:.2f}")
                             
                             with entry_col2:
                                 st.markdown(f"**Rationale:** {buy_rationale}")
                                 
+                                # Analyze current price vs ideal
                                 if price > 0:
                                     distance = ((price - buy_in_ideal) / price * 100)
                                     if distance > 5:
-                                        st.caption(f"Current ${price:.2f} is {distance:.1f}% above ideal - consider waiting")
+                                        st.caption(f"Regular close ${price:.2f} is {distance:.1f}% above ideal - consider waiting")
                                     elif distance > -5:
-                                        st.caption(f"Current ${price:.2f} is near ideal entry")
+                                        st.caption(f"Regular close ${price:.2f} is near ideal entry")
                                     else:
-                                        st.caption(f"Current ${price:.2f} is below ideal - good opportunity")
+                                        st.caption(f"Regular close ${price:.2f} is below ideal - good opportunity")
+                                
+                                # Add aftermarket context if available
+                                if post_price and post_price > 0:
+                                    ah_distance = ((post_price - buy_in_ideal) / post_price * 100)
+                                    if post_change_pct > 10:
+                                        st.caption(f"⚠️ After-hours up {post_change_pct:+.1f}% to ${post_price:.2f} - may gap up tomorrow, making entry harder")
+                                    elif post_change_pct < -10:
+                                        st.caption(f"📉 After-hours down {post_change_pct:.1f}% to ${post_price:.2f} - potential better entry tomorrow")
+                                    elif ah_distance > 5:
+                                        st.caption(f"After-hours ${post_price:.2f} still {ah_distance:.1f}% above ideal")
+                                    else:
+                                        st.caption(f"After-hours ${post_price:.2f} near ideal entry zone")
                         else:
                             st.markdown(f"**Suggested Entry:** ${price:.2f} (current price)")
                         
