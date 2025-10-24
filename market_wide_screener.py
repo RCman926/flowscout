@@ -34,10 +34,10 @@ class MarketWideScreener:
     """
     
     def __init__(self):
-        self.cache_duration = 300  # 5 minutes
+        self.cache_duration = 900  # 15 minutes (avoid Yahoo rate limiting)
         self.screener_results = []
         self.last_scan_time = None
-        self.max_workers = 10  # Parallel processing threads
+        self.max_workers = 3  # Reduced to avoid Yahoo Finance rate limiting
         
     def scan_entire_market(self, min_price: float = 0.50, max_price: float = 20.0, 
                           min_volume: int = 100000) -> List[Dict]:
@@ -104,6 +104,10 @@ class MarketWideScreener:
                     analysis = future.result()
                     if analysis and self._is_explosive_opportunity(analysis):
                         explosive_plays.append(analysis)
+                    
+                    # Add small delay to avoid rate limiting (0.3s per stock)
+                    import time
+                    time.sleep(0.3)
                 except Exception as e:
                     pass  # Skip failed analyses
         
@@ -844,7 +848,8 @@ class MarketWideScreener:
             return result
             
         except Exception as e:
-            # Silent fail for individual stocks
+            # Log error for debugging
+            print(f"⚠️ Analysis failed for {symbol}: {type(e).__name__}: {str(e)[:100]}")
             return None
     
     def _calculate_institutional_metrics(self, hist: pd.DataFrame, current_price: float) -> Dict:
