@@ -98,6 +98,25 @@ UI/UX Preferences:
 
 # Recent Updates (October 2025)
 
+## INSTITUTIONAL-GRADE INTELLIGENCE - ALL 8 FEATURES UPGRADED (October 24, 2025)
+**Major Upgrade**: Added 8 advanced institutional-grade data sources for professional squeeze detection
+
+### 8 Advanced Data Sources (All Implemented)
+1. **REAL Short Interest Data**: Live scraping from Finviz with SI%, days to cover, shares short, float data (fallback to yfinance)
+2. **Real Options Flow Detection**: Unusual activity scoring (0-100), sweep orders, block trades, put/call ratio analysis, unusual call/put buying detection
+3. **Borrow Rate Tracking**: Estimated borrow difficulty (EASY/MODERATE/HARD/VERY HARD) based on SI% and volatility - identifies hard-to-short stocks with high squeeze fuel
+4. **Dark Pool Detection**: Institutional accumulation patterns via price/volume divergence analysis, unusual block trade detection (0-100 score)
+5. **Float Rotation Analysis**: Tracks if entire float is trading (5-day and 20-day rotation rates, days to trade float, extreme squeeze indicators)
+6. **Historical Win Rate Back-Testing**: Analyzes 1-year history for similar squeeze patterns, calculates win rate, avg gains/losses, confidence levels (LOW/MODERATE/HIGH/VERY HIGH)
+7. **Catalyst Integration**: Upcoming earnings detection with proximity scoring, sector-specific catalysts (FDA for biotech, product launches for tech), days until catalyst
+8. **Social Sentiment Scoring**: Proxy analysis for WSB/retail interest using volume surge + volatility patterns, buzz level classification (LOW/MODERATE/HIGH/VERY HIGH), trending detection
+
+### Integration & Display
+- All 8 features integrated into market_wide_screener.py with 5-minute caching
+- Comprehensive UI section "Advanced Institutional Intelligence" displays all metrics
+- Real-time data fetching with graceful fallbacks
+- Professional scoring systems (0-100) for quantitative analysis
+
 ## PRE-SQUEEZE EARLY WARNING SYSTEM - V2.0 (October 24, 2025)
 **Breakthrough Feature**: Detects squeeze setups 1-5 days BEFORE they happen (not during)
 

@@ -2806,6 +2806,164 @@ def explosive_opportunities_page():
                         
                         st.markdown("---")
                         
+                        # === ADVANCED INSTITUTIONAL INTELLIGENCE (8 NEW FEATURES) ===
+                        st.markdown("### 🏛️ ADVANCED INSTITUTIONAL INTELLIGENCE")
+                        st.caption("⚡ Real-time data from 8 institutional-grade sources")
+                        
+                        # Row 1: Real Short Interest & Options Flow
+                        adv_row1_col1, adv_row1_col2 = st.columns(2)
+                        
+                        with adv_row1_col1:
+                            st.markdown("**📊 REAL SHORT INTEREST DATA:**")
+                            real_si = opp.get('real_short_float', 0)
+                            si_source = opp.get('real_si_data_source', 'unavailable')
+                            if real_si > 0:
+                                si_emoji = "🔥" if real_si > 30 else "⚡" if real_si > 20 else "📊"
+                                st.markdown(f"{si_emoji} Real SI: **{real_si:.1f}%** (Source: {si_source})")
+                                st.markdown(f"• Short Ratio: **{opp.get('real_short_ratio', 0):.1f}** days to cover")
+                            else:
+                                st.markdown("⚪ Real SI: **N/A** (Using yfinance estimate)")
+                        
+                        with adv_row1_col2:
+                            st.markdown("**📈 UNUSUAL OPTIONS ACTIVITY:**")
+                            opt_score = opp.get('unusual_options_activity', 0)
+                            unusual_calls = opp.get('unusual_call_buying', False)
+                            sweeps = opp.get('sweep_orders', 0)
+                            
+                            if opt_score >= 70:
+                                st.markdown(f"🚀 Unusual Activity: **{opt_score}/100** (VERY HIGH)")
+                            elif opt_score >= 50:
+                                st.markdown(f"⚡ Unusual Activity: **{opt_score}/100** (HIGH)")
+                            elif opt_score > 0:
+                                st.markdown(f"📊 Unusual Activity: **{opt_score}/100**")
+                            else:
+                                st.markdown("⚪ No unusual options activity")
+                            
+                            if unusual_calls:
+                                st.markdown(f"🟢 **UNUSUAL CALL BUYING DETECTED** | Sweeps: {sweeps}")
+                            st.markdown(f"• Put/Call Ratio: **{opp.get('put_call_ratio', 1):.2f}**")
+                        
+                        # Row 2: Borrow Rate & Dark Pool
+                        adv_row2_col1, adv_row2_col2 = st.columns(2)
+                        
+                        with adv_row2_col1:
+                            st.markdown("**💰 BORROW RATE & DIFFICULTY:**")
+                            borrow_rate = opp.get('borrow_rate', 0)
+                            borrow_diff = opp.get('borrow_difficulty', 'UNKNOWN')
+                            
+                            if borrow_diff == 'VERY HARD':
+                                st.markdown(f"🔥 Difficulty: **{borrow_diff}** ({borrow_rate}/100)")
+                                st.markdown("⚠️ **EXTREMELY HARD TO SHORT** - High squeeze fuel")
+                            elif borrow_diff == 'HARD':
+                                st.markdown(f"⚡ Difficulty: **{borrow_diff}** ({borrow_rate}/100)")
+                                st.markdown("• Hard to borrow - Good squeeze potential")
+                            elif borrow_diff == 'MODERATE':
+                                st.markdown(f"📊 Difficulty: **{borrow_diff}** ({borrow_rate}/100)")
+                            else:
+                                st.markdown(f"⚪ Difficulty: **{borrow_diff}**")
+                        
+                        with adv_row2_col2:
+                            st.markdown("**🕵️ DARK POOL DETECTION:**")
+                            dark_pool_score = opp.get('dark_pool_score', 0)
+                            inst_accum = opp.get('institutional_accumulation', False)
+                            block_trades = opp.get('unusual_block_trades', 0)
+                            
+                            if dark_pool_score >= 70:
+                                st.markdown(f"🔥 Dark Pool: **{dark_pool_score}/100** (VERY HIGH)")
+                            elif dark_pool_score >= 50:
+                                st.markdown(f"⚡ Dark Pool: **{dark_pool_score}/100** (HIGH)")
+                            elif dark_pool_score > 0:
+                                st.markdown(f"📊 Dark Pool: **{dark_pool_score}/100**")
+                            else:
+                                st.markdown("⚪ No dark pool activity")
+                            
+                            if inst_accum:
+                                st.markdown(f"🟢 **INSTITUTIONAL ACCUMULATION** | Blocks: {block_trades}")
+                        
+                        # Row 3: Float Rotation & Historical Win Rate
+                        adv_row3_col1, adv_row3_col2 = st.columns(2)
+                        
+                        with adv_row3_col1:
+                            st.markdown("**🔄 FLOAT ROTATION ANALYSIS:**")
+                            float_rot = opp.get('float_rotation_5d', 0)
+                            entire_float = opp.get('entire_float_trading', False)
+                            days_to_trade = opp.get('days_to_trade_float', 999)
+                            
+                            if entire_float:
+                                st.markdown(f"🔥 **ENTIRE FLOAT TRADING** ({float_rot:.1f}x in 5 days)")
+                                st.markdown(f"⚠️ **EXTREME SQUEEZE POTENTIAL**")
+                            elif float_rot > 0.75:
+                                st.markdown(f"⚡ High Rotation: **{float_rot:.1f}x** in 5 days")
+                                st.markdown(f"• Very hot - 75%+ of float traded")
+                            elif float_rot > 0:
+                                st.markdown(f"📊 Rotation: **{float_rot:.1f}x** in 5 days")
+                                st.markdown(f"• Days to trade float: **{days_to_trade:.1f}** days")
+                            else:
+                                st.markdown("⚪ Low rotation")
+                        
+                        with adv_row3_col2:
+                            st.markdown("**📊 HISTORICAL WIN RATE:**")
+                            win_rate = opp.get('historical_win_rate', 0)
+                            avg_gain = opp.get('avg_historical_gain', 0)
+                            patterns = opp.get('total_patterns_found', 0)
+                            confidence_level = opp.get('win_rate_confidence', 'UNKNOWN')
+                            
+                            if win_rate >= 70 and patterns >= 10:
+                                st.markdown(f"🔥 Win Rate: **{win_rate:.0f}%** ({patterns} patterns)")
+                                st.markdown(f"⚡ Avg Gain: **+{avg_gain:.1f}%** | Confidence: **{confidence_level}**")
+                            elif win_rate >= 60 and patterns >= 5:
+                                st.markdown(f"⚡ Win Rate: **{win_rate:.0f}%** ({patterns} patterns)")
+                                st.markdown(f"• Avg Gain: **+{avg_gain:.1f}%** | Confidence: **{confidence_level}**")
+                            elif win_rate > 0:
+                                st.markdown(f"📊 Win Rate: **{win_rate:.0f}%** ({patterns} patterns)")
+                                st.markdown(f"• Avg Gain: **+{avg_gain:.1f}%** | Confidence: **{confidence_level}**")
+                            else:
+                                st.markdown("⚪ Insufficient historical data")
+                        
+                        # Row 4: Catalysts & Social Sentiment
+                        adv_row4_col1, adv_row4_col2 = st.columns(2)
+                        
+                        with adv_row4_col1:
+                            st.markdown("**📅 UPCOMING CATALYSTS:**")
+                            catalyst_score = opp.get('catalyst_score', 0)
+                            has_catalyst = opp.get('has_upcoming_catalyst', False)
+                            next_cat = opp.get('next_catalyst', None)
+                            days_until_cat = opp.get('days_until_catalyst', 999)
+                            
+                            if has_catalyst and days_until_cat <= 7:
+                                st.markdown(f"🔥 **IMMINENT CATALYST** ({days_until_cat} days)")
+                                st.markdown(f"📌 **{next_cat}**")
+                            elif has_catalyst:
+                                st.markdown(f"⚡ Upcoming: **{next_cat}**")
+                                st.markdown(f"• Catalyst Score: **{catalyst_score}/100**")
+                            elif catalyst_score > 0:
+                                st.markdown(f"📊 Potential catalysts in sector")
+                                st.markdown(f"• Catalyst Score: **{catalyst_score}/100**")
+                            else:
+                                st.markdown("⚪ No upcoming catalysts")
+                        
+                        with adv_row4_col2:
+                            st.markdown("**🌐 SOCIAL SENTIMENT:**")
+                            sentiment_score = opp.get('social_sentiment_score', 0)
+                            buzz_level = opp.get('social_buzz_level', 'LOW')
+                            is_trending = opp.get('is_trending', False)
+                            wsb = opp.get('wsb_candidate', False)
+                            retail = opp.get('retail_interest', 'LOW')
+                            
+                            if wsb:
+                                st.markdown(f"🚀 **WSB CANDIDATE** | Sentiment: **{sentiment_score}/100**")
+                                st.markdown(f"🔥 Buzz: **{buzz_level}** | Retail: **{retail}**")
+                            elif is_trending:
+                                st.markdown(f"⚡ **TRENDING** | Sentiment: **{sentiment_score}/100**")
+                                st.markdown(f"• Buzz: **{buzz_level}** | Retail: **{retail}**")
+                            elif sentiment_score > 0:
+                                st.markdown(f"📊 Sentiment: **{sentiment_score}/100**")
+                                st.markdown(f"• Buzz: **{buzz_level}** | Retail: **{retail}**")
+                            else:
+                                st.markdown("⚪ Low social interest")
+                        
+                        st.markdown("---")
+                        
                         # === SQUEEZE THESIS (WHY IT WILL SQUEEZE) ===
                         st.markdown("### 🎯 WHY THIS STOCK WILL SQUEEZE")
                         if 'squeeze_thesis' in opp and opp['squeeze_thesis']:

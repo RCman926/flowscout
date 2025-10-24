@@ -683,50 +683,50 @@ class MarketWideScreener:
                 'short_interest_trend': pre_squeeze_signals.get('short_interest_trend', 0),
                 'option_activity': pre_squeeze_signals.get('option_activity', 0),
                 
-                # ADVANCED FEATURE 1: REAL SHORT INTEREST
-                'real_si_data_source': real_si_data.get('data_source', 'unavailable'),
-                'real_short_float': real_si_data.get('short_percent_float', 0),
-                'real_short_ratio': real_si_data.get('short_ratio', 0),
+                # ADVANCED FEATURE 1: REAL SHORT INTEREST (FIXED MAPPING)
+                'real_si_data_source': real_si_data.get('data_source', 'unavailable') if real_si_data else 'unavailable',
+                'real_short_float': real_si_data.get('short_percent_float', 0) if real_si_data else 0,
+                'real_short_ratio': real_si_data.get('short_ratio', 0) if real_si_data else 0,
                 
-                # ADVANCED FEATURE 2: OPTIONS FLOW
-                'unusual_options_activity': options_flow.get('unusual_activity_score', 0),
-                'unusual_call_buying': options_flow.get('unusual_call_buying', False),
-                'sweep_orders': options_flow.get('sweep_orders_detected', 0),
-                'put_call_ratio': options_flow.get('put_call_ratio', 1),
+                # ADVANCED FEATURE 2: OPTIONS FLOW (FIXED MAPPING)
+                'unusual_options_activity': options_flow.get('unusual_activity_score', 0) if options_flow else 0,
+                'unusual_call_buying': options_flow.get('unusual_call_buying', False) if options_flow else False,
+                'sweep_orders': options_flow.get('sweep_orders_detected', 0) if options_flow else 0,
+                'put_call_ratio': options_flow.get('put_call_ratio', 1) if options_flow else 1,
                 
-                # ADVANCED FEATURE 3: BORROW RATE
-                'borrow_rate': borrow_rate_data.get('estimated_borrow_rate', 0),
-                'borrow_difficulty': borrow_rate_data.get('borrow_difficulty', 'UNKNOWN'),
+                # ADVANCED FEATURE 3: BORROW RATE (FIXED MAPPING)
+                'borrow_rate': borrow_rate_data.get('estimated_borrow_rate', 0) if borrow_rate_data else 0,
+                'borrow_difficulty': borrow_rate_data.get('borrow_difficulty', 'UNKNOWN') if borrow_rate_data else 'UNKNOWN',
                 
-                # ADVANCED FEATURE 4: DARK POOL
-                'dark_pool_score': dark_pool_data.get('dark_pool_score', 0),
-                'institutional_accumulation': dark_pool_data.get('accumulation_pattern', False),
-                'unusual_block_trades': dark_pool_data.get('unusual_block_trades', 0),
+                # ADVANCED FEATURE 4: DARK POOL (FIXED MAPPING)
+                'dark_pool_score': dark_pool_data.get('dark_pool_score', 0) if dark_pool_data else 0,
+                'institutional_accumulation': dark_pool_data.get('accumulation_pattern', False) if dark_pool_data else False,
+                'unusual_block_trades': dark_pool_data.get('unusual_block_trades', 0) if dark_pool_data else 0,
                 
-                # ADVANCED FEATURE 5: FLOAT ROTATION
-                'float_rotation_5d': float_rotation_data.get('rotation_rate_5d', 0),
-                'entire_float_trading': float_rotation_data.get('entire_float_trading', False),
-                'days_to_trade_float': float_rotation_data.get('days_to_trade_float', 999),
+                # ADVANCED FEATURE 5: FLOAT ROTATION (FIXED MAPPING)
+                'float_rotation_5d': float_rotation_data.get('rotation_rate_5d', 0) if float_rotation_data else 0,
+                'entire_float_trading': float_rotation_data.get('entire_float_trading', False) if float_rotation_data else False,
+                'days_to_trade_float': float_rotation_data.get('days_to_trade_float', 999) if float_rotation_data else 999,
                 
-                # ADVANCED FEATURE 6: HISTORICAL WIN RATE
-                'historical_win_rate': win_rate_data.get('win_rate', 0),
-                'avg_historical_gain': win_rate_data.get('avg_gain_percent', 0),
-                'pattern_success_count': win_rate_data.get('success_count', 0),
-                'total_patterns_found': win_rate_data.get('total_patterns', 0),
-                'win_rate_confidence': win_rate_data.get('confidence_level', 'UNKNOWN'),
+                # ADVANCED FEATURE 6: HISTORICAL WIN RATE (FIXED MAPPING)
+                'historical_win_rate': win_rate_data.get('win_rate', 0) if win_rate_data else 0,
+                'avg_historical_gain': win_rate_data.get('avg_gain_percent', 0) if win_rate_data else 0,
+                'pattern_success_count': win_rate_data.get('success_count', 0) if win_rate_data else 0,
+                'total_patterns_found': win_rate_data.get('total_patterns', 0) if win_rate_data else 0,
+                'win_rate_confidence': win_rate_data.get('confidence_level', 'UNKNOWN') if win_rate_data else 'UNKNOWN',
                 
-                # ADVANCED FEATURE 7: CATALYSTS
-                'catalyst_score': catalyst_data.get('catalyst_score', 0),
-                'has_upcoming_catalyst': catalyst_data.get('has_upcoming_catalyst', False),
-                'next_catalyst': catalyst_data.get('next_catalyst', None),
-                'days_until_catalyst': catalyst_data.get('days_until_catalyst', 999),
+                # ADVANCED FEATURE 7: CATALYSTS (FIXED MAPPING)
+                'catalyst_score': catalyst_data.get('catalyst_score', 0) if catalyst_data else 0,
+                'has_upcoming_catalyst': catalyst_data.get('has_upcoming_catalyst', False) if catalyst_data else False,
+                'next_catalyst': catalyst_data.get('next_catalyst', None) if catalyst_data else None,
+                'days_until_catalyst': catalyst_data.get('days_until_catalyst', 999) if catalyst_data else 999,
                 
-                # ADVANCED FEATURE 8: SOCIAL SENTIMENT
-                'social_sentiment_score': sentiment_data.get('sentiment_score', 0),
-                'social_buzz_level': sentiment_data.get('buzz_level', 'LOW'),
-                'is_trending': sentiment_data.get('is_trending', False),
-                'wsb_candidate': sentiment_data.get('wsb_candidate', False),
-                'retail_interest': sentiment_data.get('retail_interest', 'LOW'),
+                # ADVANCED FEATURE 8: SOCIAL SENTIMENT (FIXED MAPPING)
+                'social_sentiment_score': sentiment_data.get('sentiment_score', 0) if sentiment_data else 0,
+                'social_buzz_level': sentiment_data.get('buzz_level', 'LOW') if sentiment_data else 'LOW',
+                'is_trending': sentiment_data.get('is_trending', False) if sentiment_data else False,
+                'wsb_candidate': sentiment_data.get('wsb_candidate', False) if sentiment_data else False,
+                'retail_interest': sentiment_data.get('retail_interest', 'LOW') if sentiment_data else 'LOW',
                 
                 # Thesis
                 'squeeze_thesis': squeeze_thesis
