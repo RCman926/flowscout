@@ -27,6 +27,15 @@ except ImportError:
     ADVANCED_DATA_AVAILABLE = False
     print("⚠️ Advanced data sources not available - using basic mode")
 
+# Import extended hours tracker for real-time pricing
+try:
+    from extended_hours_tracker import ExtendedHoursTracker
+    extended_hours_tracker = ExtendedHoursTracker()
+    EXTENDED_HOURS_AVAILABLE = True
+except ImportError:
+    EXTENDED_HOURS_AVAILABLE = False
+    print("⚠️ Extended hours tracker not available - using regular close prices")
+
 
 class MarketWideScreener:
     """
@@ -499,6 +508,7 @@ class MarketWideScreener:
             if hist.empty or len(hist) < 20:
                 return None
             
+            # Get regular close price (extended hours fetched later in UI for performance)
             current_price = hist['Close'].iloc[-1]
             
             # === FILTER 1: Price Range ===
@@ -738,7 +748,7 @@ class MarketWideScreener:
             result = {
                 # Basic Info
                 'symbol': symbol,
-                'price': current_price,
+                'price': current_price,  # Regular close (extended hours fetched in UI for performance)
                 'company_name': info.get('shortName', symbol),
                 'market_cap': market_cap,
                 

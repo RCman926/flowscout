@@ -2675,9 +2675,44 @@ def explosive_opportunities_page():
         if opportunities:
             st.success(f"🎯 **Found {len(opportunities)} squeeze candidates with scores 60+!**")
             
+            # Initialize extended hours cache
+            if 'extended_hours_cache' not in st.session_state:
+                st.session_state.extended_hours_cache = {}
+            
+            # Optional: Refresh real-time extended hours prices (on-demand to avoid blocking)
+            refresh_prices = st.button("🔄 Refresh Real-Time Prices (Extended Hours)", type="secondary")
+            
+            if refresh_prices:
+                from extended_hours_tracker import ExtendedHoursTracker
+                ext_tracker = ExtendedHoursTracker()
+                
+                # Fetch extended hours for top 15 symbols
+                symbols_to_fetch = [opp['symbol'] for opp in opportunities[:15]]
+                
+                with st.spinner("Fetching real-time extended hours prices... (~30 seconds)"):
+                    for symbol in symbols_to_fetch:
+                        try:
+                            ext_data = ext_tracker.get_extended_hours_data(symbol)
+                            if ext_data:
+                                st.session_state.extended_hours_cache[symbol] = ext_data
+                        except Exception:
+                            pass
+                
+                st.success("✅ Real-time prices updated!")
+            
             # Display top opportunities
             for i, opp in enumerate(opportunities[:15]):  # Top 15 squeeze plays
                 with st.container():
+                    # Use cached extended hours data if available
+                    symbol = opp['symbol']
+                    if symbol in st.session_state.extended_hours_cache:
+                        ext_data = st.session_state.extended_hours_cache[symbol]
+                        if ext_data and ext_data.get('current_price'):
+                            opp['price'] = ext_data['current_price']
+                            opp['extended_hours_active'] = ext_data.get('extended_hours_active', False)
+                            opp['extended_hours_type'] = ext_data.get('extended_hours_type', '')
+                            opp['extended_hours_change'] = ext_data.get('extended_hours_change', 0)
+                    
                     # Create columns for layout
                     main_col, squeeze_col, metrics_col = st.columns([2, 2, 1])
                     
@@ -2698,8 +2733,27 @@ def explosive_opportunities_page():
                         else:
                             cap_display = f"${market_cap/1_000_000_000:.0f}B"
                         
-                        st.markdown(f"### {score_color} **{opp['symbol']}** - ${opp['price']:.2f}")
-                        st.markdown(f"**{opp.get('company_name', opp['symbol'])}** | Cap: {cap_display}")
+                        # Show extended hours price if available
+                        current_price = opp['price']
+                        is_extended = opp.get('extended_hours_active', False)
+                        ext_type = opp.get('extended_hours_type', '')
+                        ext_change = opp.get('extended_hours_change', 0)
+                        
+                        if is_extended:
+                            if ext_type == 'PRE_MARKET':
+                                ext_label = "PRE-MARKET"
+                                ext_emoji = "🌅"
+                            else:
+                                ext_label = "AFTER-HOURS"
+                                ext_emoji = "🌙"
+                            
+                            ext_color = "🟢" if ext_change > 0 else "🔴"
+                            st.markdown(f"### {score_color} **{opp['symbol']}** - ${current_price:.2f} {ext_emoji}")
+                            st.markdown(f"**{opp.get('company_name', opp['symbol'])}** | Cap: {cap_display}")
+                            st.caption(f"{ext_emoji} {ext_label}: {ext_color} {ext_change:+.1f}% from close")
+                        else:
+                            st.markdown(f"### {score_color} **{opp['symbol']}** - ${current_price:.2f}")
+                            st.markdown(f"**{opp.get('company_name', opp['symbol'])}** | Cap: {cap_display}")
                         
                         # AI Probability display (PROMINENT)
                         squeeze_prob = opp.get('squeeze_probability', 0)
