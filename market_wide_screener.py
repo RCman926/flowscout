@@ -102,15 +102,43 @@ class MarketWideScreener:
                 
                 try:
                     analysis = future.result()
-                    if analysis and analysis.get('squeeze_score', 0) >= 60:
+                    if analysis and self._is_explosive_opportunity(analysis):
                         explosive_plays.append(analysis)
                 except Exception as e:
                     pass  # Skip failed analyses
         
         print(f"✅ Analyzed {completed} stocks total (parallel processing)")
         
-        # Sort by freshness score first (to show NEWEST opportunities), then squeeze score
-        explosive_plays.sort(key=lambda x: (x.get('freshness_score', 0), x.get('squeeze_score', 0)), reverse=True)
+        # Sort by PRIORITY (PRE-SQUEEZE first, then by short interest and early warning)
+        def get_sort_priority(analysis):
+            """
+            Calculate sort priority - higher is better
+            Prioritizes PRE-SQUEEZE > READY > BUILDING > ACTIVE
+            Then by short interest and early warning scores
+            """
+            stage = analysis.get('squeeze_stage', '')
+            short_interest = analysis.get('real_short_float', 0)
+            early_warning = analysis.get('early_warning_score', 0)
+            
+            # Stage priority (0-1000 points)
+            stage_points = {
+                'PRE_SQUEEZE': 1000,  # Highest priority - perfect entry window
+                'READY': 800,          # High priority - imminent move
+                'BUILDING': 600,       # Medium priority - early stage
+                'ACTIVE': 400,         # Low priority - late entry
+                'POST': 0              # Should be filtered out already
+            }.get(stage, 0)
+            
+            # Short interest points (0-500)
+            si_points = min(short_interest * 5, 500)
+            
+            # Early warning points (0-200)
+            ew_points = early_warning * 2
+            
+            # Total priority score
+            return stage_points + si_points + ew_points
+        
+        explosive_plays.sort(key=get_sort_priority, reverse=True)
         
         self.screener_results = explosive_plays
         self.last_scan_time = datetime.now()
@@ -118,6 +146,77 @@ class MarketWideScreener:
         print(f"✅ Found {len(explosive_plays)} explosive opportunities!")
         
         return explosive_plays
+    
+    def _is_explosive_opportunity(self, analysis: Dict) -> bool:
+        """
+        SMART FILTERING: Prioritize PRE-SQUEEZE opportunities, not stocks that already squeezed
+        
+        This filters for:
+        1. High short interest (real squeeze fuel)
+        2. PRE-SQUEEZE, READY, or BUILDING stages (NOT ACTIVE or POST - those are too late!)
+        3. Hard borrow rates (shorts are bleeding)
+        4. Strong institutional signals
+        5. Early warning indicators (forward-looking, not backward-looking)
+        
+        REJECTS:
+        - ACTIVE or POST stage (squeeze already happened - like SCNX)
+        - Low short interest (no squeeze fuel)
+        - Stocks that already pumped (we want BEFORE the pump)
+        """
+        
+        # Get key metrics
+        squeeze_stage = analysis.get('squeeze_stage', '')
+        short_interest = analysis.get('real_short_float', 0)
+        borrow_difficulty = analysis.get('borrow_difficulty', 'EASY')
+        early_warning = analysis.get('early_warning_score', 0)
+        squeeze_probability = analysis.get('squeeze_probability', 0)
+        
+        # === REJECT CRITERIA (Immediate disqualification) ===
+        
+        # 1. REJECT stocks that already squeezed (POST stage)
+        if squeeze_stage == 'POST':
+            return False
+        
+        # 2. REJECT stocks actively squeezing NOW (ACTIVE stage - too late to enter safely)
+        # Exception: Allow if short interest is VERY high (>40%) indicating multi-day squeeze potential
+        if squeeze_stage == 'ACTIVE':
+            if short_interest < 40:
+                return False
+        
+        # === PRIORITY CRITERIA (What we're looking for) ===
+        
+        # TIER 1: PRE-SQUEEZE setups (1-5 days out) - HIGHEST PRIORITY
+        if squeeze_stage == 'PRE_SQUEEZE':
+            # Must have real squeeze fuel
+            if short_interest >= 20 or borrow_difficulty in ['HARD', 'VERY HARD']:
+                return True
+        
+        # TIER 2: READY TO SQUEEZE (0-2 days out) - HIGH PRIORITY
+        if squeeze_stage == 'READY':
+            if short_interest >= 15 or borrow_difficulty in ['HARD', 'VERY HARD']:
+                return True
+        
+        # TIER 3: BUILDING stage with strong fundamentals - MEDIUM PRIORITY
+        if squeeze_stage == 'BUILDING':
+            # Need VERY strong squeeze fundamentals to show in screener
+            if short_interest >= 30 and borrow_difficulty in ['HARD', 'VERY HARD']:
+                return True
+            # OR high short interest + strong early warning signals
+            if short_interest >= 40 and early_warning >= 30:
+                return True
+        
+        # TIER 4: ACTIVE squeezes with EXTREME short interest (multi-day potential) - LOW PRIORITY
+        if squeeze_stage == 'ACTIVE':
+            if short_interest >= 50 and borrow_difficulty == 'VERY HARD':
+                return True
+        
+        # TIER 5: Fallback for high-probability setups regardless of stage
+        # This catches edge cases with extreme metrics
+        if squeeze_probability >= 80 and short_interest >= 40:
+            return True
+        
+        # Default: Don't show in screener
+        return False
     
     def _scan_yahoo_finance_universe(self, min_price: float, max_price: float, min_volume: int) -> List[str]:
         """Scan market for real candidate stocks dynamically"""

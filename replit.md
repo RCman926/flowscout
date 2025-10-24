@@ -152,3 +152,51 @@ UI/UX Preferences:
 - **Risk/Reward Analysis**: ATR-based stops, multiple profit targets, expected moves, support/resistance, risk-adjusted ratios
 - **Confidence Scoring**: 0-100% prediction reliability based on data quality and technical validation
 - **Professional UI**: Institutional-style presentation with all metrics prominently displayed
+
+## CRITICAL FIX: SMART SCREENER FILTERING (October 24, 2025)
+**Major Bug Fix**: Completely rewrote screener filtering logic to prioritize PRE-SQUEEZE opportunities instead of stocks that already squeezed
+
+### The Problem
+- Old logic: Filtered by `squeeze_score >= 60`, which rewarded past performance (high volume, momentum)
+- Result: Showed stocks AFTER they squeezed (like SCNX +354% then -23% crash), filtered out stocks BEFORE they squeezed (like BYND with 53% SI)
+- This was backwards - we want to catch squeezes BEFORE they happen!
+
+### The Solution
+**New Smart Filtering** (`_is_explosive_opportunity` function):
+
+**TIER 1: PRE-SQUEEZE (1-5 days out)** - HIGHEST PRIORITY
+- Short interest ≥20% OR borrow difficulty HARD/VERY HARD
+- Perfect entry window before the move
+
+**TIER 2: READY (0-2 days out)** - HIGH PRIORITY
+- Short interest ≥15% OR borrow difficulty HARD/VERY HARD
+- Imminent squeeze expected
+
+**TIER 3: BUILDING (3-7+ days out)** - MEDIUM PRIORITY
+- Short interest ≥30% AND borrow difficulty HARD/VERY HARD
+- OR Short interest ≥40% with early warning ≥30
+- Example: BYND (53.4% SI + VERY HARD borrow) qualifies here
+
+**REJECTED:**
+- POST stage - Squeeze already happened, too late
+- ACTIVE stage with SI <40% - Late entry, high risk
+- Example: SCNX (ACTIVE stage, 2.5% SI, already crashed) filtered out
+
+### New Sorting Priority
+Stocks now rank by:
+1. **Squeeze Stage Priority**: PRE-SQUEEZE (1000 pts) > READY (800) > BUILDING (600) > ACTIVE (400)
+2. **Short Interest**: Higher SI = more squeeze fuel (up to 500 pts)
+3. **Early Warning Score**: Forward-looking signals (up to 200 pts)
+
+**Total priority score determines ranking** - NOT past performance!
+
+### Extended Hours Tracking (October 24, 2025)
+**New Feature**: Real-time pre-market and after-hours price tracking
+
+- **Extended Hours Data**: Captures pre-market and post-market prices from yfinance
+- **Crash Detection**: Automatically classifies overnight moves (MINOR/MODERATE/SEVERE/CATASTROPHIC)
+- **Pump Detection**: Identifies overnight squeezes before market open
+- **10-Second Cache**: Real-time updates for extended hours movements
+- **Integration**: Works seamlessly with screener to detect overnight selloffs (like SCNX -23% post-market)
+
+**Module**: `extended_hours_tracker.py` with `ExtendedHoursTracker` class
