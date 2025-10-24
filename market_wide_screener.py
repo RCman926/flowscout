@@ -59,36 +59,29 @@ class MarketWideScreener:
         if self.last_scan_time and (datetime.now() - self.last_scan_time).seconds < self.cache_duration:
             return self.screener_results
         
-        print("🔍 Scanning entire market for explosive opportunities...")
+        print("🔍 Scanning for explosive opportunities...")
         
-        candidates = []
+        # === TEMPORARY: FOCUS ON KNOWN SQUEEZE CANDIDATES ===
+        # Using hardcoded list to avoid Yahoo Finance rate limiting
+        # TODO: Change back to full 500+ scan once IBKR is connected
+        print("📌 FOCUSED SCAN: Analyzing known squeeze candidates (BYND, DNUT)")
+        pre_filtered = ['BYND', 'DNUT']  # Known squeeze plays with high short interest
         
-        # === METHOD 1: Yahoo Finance Screener ===
-        # Get stocks from various categories
-        yf_candidates = self._scan_yahoo_finance_universe(min_price, max_price, min_volume)
-        candidates.extend(yf_candidates)
-        
-        # === METHOD 2: High Short Interest Stocks ===
-        high_short_stocks = self._get_high_short_interest_stocks()
-        candidates.extend(high_short_stocks)
-        
-        # === METHOD 3: Small Cap & Penny Stocks ===
-        small_caps = self._get_small_cap_universe()
-        candidates.extend(small_caps)
-        
-        # === METHOD 4: OTC & Pink Sheet Stocks ===
-        otc_stocks = self._get_otc_candidates()
-        candidates.extend(otc_stocks)
-        
-        # Remove duplicates
-        unique_symbols = list(set(candidates))
-        print(f"📊 Found {len(unique_symbols)} unique candidates")
-        
-        # === INTELLIGENT PRE-FILTERING (FAST) ===
-        # Quick filter to reduce from 500+ to 100-150 high-quality candidates
-        print("🔍 Pre-filtering candidates (quick volume/price check)...")
-        pre_filtered = self._quick_prefilter(unique_symbols[:500])  # Expanded to 500 for broader coverage
-        print(f"✅ Pre-filtered to {len(pre_filtered)} high-potential candidates")
+        # ORIGINAL CODE (commented out for now - uncomment when IBKR connected):
+        # candidates = []
+        # yf_candidates = self._scan_yahoo_finance_universe(min_price, max_price, min_volume)
+        # candidates.extend(yf_candidates)
+        # high_short_stocks = self._get_high_short_interest_stocks()
+        # candidates.extend(high_short_stocks)
+        # small_caps = self._get_small_cap_universe()
+        # candidates.extend(small_caps)
+        # otc_stocks = self._get_otc_candidates()
+        # candidates.extend(otc_stocks)
+        # unique_symbols = list(set(candidates))
+        # print(f"📊 Found {len(unique_symbols)} unique candidates")
+        # print("🔍 Pre-filtering candidates (quick volume/price check)...")
+        # pre_filtered = self._quick_prefilter(unique_symbols[:500])
+        # print(f"✅ Pre-filtered to {len(pre_filtered)} high-potential candidates")
         
         # === PARALLEL ANALYSIS (FAST) ===
         explosive_plays = []
@@ -114,9 +107,9 @@ class MarketWideScreener:
                     if analysis and self._is_explosive_opportunity(analysis):
                         explosive_plays.append(analysis)
                     
-                    # Add delay to avoid rate limiting (1s per stock - more conservative)
+                    # Add delay to avoid rate limiting (only needed for large scans)
                     import time
-                    time.sleep(1.0)
+                    time.sleep(0.5)  # Short delay for focused scan
                 except Exception as e:
                     pass  # Skip failed analyses
         
