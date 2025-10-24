@@ -3395,48 +3395,58 @@ def personalized_watchlists_page():
                         with st.container():
                             st.markdown("---")
                             
+                            # Fetch data with comprehensive error handling
                             ticker = yf.Ticker(symbol)
-                            
-                            # Try multiple data sources for price
                             hist = ticker.history(period='6mo')
                             info = ticker.info
                             
                             if hist.empty or len(hist) < 2:
-                                st.warning(f"❌ No historical data available for {symbol}")
+                                st.error(f"❌ **{symbol}** - No data available (delisted or suspended)")
                                 continue
                             
                             # Current price with fallback
                             current_price = hist['Close'].iloc[-1]
-                            
-                            # If price is 0 or invalid, try info
                             if current_price <= 0 or np.isnan(current_price):
                                 current_price = info.get('currentPrice', info.get('regularMarketPrice', 0))
                             
                             if current_price <= 0:
-                                st.warning(f"❌ Invalid price data for {symbol}")
+                                st.error(f"❌ **{symbol}** - Invalid price data")
                                 continue
                             
+                            # Pre-fetch ALL variables needed for analysis
+                            company_name = info.get('longName', info.get('shortName', symbol))
+                            market_cap = info.get('marketCap', 0)
+                            book_value = info.get('bookValue', 0)
+                            revenue = info.get('totalRevenue', 0)
+                            eps = info.get('trailingEps', 0)
+                            pe_ratio = info.get('trailingPE', 0)
+                            revenue_growth = info.get('revenueGrowth', 0)
+                            target_mean = info.get('targetMeanPrice', 0)
+                            target_high = info.get('targetHighPrice', 0)
+                            target_low = info.get('targetLowPrice', 0)
+                            week_52_high = info.get('fiftyTwoWeekHigh', 0)
+                            week_52_low = info.get('fiftyTwoWeekLow', 0)
+                            insider_pct = info.get('heldPercentInsiders', 0)
+                            sector = info.get('sector', 'Unknown')
+                            industry = info.get('industry', 'Unknown')
+                            
+                            # Calculate RSI
+                            if len(hist) >= 14:
+                                delta = hist['Close'].diff()
+                                gain = delta.where(delta > 0, 0).rolling(window=14).mean()
+                                loss = -delta.where(delta < 0, 0).rolling(window=14).mean()
+                                rs = gain / loss
+                                rsi_series = 100 - (100 / (1 + rs))
+                                rsi = rsi_series.iloc[-1]
+                            else:
+                                rsi = 50  # Neutral if not enough data
+                            
+                            # Calculate price change
                             prev_close = hist['Close'].iloc[-2] if len(hist) > 1 else current_price
                             change = current_price - prev_close
                             change_pct = (change / prev_close * 100) if prev_close > 0 else 0
                             
-                            # === ENHANCED HEADER ===
-                            change_emoji = "🟢" if change_pct > 0 else "🔴" if change_pct < 0 else "⚪"
-                            
-                            # Color based on performance
-                            if change_pct > 5:
-                                header_color = "🟩"
-                            elif change_pct > 0:
-                                header_color = "🟢"
-                            elif change_pct > -5:
-                                header_color = "🔴"
-                            else:
-                                header_color = "🟥"
-                            
-                            st.markdown(f"## {header_color} **{symbol}** - ${current_price:.2f} {change_emoji} ({change_pct:+.1f}%)")
-                            
-                            company_name = info.get('longName', info.get('shortName', symbol))
-                            market_cap = info.get('marketCap', 0)
+                            # Market cap display
                             if market_cap > 1_000_000_000:
                                 cap_display = f"${market_cap/1_000_000_000:.2f}B"
                             elif market_cap > 1_000_000:
@@ -3444,13 +3454,10 @@ def personalized_watchlists_page():
                             else:
                                 cap_display = "N/A"
                             
-                            # Get fundamental data
-                            book_value = info.get('bookValue', 0)
-                            revenue = info.get('totalRevenue', 0)
-                            eps = info.get('trailingEps', 0)
-                            
-                            st.markdown(f"**{company_name}**")
-                            st.caption(f"Market Cap: {cap_display} | Book Value: ${book_value:.2f}/share | EPS: ${eps:.2f}")
+                            # === COMPACT HEADER ===
+                            change_emoji = "🟢" if change_pct > 0 else "🔴" if change_pct < 0 else "⚪"
+                            st.markdown(f"## {change_emoji} **{symbol}** - ${current_price:.2f} ({change_pct:+.1f}%)")
+                            st.caption(f"{company_name} | {cap_display} | P/B: {current_price/book_value:.2f if book_value > 0 else 'N/A'} | RSI: {rsi:.0f}")
                             
                             # === YOUR POSITION TRACKING ===
                             st.markdown("---")
