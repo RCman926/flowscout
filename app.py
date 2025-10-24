@@ -2545,44 +2545,9 @@ def explosive_opportunities_page():
         if opportunities:
             st.success(f"🎯 **Found {len(opportunities)} squeeze candidates!**")
             
-            # Initialize extended hours cache
-            if 'extended_hours_cache' not in st.session_state:
-                st.session_state.extended_hours_cache = {}
-                st.session_state.extended_hours_last_fetch = 0
-            
-            # Auto-fetch pre-market/after-hours if not cached (60 second cache)
-            import time
-            current_time = time.time()
-            need_fetch = (current_time - st.session_state.extended_hours_last_fetch) > 60
-            
-            if need_fetch:
-                from extended_hours_tracker import ExtendedHoursTracker
-                ext_tracker = ExtendedHoursTracker()
-                
-                with st.spinner("Fetching real-time pre-market/after-hours prices..."):
-                    for opp in opportunities[:15]:
-                        symbol = opp['symbol']
-                        try:
-                            ext_data = ext_tracker.get_extended_hours_data(symbol)
-                            if ext_data:
-                                st.session_state.extended_hours_cache[symbol] = ext_data
-                        except Exception:
-                            pass
-                
-                st.session_state.extended_hours_last_fetch = current_time
-            
             # Display top opportunities
             for i, opp in enumerate(opportunities[:15]):  # Top 15 squeeze plays
                 with st.container():
-                    # Use cached extended hours data
-                    symbol = opp['symbol']
-                    if symbol in st.session_state.extended_hours_cache:
-                        ext_data = st.session_state.extended_hours_cache[symbol]
-                        if ext_data and ext_data.get('current_price'):
-                            opp['price'] = ext_data['current_price']
-                            opp['extended_hours_active'] = ext_data.get('extended_hours_active', False)
-                            opp['extended_hours_type'] = ext_data.get('extended_hours_type', '')
-                            opp['extended_hours_change'] = ext_data.get('extended_hours_change', 0)
                     
                     # Create columns for layout
                     main_col, squeeze_col, metrics_col = st.columns([2, 2, 1])
@@ -2604,27 +2569,10 @@ def explosive_opportunities_page():
                         else:
                             cap_display = f"${market_cap/1_000_000_000:.0f}B"
                         
-                        # Show current price with session indicator
+                        # Show current price
                         current_price = opp['price']
-                        is_extended = opp.get('extended_hours_active', False)
-                        ext_type = opp.get('extended_hours_type', '')
-                        ext_change = opp.get('extended_hours_change', 0)
-                        
-                        if is_extended and ext_type:
-                            if ext_type == 'PRE_MARKET':
-                                session_label = "🌅 PRE-MARKET"
-                            elif ext_type == 'AFTER_HOURS':
-                                session_label = "🌙 AFTER-HOURS"
-                            else:
-                                session_label = ""
-                            
-                            change_color = "🟢" if ext_change > 0 else "🔴"
-                            st.markdown(f"### {score_color} **{opp['symbol']}** - ${current_price:.2f} {session_label}")
-                            st.markdown(f"**{opp.get('company_name', opp['symbol'])}** | Cap: {cap_display}")
-                            st.caption(f"{change_color} {ext_change:+.1f}% from previous close")
-                        else:
-                            st.markdown(f"### {score_color} **{opp['symbol']}** - ${current_price:.2f}")
-                            st.markdown(f"**{opp.get('company_name', opp['symbol'])}** | Cap: {cap_display}")
+                        st.markdown(f"### {score_color} **{opp['symbol']}** - ${current_price:.2f}")
+                        st.markdown(f"**{opp.get('company_name', opp['symbol'])}** | Cap: {cap_display}")
                         
                         # AI Probability display (PROMINENT)
                         squeeze_prob = opp.get('squeeze_probability', 0)
@@ -2770,8 +2718,8 @@ def explosive_opportunities_page():
                         
                         st.markdown("---")
                         
-                        # === BUY-IN RECOMMENDATION (NEW FEATURE) ===
-                        st.markdown("### 💰 BUY-IN RECOMMENDATION")
+                        # === BUY-IN RECOMMENDATION ===
+                        st.markdown("### 💰 Buy-In Recommendation")
                         
                         buy_in_ideal = opp.get('buy_in_ideal', 0)
                         buy_in_low = opp.get('buy_in_low', 0)
@@ -2780,22 +2728,25 @@ def explosive_opportunities_page():
                         price = opp.get('price', 0)
                         
                         if buy_in_ideal > 0:
-                            # Show recommended entry zone
-                            st.success(f"🎯 **RECOMMENDED ENTRY: ${buy_in_ideal:.2f}**")
-                            st.info(f"📍 Buy Zone: **${buy_in_low:.2f} - ${buy_in_high:.2f}**")
-                            st.caption(f"💡 Rationale: {buy_rationale}")
+                            entry_col1, entry_col2 = st.columns([1, 2])
                             
-                            # Show distance from current price
-                            if price > 0:
-                                distance = ((price - buy_in_ideal) / price * 100)
-                                if distance > 5:
-                                    st.warning(f"⚠️ Current price (${price:.2f}) is {distance:.1f}% above ideal entry - consider waiting")
-                                elif distance > -5:
-                                    st.info(f"✅ Current price (${price:.2f}) is near ideal entry")
-                                else:
-                                    st.error(f"🚀 Current price (${price:.2f}) is below ideal entry - good opportunity!")
+                            with entry_col1:
+                                st.markdown(f"**Ideal Entry:** ${buy_in_ideal:.2f}")
+                                st.markdown(f"**Buy Zone:** ${buy_in_low:.2f} - ${buy_in_high:.2f}")
+                            
+                            with entry_col2:
+                                st.markdown(f"**Rationale:** {buy_rationale}")
+                                
+                                if price > 0:
+                                    distance = ((price - buy_in_ideal) / price * 100)
+                                    if distance > 5:
+                                        st.caption(f"Current ${price:.2f} is {distance:.1f}% above ideal - consider waiting")
+                                    elif distance > -5:
+                                        st.caption(f"Current ${price:.2f} is near ideal entry")
+                                    else:
+                                        st.caption(f"Current ${price:.2f} is below ideal - good opportunity")
                         else:
-                            st.info(f"💡 Consider entry near current price: **${price:.2f}**")
+                            st.markdown(f"**Suggested Entry:** ${price:.2f} (current price)")
                         
                         st.markdown("---")
                         
