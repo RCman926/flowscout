@@ -1428,45 +1428,6 @@ class EarningsPlaybook:
                 st.markdown(f"- Sector: **{sector_info.get('sector', 'Unknown')}** / Industry: **{sector_info.get('industry', 'Unknown')}**")
                 st.markdown(f"- 3M Performance: **{sector_info.get('stock_3m_return', 0):+.1f}%** - {sector_info.get('assessment', 'No data')}")
                 
-                # Comprehensive quality breakdown with ALL 8 FACTORS
-                st.markdown("---")
-                st.markdown("**🎯 COMPREHENSIVE 8-FACTOR QUALITY SCORE:**")
-                
-                # Display in 4 rows of 2 factors each
-                factor_row1_col1, factor_row1_col2 = st.columns(2)
-                with factor_row1_col1:
-                    st.metric("1️⃣ Win Rate", f"{win_rate:.0f}%", f"{factor_breakdown['win_rate']:.0f}/30 pts")
-                with factor_row1_col2:
-                    st.metric("2️⃣ Beat Streak", f"{beat_streak}Q", f"{factor_breakdown['beat_streak']:.0f}/25 pts")
-                
-                factor_row2_col1, factor_row2_col2 = st.columns(2)
-                with factor_row2_col1:
-                    st.metric("3️⃣ Upside", f"{upside:+.0f}%", f"{factor_breakdown['upside']:.0f}/20 pts")
-                with factor_row2_col2:
-                    st.metric("4️⃣ Implied Vol", f"{iv_info.get('iv', 0):.0f}%", f"{factor_breakdown['implied_vol']:.0f}/15 pts")
-                
-                factor_row3_col1, factor_row3_col2 = st.columns(2)
-                with factor_row3_col1:
-                    st.metric("5️⃣ Institutional", f"{inst_info.get('inst_ownership', 0):.0f}%", f"{factor_breakdown['institutional']:.0f}/15 pts")
-                with factor_row3_col2:
-                    st.metric("6️⃣ Short Interest", f"{short_info.get('short_pct', 0):.1f}%", f"{factor_breakdown['short_interest']:.0f}/15 pts")
-                
-                factor_row4_col1, factor_row4_col2 = st.columns(2)
-                with factor_row4_col1:
-                    st.metric("7️⃣ Estimates", est_info.get('estimate_trend', 'Unknown')[:10], f"{factor_breakdown['estimates']:.0f}/15 pts")
-                with factor_row4_col2:
-                    st.metric("8️⃣ Sector Strength", sector_info.get('sector_strength', 'Unknown')[:10], f"{factor_breakdown['sector']:.0f}/15 pts")
-                
-                # Overall assessment
-                st.markdown("---")
-                if quality_score >= 110:
-                    st.success(f"🏆 **TOTAL SCORE: {quality_score:.0f}/150** - INSTITUTIONAL-GRADE SETUP (TOP TIER)")
-                elif quality_score >= 85:
-                    st.info(f"✅ **TOTAL SCORE: {quality_score:.0f}/150** - STRONG OPPORTUNITY (VERY GOOD)")
-                elif quality_score >= 55:
-                    st.warning(f"📊 **TOTAL SCORE: {quality_score:.0f}/150** - MODERATE SETUP (DECENT)")
-                else:
-                    st.error(f"⚠️ **TOTAL SCORE: {quality_score:.0f}/150** - WEAK SETUP (HIGH RISK - SKIP)")
             
             else:
                 # Compact view
