@@ -982,37 +982,42 @@ class EarningsPlaybook:
                     st.markdown(f"- vs 200-day MA: **{data['price_vs_ma200']:+.1f}%**")
                 
                 with setup_col2:
-                    st.markdown("**📈 HISTORICAL + ⏰ TIMING:**")
+                    st.markdown("**⏰ OPTIMAL ENTRY/EXIT:**")
                     hist = data['historical_moves']
-                    st.markdown(f"- Avg Move: **±{hist['avg_move']:.1f}%** | Beat: **{hist['beat_count']}/{hist['beat_count']+hist['miss_count']}**")
-                    st.markdown(f"- Beat Streak: **{hist['beat_streak']}Q** | Rev Growth: **{data['revenue_growth']:+.1f}%**")
-                    
-                    st.markdown("**🎯 OPTIMAL TIMING:**")
-                    st.markdown(f"- 📥 **ENTRY:** {hist.get('best_entry_timing', '1-2 days before')}")
-                    st.markdown(f"- 📤 **EXIT:** {hist.get('best_exit_timing', 'Day after')}")
-                    st.markdown(f"- 📊 Pre-Earnings: **{hist.get('pre_earnings_move', 0):+.1f}%**")
-                    st.markdown(f"- 🚀 Post-Earnings: **{hist.get('post_earnings_move', 0):+.1f}%**")
+                    st.markdown(f"- 📥 **Entry:** {hist.get('best_entry_timing', '1-2 days before')}")
+                    st.markdown(f"- 📤 **Exit:** {hist.get('best_exit_timing', 'Day after')}")
+                    st.markdown(f"- 📊 Pre-Earnings Run: **{hist.get('pre_earnings_move', 0):+.1f}%**")
+                    st.markdown(f"- 🚀 Earnings Pop: **{hist.get('post_earnings_move', 0):+.1f}%**")
+                    st.markdown(f"- 📈 Beat Streak: **{hist['beat_streak']}Q** ({hist['beat_count']}/{hist['beat_count']+hist['miss_count']})")
+                    st.markdown(f"- 💰 Avg Move: **±{hist['avg_move']:.1f}%**")
                 
                 with setup_col3:
-                    st.markdown("**🎯 TRADE SETUP:**")
+                    st.markdown("**🎯 RECOMMENDED PLAY:**")
                     
                     if data['recommended_play'] == 'CALLS':
-                        st.success("**📈 CALLS**")
-                        st.markdown(f"Entry: {hist.get('best_entry_timing', '1-2d before')}")
-                        st.markdown(f"Exit: {hist.get('best_exit_timing', 'Day after')}")
-                        conservative_strike = data['current_price'] * 1.02
-                        st.markdown(f"Strike: ${conservative_strike:.0f} (2% OTM)")
-                        st.markdown(f"Target: {hist['avg_move']:.0f}% move")
+                        st.success("**📈 BUY CALLS**")
+                        conservative = data['current_price'] * 1.02
+                        moderate = data['current_price'] * 1.03
+                        aggressive = data['current_price'] * 1.05
+                        st.markdown(f"- **Strikes:**")
+                        st.markdown(f"  - Safe: ${conservative:.0f}")
+                        st.markdown(f"  - Moderate: ${moderate:.0f}")
+                        st.markdown(f"  - Aggressive: ${aggressive:.0f}")
+                        target = data['current_price'] * (1 + hist['avg_move']/100)
+                        st.markdown(f"- **Target:** ${target:.0f}")
                     
                     elif data['recommended_play'] == 'PUTS':
-                        st.error("**📉 PUTS**")
-                        st.markdown("Bearish - use caution")
+                        st.error("**📉 BUY PUTS**")
+                        conservative = data['current_price'] * 0.98
+                        st.markdown(f"- **Strike:** ${conservative:.0f}")
+                        st.markdown("- ⚠️ Bearish setup")
                     
                     else:
-                        st.warning("**➡️ CONDOR**")
+                        st.warning("**➡️ IRON CONDOR**")
                         lower = data['current_price'] * 0.95
                         upper = data['current_price'] * 1.05
-                        st.markdown(f"${lower:.0f}-${upper:.0f}")
+                        st.markdown(f"- **Range:** ${lower:.0f} - ${upper:.0f}")
+                        st.markdown("- Collect premium")
                 
                 # NEW ADVANCED INTELLIGENCE SECTION
                 st.markdown("---")
