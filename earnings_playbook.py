@@ -492,17 +492,37 @@ class EarningsPlaybook:
             # Get earnings history
             earnings_dates = ticker.earnings_dates
             if earnings_dates is None or earnings_dates.empty:
-                return {'avg_move': 0, 'beat_count': 0, 'miss_count': 0, 'beat_streak': 0}
+                return {
+                    'avg_move': 0, 'beat_count': 0, 'miss_count': 0, 'beat_streak': 0,
+                    'best_entry_timing': 'No data',
+                    'best_exit_timing': 'No data',
+                    'pre_earnings_move': 0,
+                    'post_earnings_move': 0,
+                    'optimal_hold_days': 0
+                }
             
             # Get historical prices
             hist = ticker.history(period='2y')
             if hist.empty:
-                return {'avg_move': 0, 'beat_count': 0, 'miss_count': 0, 'beat_streak': 0}
+                return {
+                    'avg_move': 0, 'beat_count': 0, 'miss_count': 0, 'beat_streak': 0,
+                    'best_entry_timing': 'No data',
+                    'best_exit_timing': 'No data',
+                    'pre_earnings_move': 0,
+                    'post_earnings_move': 0,
+                    'optimal_hold_days': 0
+                }
             
             moves = []
             beat_count = 0
             miss_count = 0
             streak = 0
+            
+            # Track timing patterns
+            pre_earnings_moves = []  # Move from -3 days to -1 day
+            day_of_moves = []  # Move on earnings day
+            next_day_moves = []  # Move day after earnings
+            two_day_moves = []  # Move 2 days after earnings
             
             # Analyze last 8 earnings (2 years quarterly)
             for i, (date, row) in enumerate(earnings_dates.head(8).iterrows()):
@@ -514,25 +534,54 @@ class EarningsPlaybook:
                     before_date = date - timedelta(days=1)
                     after_date = date + timedelta(days=1)
                     
-                    # Find closest prices
-                    before_price = None
-                    after_price = None
+                    # Get prices at different time points
+                    price_3days_before = None
+                    price_1day_before = None
+                    price_on_earnings = None
+                    price_1day_after = None
+                    price_2days_after = None
                     
+                    # Find price 3 days before
+                    for days_back in range(3, 7):
+                        check_date = date - timedelta(days=days_back)
+                        if check_date.strftime('%Y-%m-%d') in hist.index.strftime('%Y-%m-%d'):
+                            price_3days_before = hist.loc[hist.index.strftime('%Y-%m-%d') == check_date.strftime('%Y-%m-%d'), 'Close'].iloc[0]
+                            break
+                    
+                    # Find price 1 day before
                     for days_back in range(1, 5):
                         check_date = date - timedelta(days=days_back)
                         if check_date.strftime('%Y-%m-%d') in hist.index.strftime('%Y-%m-%d'):
-                            before_price = hist.loc[hist.index.strftime('%Y-%m-%d') == check_date.strftime('%Y-%m-%d'), 'Close'].iloc[0]
+                            price_1day_before = hist.loc[hist.index.strftime('%Y-%m-%d') == check_date.strftime('%Y-%m-%d'), 'Close'].iloc[0]
                             break
                     
+                    # Find price 1 day after
                     for days_forward in range(1, 5):
                         check_date = date + timedelta(days=days_forward)
                         if check_date.strftime('%Y-%m-%d') in hist.index.strftime('%Y-%m-%d'):
-                            after_price = hist.loc[hist.index.strftime('%Y-%m-%d') == check_date.strftime('%Y-%m-%d'), 'Close'].iloc[0]
+                            price_1day_after = hist.loc[hist.index.strftime('%Y-%m-%d') == check_date.strftime('%Y-%m-%d'), 'Close'].iloc[0]
                             break
                     
-                    if before_price and after_price:
-                        move = ((after_price - before_price) / before_price * 100)
-                        moves.append(abs(move))
+                    # Find price 2 days after
+                    for days_forward in range(2, 6):
+                        check_date = date + timedelta(days=days_forward)
+                        if check_date.strftime('%Y-%m-%d') in hist.index.strftime('%Y-%m-%d'):
+                            price_2days_after = hist.loc[hist.index.strftime('%Y-%m-%d') == check_date.strftime('%Y-%m-%d'), 'Close'].iloc[0]
+                            break
+                    
+                    # Calculate timing moves
+                    if price_3days_before and price_1day_before:
+                        pre_move = ((price_1day_before - price_3days_before) / price_3days_before * 100)
+                        pre_earnings_moves.append(pre_move)
+                    
+                    if price_1day_before and price_1day_after:
+                        day_move = ((price_1day_after - price_1day_before) / price_1day_before * 100)
+                        day_of_moves.append(day_move)
+                        moves.append(abs(day_move))
+                    
+                    if price_1day_after and price_2days_after:
+                        next_move = ((price_2days_after - price_1day_after) / price_1day_after * 100)
+                        next_day_moves.append(next_move)
                         
                         # Check if beat or miss based on actual data
                         if 'Reported EPS' in row and 'EPS Estimate' in row:
@@ -552,12 +601,41 @@ class EarningsPlaybook:
             
             avg_move = np.mean(moves) if moves else 0
             
+            # Calculate timing intelligence
+            avg_pre_earnings = np.mean(pre_earnings_moves) if pre_earnings_moves else 0
+            avg_post_earnings = np.mean(day_of_moves) if day_of_moves else 0
+            avg_next_day = np.mean(next_day_moves) if next_day_moves else 0
+            
+            # Determine best entry/exit timing
+            if abs(avg_pre_earnings) > 3:
+                best_entry = "3 days before" if avg_pre_earnings > 0 else "Avoid early entry"
+            else:
+                best_entry = "1-2 days before"
+            
+            # Calculate total returns for different strategies
+            hold_through_return = avg_post_earnings  # Enter before, exit day after
+            swing_trade_return = avg_next_day  # Enter day after earnings, exit next day
+            
+            if abs(hold_through_return) > abs(swing_trade_return):
+                best_exit = "Day after earnings"
+                optimal_days = 1
+            else:
+                best_exit = "2 days after"
+                optimal_days = 2
+            
             return {
                 'avg_move': avg_move,
                 'beat_count': beat_count,
                 'miss_count': miss_count,
                 'beat_streak': streak,
-                'sample_size': len(moves)
+                'sample_size': len(moves),
+                # TIMING INTELLIGENCE
+                'best_entry_timing': best_entry,
+                'best_exit_timing': best_exit,
+                'pre_earnings_move': avg_pre_earnings,
+                'post_earnings_move': avg_post_earnings,
+                'optimal_hold_days': optimal_days,
+                'avg_continuation': avg_next_day
             }
             
         except:
@@ -904,54 +982,37 @@ class EarningsPlaybook:
                     st.markdown(f"- vs 200-day MA: **{data['price_vs_ma200']:+.1f}%**")
                 
                 with setup_col2:
-                    st.markdown("**📈 HISTORICAL PERFORMANCE:**")
+                    st.markdown("**📈 HISTORICAL + ⏰ TIMING:**")
                     hist = data['historical_moves']
-                    st.markdown(f"- Avg Earnings Move: **±{hist['avg_move']:.1f}%**")
-                    st.markdown(f"- Beat Streak: **{hist['beat_streak']} quarters**")
-                    st.markdown(f"- Beat/Miss: **{hist['beat_count']}/{hist['miss_count']}**")
-                    st.markdown(f"- Revenue Growth: **{data['revenue_growth']:+.1f}%**")
-                    st.markdown(f"- Earnings Growth: **{data['earnings_growth']:+.1f}%**")
-                    st.markdown(f"- P/E Ratio: **{data['pe_ratio']:.1f}** (Fwd: {data['forward_pe']:.1f})")
+                    st.markdown(f"- Avg Move: **±{hist['avg_move']:.1f}%** | Beat: **{hist['beat_count']}/{hist['beat_count']+hist['miss_count']}**")
+                    st.markdown(f"- Beat Streak: **{hist['beat_streak']}Q** | Rev Growth: **{data['revenue_growth']:+.1f}%**")
+                    
+                    st.markdown("**🎯 OPTIMAL TIMING:**")
+                    st.markdown(f"- 📥 **ENTRY:** {hist.get('best_entry_timing', '1-2 days before')}")
+                    st.markdown(f"- 📤 **EXIT:** {hist.get('best_exit_timing', 'Day after')}")
+                    st.markdown(f"- 📊 Pre-Earnings: **{hist.get('pre_earnings_move', 0):+.1f}%**")
+                    st.markdown(f"- 🚀 Post-Earnings: **{hist.get('post_earnings_move', 0):+.1f}%**")
                 
                 with setup_col3:
-                    st.markdown("**🎯 THE TRADE SETUP:**")
+                    st.markdown("**🎯 TRADE SETUP:**")
                     
                     if data['recommended_play'] == 'CALLS':
-                        st.success("**📈 RECOMMENDED: BUY CALLS**")
-                        
-                        # Calculate REAL strikes based on current price
+                        st.success("**📈 CALLS**")
+                        st.markdown(f"Entry: {hist.get('best_entry_timing', '1-2d before')}")
+                        st.markdown(f"Exit: {hist.get('best_exit_timing', 'Day after')}")
                         conservative_strike = data['current_price'] * 1.02
-                        moderate_strike = data['current_price'] * 1.03
-                        aggressive_strike = data['current_price'] * 1.05
-                        
-                        st.markdown(f"""
-                        **Entry Timing:** {2 if data['days_until'] >= 3 else 1} days before
-                        
-                        **Strike Selection:**
-                        - Conservative: ${conservative_strike:.0f} (2% OTM)
-                        - Moderate: ${moderate_strike:.0f} (3% OTM)
-                        - Aggressive: ${aggressive_strike:.0f} (5% OTM)
-                        
-                        **Expected Move:** ±{hist['avg_move']:.1f}%
-                        
-                        **Probability:** {'HIGH' if beat_streak >= 2 else 'MODERATE'}
-                        """)
-                        
-                        # Calculate profit potential
-                        if hist['avg_move'] > 0:
-                            target_price = data['current_price'] * (1 + hist['avg_move'] / 100)
-                            st.markdown(f"**Target Price:** ${target_price:.2f}")
-                            st.markdown(f"**Profit Target:** 100-200% if holds through")
+                        st.markdown(f"Strike: ${conservative_strike:.0f} (2% OTM)")
+                        st.markdown(f"Target: {hist['avg_move']:.0f}% move")
                     
                     elif data['recommended_play'] == 'PUTS':
-                        st.error("**📉 RECOMMENDED: BUY PUTS**")
-                        st.caption("Bearish setup - proceed with caution")
+                        st.error("**📉 PUTS**")
+                        st.markdown("Bearish - use caution")
                     
                     else:
-                        st.warning("**➡️ NEUTRAL: IRON CONDOR**")
+                        st.warning("**➡️ CONDOR**")
                         lower = data['current_price'] * 0.95
                         upper = data['current_price'] * 1.05
-                        st.markdown(f"Range: ${lower:.0f} - ${upper:.0f}")
+                        st.markdown(f"${lower:.0f}-${upper:.0f}")
                 
                 # NEW ADVANCED INTELLIGENCE SECTION
                 st.markdown("---")
