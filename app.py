@@ -4409,7 +4409,7 @@ def main():
     # Page selection
     page = st.sidebar.selectbox(
         "**Choose Trading Module:**",
-        ["🎯 Options Trading", "🚀 Explosive Opportunities", "⭐ My Watchlists"],
+        ["🎯 Options Trading", "🚀 Explosive Opportunities", "⭐ My Watchlists", "💰 Earnings Playbook"],
         index=0
     )
     
@@ -4489,6 +4489,9 @@ def main():
         explosive_opportunities_page()
     elif page == "⭐ My Watchlists":
         personalized_watchlists_page()
+    elif page == "💰 Earnings Playbook":
+        from earnings_playbook import show_earnings_playbook
+        show_earnings_playbook()
 
 
 if __name__ == "__main__":
