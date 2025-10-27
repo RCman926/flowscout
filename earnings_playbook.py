@@ -593,6 +593,9 @@ class EarningsPlaybook:
             st.caption("🔴 0-2 days (URGENT)")
             st.caption("🟡 3-7 days (Soon)")
             st.caption("🟢 8+ days (Later)")
+            
+            st.markdown("**➡️ Iron Condor:**")
+            st.caption("Neutral strategy - profit if stock stays in range. Sell when uncertain about direction.")
         
         st.markdown("---")
         
