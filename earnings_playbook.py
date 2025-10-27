@@ -674,11 +674,11 @@ class EarningsPlaybook:
             st.metric("High Probability (2+ streak)", high_prob)
         
         with legend_col:
-            st.markdown("**⭐ Quality Ratings:**")
-            st.caption("⭐⭐⭐ Excellent")
-            st.caption("⭐⭐ Good")
-            st.caption("⭐ Decent")
-            st.caption("⚠️ Risky")
+            st.markdown("**⭐ Quality (of 150):**")
+            st.caption("⭐⭐⭐ Excellent (110+)")
+            st.caption("⭐⭐ Good (85-109)")
+            st.caption("⭐ Decent (55-84)")
+            st.caption("⚠️ Risky (<55)")
         
         st.markdown("---")
         
