@@ -612,27 +612,36 @@ class EarningsPlaybook:
             total_trades = wins + losses
             win_rate_pct = (wins / total_trades * 100) if total_trades > 0 else 0
             
-            # Calculate expected return bands (percentiles)
+            # Calculate expected return bands (correct best/worst case)
             if day_of_moves:
-                sorted_moves = sorted(day_of_moves, key=abs, reverse=True)
-                best_case = sorted_moves[0] if len(sorted_moves) > 0 else 0  # Best move
-                worst_case = sorted_moves[-1] if len(sorted_moves) > 0 else 0  # Worst move
+                # Use max/min for actual best/worst outcomes (not absolute value sorting)
+                best_case = max(day_of_moves)  # Most positive move
+                worst_case = min(day_of_moves)  # Most negative move (actual downside)
                 median_move = np.median([abs(m) for m in day_of_moves])
                 
                 # Conservative/Aggressive return estimates for options (3x-5x stock move)
-                conservative_return = abs(median_move) * 3  # 3x leverage
-                aggressive_return = abs(best_case) * 5  # 5x leverage on best case
+                # Only show positive returns if there are actual positive outcomes
+                if best_case > 0:
+                    # Has positive outcomes - calculate realistic returns
+                    conservative_return = median_move * 3  # 3x leverage on median
+                    aggressive_return = best_case * 5  # 5x leverage on best case
+                    upside_potential = best_case
+                else:
+                    # All outcomes negative - no upside potential
+                    conservative_return = 0
+                    aggressive_return = 0
+                    upside_potential = 0
             else:
                 best_case = 0
                 worst_case = 0
                 median_move = 0
                 conservative_return = 0
                 aggressive_return = 0
+                upside_potential = 0
             
-            # Calculate risk/reward ratio
-            upside_potential = abs(avg_post_earnings) if avg_post_earnings > 0 else median_move
+            # Calculate risk/reward ratio using actual upside vs downside
             downside_risk = abs(worst_case) if worst_case < 0 else median_move
-            risk_reward_ratio = upside_potential / downside_risk if downside_risk > 0 else 1.0
+            risk_reward_ratio = upside_potential / downside_risk if (downside_risk > 0 and upside_potential > 0) else 0
             
             # Determine best entry/exit timing
             if abs(avg_pre_earnings) > 3:
