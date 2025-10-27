@@ -320,8 +320,20 @@ class EarningsPlaybook:
     
     def display_earnings_dashboard(self):
         """Display 100% REAL DATA earnings dashboard"""
-        st.title("💰 EARNINGS PLAYBOOK - INSTITUTIONAL SETUPS")
-        st.caption("🔴 LIVE REAL DATA - Updated every refresh | No synthetic data")
+        
+        # Title and legend in same row
+        title_col, legend_col = st.columns([3, 1])
+        
+        with title_col:
+            st.title("💰 EARNINGS PLAYBOOK - INSTITUTIONAL SETUPS")
+            st.caption("🔴 LIVE REAL DATA - Updated every refresh | No synthetic data")
+        
+        with legend_col:
+            st.markdown("**📊 Urgency Legend:**")
+            st.caption("🔴 0-2 days (URGENT)")
+            st.caption("🟡 3-7 days (Soon)")
+            st.caption("🟢 8+ days (Later)")
+        
         st.markdown("---")
         
         # Show confirmed earnings calendar first
@@ -389,22 +401,30 @@ class EarningsPlaybook:
         upcoming = [e for e in all_earnings if e.get('days_until', 999) <= 30 and e.get('days_until', 999) >= 0]
         upcoming.sort(key=lambda x: x['days_until'])
         
-        # Quick Stats - ALL REAL
-        col1, col2, col3, col4 = st.columns(4)
-        with col1:
+        # Quick Stats - ALL REAL with quality ratings legend
+        stat_col1, stat_col2, stat_col3, stat_col4, legend_col = st.columns([1, 1, 1, 1, 1])
+        
+        with stat_col1:
             st.metric("Earnings Next 30 Days", len(upcoming))
-        with col2:
+        with stat_col2:
             bullish = sum(1 for e in upcoming if e['recommended_play'] == 'CALLS')
             st.metric("Bullish Setups", bullish, "📈")
-        with col3:
+        with stat_col3:
             if upcoming:
                 avg_move = np.mean([e['historical_moves']['avg_move'] for e in upcoming if e['historical_moves']['avg_move'] > 0])
                 st.metric("Avg Historical Move", f"{avg_move:.1f}%")
             else:
                 st.metric("Avg Historical Move", "N/A")
-        with col4:
+        with stat_col4:
             high_prob = sum(1 for e in upcoming if e['historical_moves']['beat_streak'] >= 2)
             st.metric("High Probability (2+ streak)", high_prob)
+        
+        with legend_col:
+            st.markdown("**⭐ Quality Ratings:**")
+            st.caption("⭐⭐⭐ Excellent")
+            st.caption("⭐⭐ Good")
+            st.caption("⭐ Decent")
+            st.caption("⚠️ Risky")
         
         st.markdown("---")
         
