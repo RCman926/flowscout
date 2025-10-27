@@ -726,7 +726,7 @@ class EarningsPlaybook:
         else:
             urgency = "🟢"
         
-        # UNIFIED QUALITY RATING - Combines beat streak, win rate, AND upside
+        # UPGRADED 8-FACTOR QUALITY RATING - 150 points total
         beat_streak = data['historical_moves']['beat_streak']
         beat_count = data['historical_moves']['beat_count']
         miss_count = data['historical_moves']['miss_count']
@@ -736,31 +736,113 @@ class EarningsPlaybook:
         total_earnings = beat_count + miss_count
         win_rate = (beat_count / total_earnings * 100) if total_earnings > 0 else 0
         
-        # Multi-factor score (0-100)
+        # Multi-factor score (0-150 points)
         quality_score = 0
+        factor_breakdown = {}
         
-        # Factor 1: Win rate (40 points max)
-        quality_score += min(win_rate * 0.4, 40)
+        # ORIGINAL 3 FACTORS (75 points)
+        # Factor 1: Win rate (30 points max)
+        win_pts = min(win_rate * 0.3, 30)
+        quality_score += win_pts
+        factor_breakdown['win_rate'] = win_pts
         
-        # Factor 2: Beat streak (30 points max)
-        quality_score += min(beat_streak * 10, 30)
+        # Factor 2: Beat streak (25 points max)
+        streak_pts = min(beat_streak * 8, 25)
+        quality_score += streak_pts
+        factor_breakdown['beat_streak'] = streak_pts
         
-        # Factor 3: Upside potential (30 points max)
+        # Factor 3: Upside potential (20 points max)
         if upside > 20:
-            quality_score += 30
+            upside_pts = 20
         elif upside > 10:
-            quality_score += 20
+            upside_pts = 15
         elif upside > 5:
-            quality_score += 10
+            upside_pts = 10
+        else:
+            upside_pts = 0
+        quality_score += upside_pts
+        factor_breakdown['upside'] = upside_pts
         
-        # Determine quality tier
-        if quality_score >= 75:
+        # NEW 5 ADVANCED FACTORS (75 points)
+        # Factor 4: Implied Volatility (15 points max)
+        iv_data = data.get('iv_data', {})
+        iv_value = iv_data.get('iv', 0)
+        if iv_value > 40:
+            iv_pts = 15  # High IV = big move expected
+        elif iv_value > 25:
+            iv_pts = 10  # Medium IV
+        elif iv_value > 0:
+            iv_pts = 5   # Low IV but has options
+        else:
+            iv_pts = 0
+        quality_score += iv_pts
+        factor_breakdown['implied_vol'] = iv_pts
+        
+        # Factor 5: Institutional Ownership (15 points max)
+        inst_data = data.get('institutional_data', {})
+        inst_pct = inst_data.get('inst_ownership', 0)
+        if inst_pct > 70:
+            inst_pts = 15  # Very strong institutional backing
+        elif inst_pct > 50:
+            inst_pts = 12  # Strong backing
+        elif inst_pct > 30:
+            inst_pts = 8   # Moderate
+        else:
+            inst_pts = 0
+        quality_score += inst_pts
+        factor_breakdown['institutional'] = inst_pts
+        
+        # Factor 6: Short Interest (15 points max)
+        short_data = data.get('short_data', {})
+        short_pct = short_data.get('short_pct', 0)
+        if short_pct > 15:
+            short_pts = 15  # High squeeze potential
+        elif short_pct > 10:
+            short_pts = 12  # Good squeeze potential
+        elif short_pct > 5:
+            short_pts = 8   # Some squeeze potential
+        else:
+            short_pts = 0
+        quality_score += short_pts
+        factor_breakdown['short_interest'] = short_pts
+        
+        # Factor 7: Estimate Trends (15 points max)
+        est_data = data.get('estimate_data', {})
+        est_trend = est_data.get('estimate_trend', 'Neutral')
+        eps_growth = est_data.get('eps_growth', 0)
+        if 'RISING' in est_trend and eps_growth > 10:
+            est_pts = 15  # Strong bullish momentum
+        elif 'RISING' in est_trend or eps_growth > 5:
+            est_pts = 10  # Some positive momentum
+        elif 'FALLING' not in est_trend:
+            est_pts = 5   # Neutral
+        else:
+            est_pts = 0   # Bearish
+        quality_score += est_pts
+        factor_breakdown['estimates'] = est_pts
+        
+        # Factor 8: Sector Strength (15 points max)
+        sector_data = data.get('sector_data', {})
+        sector_strength = sector_data.get('sector_strength', 'Unknown')
+        if 'STRONG' in sector_strength or 'Outperforming' in sector_strength:
+            sector_pts = 15  # Strong tailwinds
+        elif 'Good' in sector_strength or 'Moderate' in sector_strength:
+            sector_pts = 10  # Some tailwinds
+        elif 'Neutral' in sector_strength:
+            sector_pts = 5   # No headwinds
+        else:
+            sector_pts = 0   # Headwinds
+        quality_score += sector_pts
+        factor_breakdown['sector'] = sector_pts
+        
+        # Determine quality tier (now out of 150)
+        if quality_score >= 110:
             quality = "⭐⭐⭐ EXCELLENT"
             quality_color = "success"
-        elif quality_score >= 55:
+        elif quality_score >= 85:
             quality = "⭐⭐ GOOD"
             quality_color = "info"
-        elif quality_score >= 35:
+        elif quality_score >= 55:
             quality = "⭐ DECENT"
             quality_color = "warning"
         else:
@@ -770,13 +852,13 @@ class EarningsPlaybook:
         with st.container():
             # Show quality score for transparency
             if quality_color == "success":
-                st.success(f"### {urgency} **{symbol}** - {data['earnings_date']} ({data['days_until']}d) | {quality} ({quality_score:.0f}/100)")
+                st.success(f"### {urgency} **{symbol}** - {data['earnings_date']} ({data['days_until']}d) | {quality} ({quality_score:.0f}/150)")
             elif quality_color == "info":
-                st.info(f"### {urgency} **{symbol}** - {data['earnings_date']} ({data['days_until']}d) | {quality} ({quality_score:.0f}/100)")
+                st.info(f"### {urgency} **{symbol}** - {data['earnings_date']} ({data['days_until']}d) | {quality} ({quality_score:.0f}/150)")
             elif quality_color == "warning":
-                st.warning(f"### {urgency} **{symbol}** - {data['earnings_date']} ({data['days_until']}d) | {quality} ({quality_score:.0f}/100)")
+                st.warning(f"### {urgency} **{symbol}** - {data['earnings_date']} ({data['days_until']}d) | {quality} ({quality_score:.0f}/150)")
             else:
-                st.error(f"### {urgency} **{symbol}** - {data['earnings_date']} ({data['days_until']}d) | {quality} ({quality_score:.0f}/100)")
+                st.error(f"### {urgency} **{symbol}** - {data['earnings_date']} ({data['days_until']}d) | {quality} ({quality_score:.0f}/150)")
             
             if not compact:
                 setup_col1, setup_col2, setup_col3 = st.columns([1, 1, 1])
@@ -840,42 +922,83 @@ class EarningsPlaybook:
                         upper = data['current_price'] * 1.05
                         st.markdown(f"Range: ${lower:.0f} - ${upper:.0f}")
                 
-                # Comprehensive quality breakdown
+                # NEW ADVANCED INTELLIGENCE SECTION
                 st.markdown("---")
-                st.markdown("**🎯 QUALITY BREAKDOWN:**")
+                st.markdown("### 🚀 ADVANCED INSTITUTIONAL INTELLIGENCE")
                 
-                breakdown_col1, breakdown_col2, breakdown_col3 = st.columns(3)
+                # Show all 5 new factors
+                adv_col1, adv_col2, adv_col3 = st.columns(3)
                 
-                with breakdown_col1:
-                    if hist['beat_count'] + hist['miss_count'] > 0:
-                        win_rate_display = (hist['beat_count'] / (hist['beat_count'] + hist['miss_count'])) * 100
-                        win_rate_points = min(win_rate_display * 0.4, 40)
-                        st.metric("Win Rate", f"{win_rate_display:.0f}%", f"{win_rate_points:.0f}/40 pts")
+                with adv_col1:
+                    st.markdown("**🎲 IMPLIED VOLATILITY:**")
+                    iv_info = data.get('iv_data', {})
+                    st.markdown(f"- IV Level: **{iv_info.get('iv', 0):.1f}%** ({iv_info.get('iv_rank', 'N/A')})")
+                    st.markdown(f"- {iv_info.get('iv_assessment', 'No data')}")
+                    
+                    st.markdown("**🏛️ INSTITUTIONAL:**")
+                    inst_info = data.get('institutional_data', {})
+                    st.markdown(f"- Ownership: **{inst_info.get('inst_ownership', 0):.1f}%**")
+                    st.markdown(f"- {inst_info.get('assessment', 'No data')}")
                 
-                with breakdown_col2:
-                    streak_points = min(hist['beat_streak'] * 10, 30)
-                    st.metric("Beat Streak", f"{hist['beat_streak']}Q", f"{streak_points:.0f}/30 pts")
+                with adv_col2:
+                    st.markdown("**🔥 SHORT INTEREST:**")
+                    short_info = data.get('short_data', {})
+                    st.markdown(f"- Short %: **{short_info.get('short_pct', 0):.1f}%**")
+                    st.markdown(f"- Days to Cover: **{short_info.get('days_to_cover', 0):.1f}**")
+                    st.markdown(f"- {short_info.get('squeeze_potential', 'No data')}")
                 
-                with breakdown_col3:
-                    if upside > 20:
-                        upside_points = 30
-                    elif upside > 10:
-                        upside_points = 20
-                    elif upside > 5:
-                        upside_points = 10
-                    else:
-                        upside_points = 0
-                    st.metric("Upside", f"{upside:+.0f}%", f"{upside_points:.0f}/30 pts")
+                with adv_col3:
+                    st.markdown("**📊 ESTIMATE TRENDS:**")
+                    est_info = data.get('estimate_data', {})
+                    st.markdown(f"- Trend: **{est_info.get('estimate_trend', 'Unknown')}**")
+                    st.markdown(f"- EPS Growth: **{est_info.get('eps_growth', 0):+.1f}%**")
+                    st.markdown(f"- {est_info.get('assessment', 'No data')}")
+                
+                # Sector strength (full width)
+                st.markdown("**🌐 SECTOR CONTEXT:**")
+                sector_info = data.get('sector_data', {})
+                st.markdown(f"- Sector: **{sector_info.get('sector', 'Unknown')}** / Industry: **{sector_info.get('industry', 'Unknown')}**")
+                st.markdown(f"- 3M Performance: **{sector_info.get('stock_3m_return', 0):+.1f}%** - {sector_info.get('assessment', 'No data')}")
+                
+                # Comprehensive quality breakdown with ALL 8 FACTORS
+                st.markdown("---")
+                st.markdown("**🎯 COMPREHENSIVE 8-FACTOR QUALITY SCORE:**")
+                
+                # Display in 4 rows of 2 factors each
+                factor_row1_col1, factor_row1_col2 = st.columns(2)
+                with factor_row1_col1:
+                    st.metric("1️⃣ Win Rate", f"{win_rate:.0f}%", f"{factor_breakdown['win_rate']:.0f}/30 pts")
+                with factor_row1_col2:
+                    st.metric("2️⃣ Beat Streak", f"{beat_streak}Q", f"{factor_breakdown['beat_streak']:.0f}/25 pts")
+                
+                factor_row2_col1, factor_row2_col2 = st.columns(2)
+                with factor_row2_col1:
+                    st.metric("3️⃣ Upside", f"{upside:+.0f}%", f"{factor_breakdown['upside']:.0f}/20 pts")
+                with factor_row2_col2:
+                    st.metric("4️⃣ Implied Vol", f"{iv_info.get('iv', 0):.0f}%", f"{factor_breakdown['implied_vol']:.0f}/15 pts")
+                
+                factor_row3_col1, factor_row3_col2 = st.columns(2)
+                with factor_row3_col1:
+                    st.metric("5️⃣ Institutional", f"{inst_info.get('inst_ownership', 0):.0f}%", f"{factor_breakdown['institutional']:.0f}/15 pts")
+                with factor_row3_col2:
+                    st.metric("6️⃣ Short Interest", f"{short_info.get('short_pct', 0):.1f}%", f"{factor_breakdown['short_interest']:.0f}/15 pts")
+                
+                factor_row4_col1, factor_row4_col2 = st.columns(2)
+                with factor_row4_col1:
+                    st.metric("7️⃣ Estimates", est_info.get('estimate_trend', 'Unknown')[:10], f"{factor_breakdown['estimates']:.0f}/15 pts")
+                with factor_row4_col2:
+                    st.metric("8️⃣ Sector Strength", sector_info.get('sector_strength', 'Unknown')[:10], f"{factor_breakdown['sector']:.0f}/15 pts")
                 
                 # Overall assessment
-                if quality_score >= 75:
-                    st.success(f"🏆 **OVERALL: {quality_score:.0f}/100** - TOP TIER SETUP")
+                st.markdown("---")
+                if quality_score >= 110:
+                    st.success(f"🏆 **TOTAL SCORE: {quality_score:.0f}/150** - INSTITUTIONAL-GRADE SETUP (TOP TIER)")
+                elif quality_score >= 85:
+                    st.info(f"✅ **TOTAL SCORE: {quality_score:.0f}/150** - STRONG OPPORTUNITY (VERY GOOD)")
                 elif quality_score >= 55:
-                    st.info(f"✅ **OVERALL: {quality_score:.0f}/100** - SOLID OPPORTUNITY")
-                elif quality_score >= 35:
-                    st.warning(f"📊 **OVERALL: {quality_score:.0f}/100** - MODERATE RISK")
+                    st.warning(f"📊 **TOTAL SCORE: {quality_score:.0f}/150** - MODERATE SETUP (DECENT)")
                 else:
-                    st.error(f"⚠️ **OVERALL: {quality_score:.0f}/100** - HIGH RISK - SKIP OR SMALL SIZE")
+                    st.error(f"⚠️ **TOTAL SCORE: {quality_score:.0f}/150** - WEAK SETUP (HIGH RISK - SKIP)")
             
             else:
                 # Compact view
