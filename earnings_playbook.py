@@ -10,6 +10,7 @@ import yfinance as yf
 import numpy as np
 import pandas as pd
 from scipy import stats
+from extended_hours_tracker import extended_hours
 
 class EarningsPlaybook:
     """Professional earnings trading with REAL LIVE DATA ONLY"""
@@ -382,6 +383,9 @@ class EarningsPlaybook:
             estimate_data = self.fetch_estimate_trends(ticker, info)
             sector_data = self.fetch_sector_strength(info, hist)
             
+            # ===== FETCH EXTENDED HOURS DATA (Premarket/Afterhours/Overnight) =====
+            extended_hours_data = extended_hours.get_extended_hours_data(symbol)
+            
             # INTELLIGENT PREDICTION SYSTEM
             # Calculate multi-factor score for CALLS/PUTS/NEUTRAL
             upside_to_target = ((target_mean - current_price) / current_price * 100) if target_mean > 0 and current_price > 0 else 0
@@ -470,6 +474,8 @@ class EarningsPlaybook:
                 'short_data': short_data,
                 'estimate_data': estimate_data,
                 'sector_data': sector_data,
+                # EXTENDED HOURS TRACKING
+                'extended_hours_data': extended_hours_data,
                 'has_real_data': True
             }
             
@@ -859,6 +865,28 @@ class EarningsPlaybook:
                 st.warning(f"### {urgency} **{symbol}** - {data['earnings_date']} ({data['days_until']}d) | {quality} ({quality_score:.0f}/150)")
             else:
                 st.error(f"### {urgency} **{symbol}** - {data['earnings_date']} ({data['days_until']}d) | {quality} ({quality_score:.0f}/150)")
+            
+            # EXTENDED HOURS ALERT - Show premarket/afterhours/overnight movements
+            ext_data = data.get('extended_hours_data', {})
+            if ext_data.get('extended_hours_active'):
+                ext_change = ext_data.get('extended_hours_change', 0)
+                ext_type = ext_data.get('extended_hours_type', 'UNKNOWN')
+                ext_price = ext_data.get('current_price', 0)
+                move_type = ext_data.get('move_type', 'NORMAL')
+                
+                # Color code based on severity
+                if abs(ext_change) >= 10:
+                    if ext_change > 0:
+                        st.success(f"🚀 **{ext_type}:** ${ext_price:.2f} ({ext_change:+.1f}%) - {move_type}")
+                    else:
+                        st.error(f"🔴 **{ext_type}:** ${ext_price:.2f} ({ext_change:+.1f}%) - {move_type}")
+                elif abs(ext_change) >= 5:
+                    if ext_change > 0:
+                        st.info(f"⚡ **{ext_type}:** ${ext_price:.2f} ({ext_change:+.1f}%) - {move_type}")
+                    else:
+                        st.warning(f"📉 **{ext_type}:** ${ext_price:.2f} ({ext_change:+.1f}%) - {move_type}")
+                else:
+                    st.caption(f"🌙 **{ext_type}:** ${ext_price:.2f} ({ext_change:+.1f}%) - {move_type}")
             
             if not compact:
                 setup_col1, setup_col2, setup_col3 = st.columns([1, 1, 1])
