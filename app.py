@@ -4406,6 +4406,73 @@ def main():
     
     st.sidebar.markdown("---")
     
+    # === UPCOMING EARNINGS - HIGH-END OPTIONS PLAYS ===
+    st.sidebar.markdown("### 📅 **EARNINGS CALENDAR**")
+    st.sidebar.caption("🔄 Live - Options opportunities")
+    
+    try:
+        import yfinance as yf
+        from datetime import datetime, timedelta
+        
+        # High-profile stocks with big options volume
+        high_profile = ["AAPL", "MSFT", "GOOGL", "AMZN", "META", "TSLA", "NVDA", "NFLX", "AMD", "COST", "WMT", "JPM", "DIS"]
+        
+        earnings_list = []
+        
+        for sym in high_profile:
+            try:
+                ticker = yf.Ticker(sym)
+                info = ticker.info
+                
+                if 'earningsDate' in info and info['earningsDate']:
+                    earnings_list_data = info['earningsDate']
+                    if isinstance(earnings_list_data, list) and len(earnings_list_data) > 0:
+                        earnings_ts = earnings_list_data[0]
+                        earn_date = datetime.fromtimestamp(earnings_ts)
+                        days_until = (earn_date.date() - datetime.now().date()).days
+                        
+                        if 0 <= days_until <= 30:
+                            target_mean = info.get('targetMeanPrice', 0)
+                            current = info.get('currentPrice', info.get('regularMarketPrice', 0))
+                            
+                            if target_mean > 0 and current > 0:
+                                upside = ((target_mean - current) / current * 100)
+                                if upside > 10:
+                                    direction, signal = "📈", "CALLS"
+                                elif upside < -5:
+                                    direction, signal = "📉", "PUTS"
+                                else:
+                                    direction, signal = "➡️", "HOLD"
+                            else:
+                                direction, signal, upside = "➡️", "HOLD", 0
+                            
+                            earnings_list.append({
+                                'symbol': sym,
+                                'days': days_until,
+                                'dir': direction,
+                                'signal': signal,
+                                'upside': upside
+                            })
+            except:
+                continue
+        
+        earnings_list.sort(key=lambda x: x['days'])
+        
+        if earnings_list:
+            for e in earnings_list[:6]:
+                days_txt = "TODAY!" if e['days'] == 0 else f"{e['days']}d"
+                urgency = "🔴" if e['days'] <= 2 else "🟡" if e['days'] <= 7 else "🟢"
+                
+                st.sidebar.markdown(f"**{urgency} {e['symbol']}** - {days_txt}")
+                st.sidebar.caption(f"{e['dir']} {e['signal']} ({e['upside']:+.0f}% expected)")
+        else:
+            st.sidebar.info("No earnings next 30 days")
+            
+    except:
+        st.sidebar.warning("Earnings loading...")
+    
+    st.sidebar.markdown("---")
+    
     # Display selected page
     if page == "🎯 Options Trading":
         options_trading_page()
