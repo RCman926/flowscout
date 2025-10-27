@@ -18,6 +18,7 @@ class EarningsPlaybook:
         # REAL CONFIRMED EARNINGS - Week of Oct 28 - Nov 1, 2025
         # Source: TradingView, Earnings Whispers, Company IR pages
         self.confirmed_earnings = {
+            # === THIS WEEK (Oct 28 - Nov 1) ===
             # Tuesday Oct 29 - BIG TECH DAY
             'GOOGL': {'date': 'Oct 29 (Tue)', 'time': 'After Close'},
             'MSFT': {'date': 'Oct 29 (Tue)', 'time': 'After Close'},
@@ -30,10 +31,25 @@ class EarningsPlaybook:
             'AAPL': {'date': 'Oct 31 (Thu)', 'time': 'After Close'},
             'AMZN': {'date': 'Oct 31 (Thu)', 'time': 'After Close'},
             'INTC': {'date': 'Oct 31 (Thu)', 'time': 'After Close'},
-            # NOT THIS WEEK (Common mistakes)
-            # 'NVDA': Nov 19, 2025
+            
+            # === NEXT WEEK (Nov 4-8, 2025) ===
+            # Monday Nov 4
+            'NIO': {'date': 'Nov 4 (Mon)', 'time': 'Before Open'},
+            'XPEV': {'date': 'Nov 4 (Mon)', 'time': 'Before Open'},
+            # Tuesday Nov 5
+            'PLTR': {'date': 'Nov 5 (Tue)', 'time': 'After Close'},
+            'ARM': {'date': 'Nov 5 (Tue)', 'time': 'After Close'},
+            # Wednesday Nov 6
+            'COIN': {'date': 'Nov 6 (Wed)', 'time': 'After Close'},
+            'HOOD': {'date': 'Nov 6 (Wed)', 'time': 'After Close'},
+            # Thursday Nov 7
+            'ABNB': {'date': 'Nov 7 (Thu)', 'time': 'After Close'},
+            'RIVN': {'date': 'Nov 7 (Thu)', 'time': 'After Close'},
+            
+            # NOT THESE WEEKS
+            # 'NVDA': Nov 19-20, 2025 (Later)
             # 'TSLA': Already reported Q3
-            # 'NFLX': Not this week
+            # 'NFLX': Not in this period
         }
         
         self.major_tickers = list(self.confirmed_earnings.keys())
@@ -122,13 +138,60 @@ class EarningsPlaybook:
                 price_vs_ma50 = 0
                 price_vs_ma200 = 0
             
-            # Determine REAL sentiment based on actual data
+            # INTELLIGENT PREDICTION SYSTEM
+            # Calculate multi-factor score for CALLS/PUTS/NEUTRAL
             upside_to_target = ((target_mean - current_price) / current_price * 100) if target_mean > 0 and current_price > 0 else 0
             
-            if analyst_buy in ['buy', 'strong_buy'] and upside_to_target > 10:
+            # Factor 1: Analyst sentiment (40% weight)
+            analyst_score = 0
+            if analyst_buy in ['strong_buy']:
+                analyst_score = 2
+            elif analyst_buy in ['buy']:
+                analyst_score = 1
+            elif analyst_buy in ['hold']:
+                analyst_score = 0
+            elif analyst_buy in ['sell']:
+                analyst_score = -1
+            elif analyst_buy in ['strong_sell']:
+                analyst_score = -2
+            
+            # Factor 2: Price target upside (30% weight)
+            target_score = 0
+            if upside_to_target > 20:
+                target_score = 2
+            elif upside_to_target > 10:
+                target_score = 1
+            elif upside_to_target > -5:
+                target_score = 0
+            elif upside_to_target > -15:
+                target_score = -1
+            else:
+                target_score = -2
+            
+            # Factor 3: Technical position vs MAs (20% weight)
+            technical_score = 0
+            if price_vs_ma50 > 10 and price_vs_ma200 > 10:
+                technical_score = 2  # Strong uptrend
+            elif price_vs_ma50 > 0 and price_vs_ma200 > 0:
+                technical_score = 1  # Uptrend
+            elif price_vs_ma50 < -10 or price_vs_ma200 < -10:
+                technical_score = -1  # Downtrend
+            
+            # Factor 4: Growth metrics (10% weight)
+            growth_score = 0
+            if revenue_growth > 20:
+                growth_score = 1
+            elif revenue_growth < 0:
+                growth_score = -1
+            
+            # Calculate total score
+            total_score = (analyst_score * 0.4) + (target_score * 0.3) + (technical_score * 0.2) + (growth_score * 0.1)
+            
+            # Determine recommendation
+            if total_score >= 1.0:
                 sentiment = 'BULLISH'
                 recommended_play = 'CALLS'
-            elif analyst_buy in ['sell', 'strong_sell'] or upside_to_target < -5:
+            elif total_score <= -0.5:
                 sentiment = 'BEARISH'
                 recommended_play = 'PUTS'
             else:
@@ -284,7 +347,34 @@ class EarningsPlaybook:
             st.markdown("• AMZN (After Close)")
             st.markdown("• INTC (After Close)")
         
-        st.warning("⚠️ **NOT THIS WEEK:** NVDA (Nov 19), TSLA (Already reported), NFLX (Not scheduled)")
+        st.markdown("---")
+        
+        # Next week's earnings
+        st.info("🔵 **NEXT WEEK EARNINGS (Nov 4-8, 2025)** - Plan ahead!")
+        
+        next_col1, next_col2, next_col3, next_col4 = st.columns(4)
+        
+        with next_col1:
+            st.markdown("**Mon Nov 4:**")
+            st.markdown("• NIO (Before Open)")
+            st.markdown("• XPEV (Before Open)")
+        
+        with next_col2:
+            st.markdown("**Tue Nov 5:**")
+            st.markdown("• PLTR (After Close)")
+            st.markdown("• ARM (After Close)")
+        
+        with next_col3:
+            st.markdown("**Wed Nov 6:**")
+            st.markdown("• COIN (After Close)")
+            st.markdown("• HOOD (After Close)")
+        
+        with next_col4:
+            st.markdown("**Thu Nov 7:**")
+            st.markdown("• ABNB (After Close)")
+            st.markdown("• RIVN (After Close)")
+        
+        st.warning("⚠️ **NOT IN THESE 2 WEEKS:** NVDA (Nov 19-20), TSLA (Already reported), NFLX (Not scheduled)")
         st.markdown("---")
         
         # Fetch REAL data for all major stocks
@@ -326,7 +416,8 @@ class EarningsPlaybook:
         this_week = [e for e in upcoming if e['days_until'] <= 7]
         
         if this_week:
-            st.markdown("## 🔴 THIS WEEK'S TRADES (HIGHEST PRIORITY)")
+            st.markdown("## 🔴 THIS WEEK'S TRADES (Oct 28 - Nov 1) - HIGHEST PRIORITY")
+            st.caption("💰 Focus here first - Immediate opportunities")
             
             for data in this_week:
                 self.display_trade_setup(data)
@@ -335,10 +426,11 @@ class EarningsPlaybook:
         next_week = [e for e in upcoming if 8 <= e['days_until'] <= 14]
         
         if next_week:
-            st.markdown("## 🟡 NEXT WEEK (Prepare Positions)")
+            st.markdown("## 🟡 NEXT WEEK (Nov 4-8) - PLAN AHEAD")
+            st.caption("📋 Start research now - Position entry in 3-5 days")
             
             for data in next_week:
-                self.display_trade_setup(data, compact=True)
+                self.display_trade_setup(data, compact=False)
         
         # === EDUCATION SECTION ===
         st.markdown("---")
