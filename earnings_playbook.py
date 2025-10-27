@@ -321,6 +321,10 @@ class EarningsPlaybook:
     def display_earnings_dashboard(self):
         """Display 100% REAL DATA earnings dashboard"""
         
+        # Auto-refresh every 5 minutes for live data updates
+        from streamlit_autorefresh import st_autorefresh
+        count = st_autorefresh(interval=300000, limit=None, key="earnings_refresh")
+        
         # Title and legend in same row
         title_col, legend_col = st.columns([3, 1])
         
@@ -472,21 +476,57 @@ class EarningsPlaybook:
         else:
             urgency = "🟢"
         
-        # Determine setup quality
+        # UNIFIED QUALITY RATING - Combines beat streak, win rate, AND upside
         beat_streak = data['historical_moves']['beat_streak']
+        beat_count = data['historical_moves']['beat_count']
+        miss_count = data['historical_moves']['miss_count']
         upside = data['upside_to_target']
         
-        if beat_streak >= 3 and upside > 15:
+        # Calculate win rate
+        total_earnings = beat_count + miss_count
+        win_rate = (beat_count / total_earnings * 100) if total_earnings > 0 else 0
+        
+        # Multi-factor score (0-100)
+        quality_score = 0
+        
+        # Factor 1: Win rate (40 points max)
+        quality_score += min(win_rate * 0.4, 40)
+        
+        # Factor 2: Beat streak (30 points max)
+        quality_score += min(beat_streak * 10, 30)
+        
+        # Factor 3: Upside potential (30 points max)
+        if upside > 20:
+            quality_score += 30
+        elif upside > 10:
+            quality_score += 20
+        elif upside > 5:
+            quality_score += 10
+        
+        # Determine quality tier
+        if quality_score >= 75:
             quality = "⭐⭐⭐ EXCELLENT"
-        elif beat_streak >= 2 and upside > 10:
+            quality_color = "success"
+        elif quality_score >= 55:
             quality = "⭐⭐ GOOD"
-        elif beat_streak >= 1 and upside > 5:
+            quality_color = "info"
+        elif quality_score >= 35:
             quality = "⭐ DECENT"
+            quality_color = "warning"
         else:
             quality = "⚠️ RISKY"
+            quality_color = "error"
         
         with st.container():
-            st.markdown(f"### {urgency} **{symbol}** - {data['earnings_date']} ({data['days_until']}d) | {quality}")
+            # Show quality score for transparency
+            if quality_color == "success":
+                st.success(f"### {urgency} **{symbol}** - {data['earnings_date']} ({data['days_until']}d) | {quality} ({quality_score:.0f}/100)")
+            elif quality_color == "info":
+                st.info(f"### {urgency} **{symbol}** - {data['earnings_date']} ({data['days_until']}d) | {quality} ({quality_score:.0f}/100)")
+            elif quality_color == "warning":
+                st.warning(f"### {urgency} **{symbol}** - {data['earnings_date']} ({data['days_until']}d) | {quality} ({quality_score:.0f}/100)")
+            else:
+                st.error(f"### {urgency} **{symbol}** - {data['earnings_date']} ({data['days_until']}d) | {quality} ({quality_score:.0f}/100)")
             
             if not compact:
                 setup_col1, setup_col2, setup_col3 = st.columns([1, 1, 1])
@@ -550,15 +590,42 @@ class EarningsPlaybook:
                         upper = data['current_price'] * 1.05
                         st.markdown(f"Range: ${lower:.0f} - ${upper:.0f}")
                 
-                # Win probability calculator
-                if hist['beat_count'] + hist['miss_count'] > 0:
-                    win_rate = (hist['beat_count'] / (hist['beat_count'] + hist['miss_count'])) * 100
-                    if win_rate >= 75:
-                        st.success(f"✅ **Win Probability: {win_rate:.0f}%** - Very High Confidence")
-                    elif win_rate >= 60:
-                        st.info(f"📊 **Win Probability: {win_rate:.0f}%** - Good Confidence")
+                # Comprehensive quality breakdown
+                st.markdown("---")
+                st.markdown("**🎯 QUALITY BREAKDOWN:**")
+                
+                breakdown_col1, breakdown_col2, breakdown_col3 = st.columns(3)
+                
+                with breakdown_col1:
+                    if hist['beat_count'] + hist['miss_count'] > 0:
+                        win_rate_display = (hist['beat_count'] / (hist['beat_count'] + hist['miss_count'])) * 100
+                        win_rate_points = min(win_rate_display * 0.4, 40)
+                        st.metric("Win Rate", f"{win_rate_display:.0f}%", f"{win_rate_points:.0f}/40 pts")
+                
+                with breakdown_col2:
+                    streak_points = min(hist['beat_streak'] * 10, 30)
+                    st.metric("Beat Streak", f"{hist['beat_streak']}Q", f"{streak_points:.0f}/30 pts")
+                
+                with breakdown_col3:
+                    if upside > 20:
+                        upside_points = 30
+                    elif upside > 10:
+                        upside_points = 20
+                    elif upside > 5:
+                        upside_points = 10
                     else:
-                        st.warning(f"⚠️ **Win Probability: {win_rate:.0f}%** - Lower Confidence")
+                        upside_points = 0
+                    st.metric("Upside", f"{upside:+.0f}%", f"{upside_points:.0f}/30 pts")
+                
+                # Overall assessment
+                if quality_score >= 75:
+                    st.success(f"🏆 **OVERALL: {quality_score:.0f}/100** - TOP TIER SETUP")
+                elif quality_score >= 55:
+                    st.info(f"✅ **OVERALL: {quality_score:.0f}/100** - SOLID OPPORTUNITY")
+                elif quality_score >= 35:
+                    st.warning(f"📊 **OVERALL: {quality_score:.0f}/100** - MODERATE RISK")
+                else:
+                    st.error(f"⚠️ **OVERALL: {quality_score:.0f}/100** - HIGH RISK - SKIP OR SMALL SIZE")
             
             else:
                 # Compact view
