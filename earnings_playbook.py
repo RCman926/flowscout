@@ -606,6 +606,34 @@ class EarningsPlaybook:
             avg_post_earnings = np.mean(day_of_moves) if day_of_moves else 0
             avg_next_day = np.mean(next_day_moves) if next_day_moves else 0
             
+            # Calculate win rate based on profitable moves
+            wins = sum(1 for m in day_of_moves if m > 0)
+            losses = sum(1 for m in day_of_moves if m <= 0)
+            total_trades = wins + losses
+            win_rate_pct = (wins / total_trades * 100) if total_trades > 0 else 0
+            
+            # Calculate expected return bands (percentiles)
+            if day_of_moves:
+                sorted_moves = sorted(day_of_moves, key=abs, reverse=True)
+                best_case = sorted_moves[0] if len(sorted_moves) > 0 else 0  # Best move
+                worst_case = sorted_moves[-1] if len(sorted_moves) > 0 else 0  # Worst move
+                median_move = np.median([abs(m) for m in day_of_moves])
+                
+                # Conservative/Aggressive return estimates for options (3x-5x stock move)
+                conservative_return = abs(median_move) * 3  # 3x leverage
+                aggressive_return = abs(best_case) * 5  # 5x leverage on best case
+            else:
+                best_case = 0
+                worst_case = 0
+                median_move = 0
+                conservative_return = 0
+                aggressive_return = 0
+            
+            # Calculate risk/reward ratio
+            upside_potential = abs(avg_post_earnings) if avg_post_earnings > 0 else median_move
+            downside_risk = abs(worst_case) if worst_case < 0 else median_move
+            risk_reward_ratio = upside_potential / downside_risk if downside_risk > 0 else 1.0
+            
             # Determine best entry/exit timing
             if abs(avg_pre_earnings) > 3:
                 best_entry = "3 days before" if avg_pre_earnings > 0 else "Avoid early entry"
@@ -635,22 +663,186 @@ class EarningsPlaybook:
                 'pre_earnings_move': avg_pre_earnings,
                 'post_earnings_move': avg_post_earnings,
                 'optimal_hold_days': optimal_days,
-                'avg_continuation': avg_next_day
+                'avg_continuation': avg_next_day,
+                # WIN RATE ANALYTICS
+                'win_rate_pct': win_rate_pct,
+                'wins': wins,
+                'losses': losses,
+                # EXPECTED RETURN BANDS
+                'conservative_return': conservative_return,
+                'aggressive_return': aggressive_return,
+                'best_case_move': best_case,
+                'worst_case_move': worst_case,
+                'median_move': median_move,
+                # RISK/REWARD
+                'risk_reward_ratio': risk_reward_ratio,
+                'upside_potential': upside_potential,
+                'downside_risk': downside_risk
             }
             
         except:
             return {'avg_move': 0, 'beat_count': 0, 'miss_count': 0, 'beat_streak': 0}
     
-    def calculate_position_sizing(self, portfolio_value, risk_tolerance='moderate'):
-        """Calculate REAL position sizing based on Kelly Criterion"""
+    def calculate_position_sizing(self, portfolio_value, win_rate_pct, quality_score, risk_tolerance='moderate'):
+        """Calculate REAL position sizing based on Kelly Criterion + Quality Score"""
         if risk_tolerance == 'conservative':
-            max_risk = 0.02  # 2%
+            base_risk = 0.02  # 2%
         elif risk_tolerance == 'moderate':
-            max_risk = 0.03  # 3%
+            base_risk = 0.03  # 3%
         else:  # aggressive
-            max_risk = 0.05  # 5%
+            base_risk = 0.05  # 5%
         
-        return portfolio_value * max_risk
+        # Adjust based on quality score (0-150 scale)
+        quality_multiplier = min(quality_score / 110, 1.5)  # Cap at 1.5x for excellent plays
+        
+        # Adjust based on win rate
+        win_rate_multiplier = 1.0
+        if win_rate_pct >= 75:
+            win_rate_multiplier = 1.2
+        elif win_rate_pct >= 60:
+            win_rate_multiplier = 1.0
+        elif win_rate_pct >= 50:
+            win_rate_multiplier = 0.8
+        else:
+            win_rate_multiplier = 0.6
+        
+        # Calculate final position size
+        adjusted_risk = base_risk * quality_multiplier * win_rate_multiplier
+        position_size = portfolio_value * min(adjusted_risk, 0.10)  # Cap at 10% per trade
+        
+        return {
+            'position_size': position_size,
+            'risk_pct': adjusted_risk * 100,
+            'quality_multiplier': quality_multiplier,
+            'win_rate_multiplier': win_rate_multiplier
+        }
+    
+    def render_hot_plays_section(self, plays_data, portfolio_value=10000):
+        """Render HOT PLAYS dashboard with top 3-5 opportunities"""
+        
+        # Calculate ranking score for each play
+        ranked_plays = []
+        for data in plays_data:
+            if not data.get('has_real_data'):
+                continue
+            
+            quality = data['quality_score']
+            days = data['days_until']
+            hist = data['historical_moves']
+            
+            # Urgency multiplier (more urgent = higher score)
+            urgency_score = 100 if days <= 2 else (50 if days <= 7 else 20)
+            
+            # Expected return score
+            expected_return = hist.get('conservative_return', 0)
+            
+            # Ranking formula: Quality + Urgency + Expected Return + Win Rate
+            ranking_score = (quality * 1.5) + urgency_score + (expected_return * 0.5) + (hist.get('win_rate_pct', 0) * 0.3)
+            
+            ranked_plays.append({
+                'data': data,
+                'ranking_score': ranking_score
+            })
+        
+        # Sort and get top 5
+        ranked_plays.sort(key=lambda x: x['ranking_score'], reverse=True)
+        top_plays = ranked_plays[:5]
+        
+        if not top_plays:
+            return
+        
+        # Render HOT PLAYS section
+        st.markdown("## 🔥 **HOT PLAYS - TOP OPPORTUNITIES RIGHT NOW**")
+        st.caption("Ranked by Quality + Urgency + Expected Return + Win Rate")
+        
+        # Check for new high-quality plays (alert system)
+        if 'previous_top_play' not in st.session_state:
+            st.session_state.previous_top_play = None
+        
+        current_top = top_plays[0]['data']['symbol'] if top_plays else None
+        if st.session_state.previous_top_play != current_top and current_top:
+            if top_plays[0]['data']['quality_score'] >= 110:  # Excellent quality
+                st.toast(f"🚀 NEW HIGH-QUALITY PLAY: {current_top} (Score: {top_plays[0]['data']['quality_score']:.0f}/150)", icon="🔥")
+        
+        st.session_state.previous_top_play = current_top
+        
+        # Display top plays in compact cards
+        for i, play_item in enumerate(top_plays):
+            data = play_item['data']
+            hist = data['historical_moves']
+            days = data['days_until']
+            
+            # Color based on urgency
+            if days <= 2:
+                urgency_emoji = "🔴"
+                urgency_color = "red"
+            elif days <= 7:
+                urgency_emoji = "🟡"
+                urgency_color = "orange"
+            else:
+                urgency_emoji = "🟢"
+                urgency_color = "green"
+            
+            # Quality tier
+            quality = data['quality_score']
+            if quality >= 110:
+                quality_badge = "⭐ EXCELLENT"
+            elif quality >= 85:
+                quality_badge = "✅ GOOD"
+            elif quality >= 55:
+                quality_badge = "📊 DECENT"
+            else:
+                quality_badge = "⚠️ RISKY"
+            
+            # Position sizing
+            position_info = self.calculate_position_sizing(
+                portfolio_value,
+                hist.get('win_rate_pct', 50),
+                quality,
+                'moderate'
+            )
+            
+            # Display compact card
+            with st.expander(f"**#{i+1} {urgency_emoji} {data['symbol']}** - {quality_badge} ({quality:.0f}/150) | {data['recommended_play']}", expanded=(i==0)):
+                card_col1, card_col2, card_col3 = st.columns([1, 1, 1])
+                
+                with card_col1:
+                    st.markdown(f"**📅 TIMING:**")
+                    st.markdown(f"- **Days Until:** {days} days")
+                    st.markdown(f"- **Entry:** {hist.get('best_entry_timing', 'N/A')}")
+                    st.markdown(f"- **Exit:** {hist.get('best_exit_timing', 'N/A')}")
+                    st.markdown(f"- **Price:** ${data['current_price']:.2f}")
+                
+                with card_col2:
+                    st.markdown(f"**📊 PERFORMANCE:**")
+                    win_rate = hist.get('win_rate_pct', 0)
+                    wins = hist.get('wins', 0)
+                    losses = hist.get('losses', 0)
+                    st.markdown(f"- **Win Rate:** {win_rate:.0f}% ({wins}W-{losses}L)")
+                    st.markdown(f"- **Avg Move:** ±{hist['avg_move']:.1f}%")
+                    st.markdown(f"- **Beat Streak:** {hist['beat_streak']}Q")
+                    rr = hist.get('risk_reward_ratio', 1.0)
+                    st.markdown(f"- **Risk/Reward:** {rr:.1f}:1 {'✅' if rr >= 2 else '⚠️'}")
+                
+                with card_col3:
+                    st.markdown(f"**💰 RETURNS & SIZING:**")
+                    conservative = hist.get('conservative_return', 0)
+                    aggressive = hist.get('aggressive_return', 0)
+                    st.markdown(f"- **Expected:** {conservative:.0f}%-{aggressive:.0f}%")
+                    st.markdown(f"- **Position Size:** ${position_info['position_size']:,.0f}")
+                    st.markdown(f"- **Risk:** {position_info['risk_pct']:.1f}% of portfolio")
+                    
+                    # Quick action button
+                    if data['recommended_play'] == 'CALLS':
+                        strike = data['current_price'] * 1.02
+                        st.success(f"**BUY:** ${strike:.0f} CALLS")
+                    elif data['recommended_play'] == 'PUTS':
+                        strike = data['current_price'] * 0.98
+                        st.error(f"**BUY:** ${strike:.0f} PUTS")
+                    else:
+                        st.warning(f"**SELL:** IRON CONDOR")
+        
+        st.markdown("---")
     
     def display_earnings_dashboard(self):
         """Display 100% REAL DATA earnings dashboard"""
@@ -676,6 +868,28 @@ class EarningsPlaybook:
             st.caption("Neutral strategy - profit if stock stays in range. Sell when uncertain about direction.")
         
         st.markdown("---")
+        
+        # Portfolio value input for position sizing
+        with st.sidebar:
+            st.markdown("### 💰 Portfolio Settings")
+            portfolio_value = st.number_input(
+                "Portfolio Value ($)",
+                min_value=1000,
+                max_value=10000000,
+                value=10000,
+                step=1000,
+                help="Used to calculate position sizes"
+            )
+            risk_tolerance = st.selectbox(
+                "Risk Tolerance",
+                ["conservative", "moderate", "aggressive"],
+                index=1,
+                help="Conservative: 2% | Moderate: 3% | Aggressive: 5%"
+            )
+            
+            # Store in session state for access throughout
+            st.session_state.sidebar_portfolio_value = portfolio_value
+            st.session_state.sidebar_risk_tolerance = risk_tolerance
         
         # Show confirmed earnings calendar first
         st.info("🔴 **CONFIRMED EARNINGS THIS WEEK (Oct 28 - Nov 1, 2025)** - Source: TradingView/Earnings Whispers")
@@ -741,6 +955,10 @@ class EarningsPlaybook:
         # Filter to only upcoming (within 30 days)
         upcoming = [e for e in all_earnings if e.get('days_until', 999) <= 30 and e.get('days_until', 999) >= 0]
         upcoming.sort(key=lambda x: x['days_until'])
+        
+        # === HOT PLAYS DASHBOARD ===
+        if upcoming:
+            self.render_hot_plays_section(upcoming, portfolio_value)
         
         # Quick Stats - ALL REAL with quality ratings legend
         stat_col1, stat_col2, stat_col3, stat_col4, legend_col = st.columns([1, 1, 1, 1, 1])
@@ -982,42 +1200,65 @@ class EarningsPlaybook:
                     st.markdown(f"- vs 200-day MA: **{data['price_vs_ma200']:+.1f}%**")
                 
                 with setup_col2:
-                    st.markdown("**⏰ OPTIMAL ENTRY/EXIT:**")
+                    st.markdown("**⏰ TIMING + 📊 PERFORMANCE:**")
                     hist = data['historical_moves']
                     st.markdown(f"- 📥 **Entry:** {hist.get('best_entry_timing', '1-2 days before')}")
                     st.markdown(f"- 📤 **Exit:** {hist.get('best_exit_timing', 'Day after')}")
-                    st.markdown(f"- 📊 Pre-Earnings Run: **{hist.get('pre_earnings_move', 0):+.1f}%**")
-                    st.markdown(f"- 🚀 Earnings Pop: **{hist.get('post_earnings_move', 0):+.1f}%**")
-                    st.markdown(f"- 📈 Beat Streak: **{hist['beat_streak']}Q** ({hist['beat_count']}/{hist['beat_count']+hist['miss_count']})")
-                    st.markdown(f"- 💰 Avg Move: **±{hist['avg_move']:.1f}%**")
+                    
+                    # Win Rate
+                    win_rate = hist.get('win_rate_pct', 0)
+                    wins = hist.get('wins', 0)
+                    losses = hist.get('losses', 0)
+                    st.markdown(f"- 🎯 **Win Rate:** {win_rate:.0f}% ({wins}W-{losses}L)")
+                    
+                    # Risk/Reward
+                    rr = hist.get('risk_reward_ratio', 1.0)
+                    rr_emoji = "✅" if rr >= 2 else "⚠️"
+                    st.markdown(f"- ⚖️ **Risk/Reward:** {rr:.1f}:1 {rr_emoji}")
+                    
+                    # Expected Returns
+                    conservative = hist.get('conservative_return', 0)
+                    aggressive = hist.get('aggressive_return', 0)
+                    st.markdown(f"- 💵 **Expected Return:** {conservative:.0f}%-{aggressive:.0f}%")
                 
                 with setup_col3:
-                    st.markdown("**🎯 RECOMMENDED PLAY:**")
+                    st.markdown("**🎯 PLAY + 💰 SIZING:**")
+                    
+                    # Get position sizing if available in session state
+                    if 'sidebar_portfolio_value' in st.session_state:
+                        port_val = st.session_state.sidebar_portfolio_value
+                    else:
+                        port_val = 10000  # Default
+                    
+                    position_info = self.calculate_position_sizing(
+                        port_val,
+                        hist.get('win_rate_pct', 50),
+                        data['quality_score'],
+                        'moderate'
+                    )
                     
                     if data['recommended_play'] == 'CALLS':
                         st.success("**📈 BUY CALLS**")
                         conservative = data['current_price'] * 1.02
-                        moderate = data['current_price'] * 1.03
-                        aggressive = data['current_price'] * 1.05
-                        st.markdown(f"- **Strikes:**")
-                        st.markdown(f"  - Safe: ${conservative:.0f}")
-                        st.markdown(f"  - Moderate: ${moderate:.0f}")
-                        st.markdown(f"  - Aggressive: ${aggressive:.0f}")
+                        st.markdown(f"- **Strike:** ${conservative:.0f} (2% OTM)")
                         target = data['current_price'] * (1 + hist['avg_move']/100)
                         st.markdown(f"- **Target:** ${target:.0f}")
                     
                     elif data['recommended_play'] == 'PUTS':
                         st.error("**📉 BUY PUTS**")
                         conservative = data['current_price'] * 0.98
-                        st.markdown(f"- **Strike:** ${conservative:.0f}")
+                        st.markdown(f"- **Strike:** ${conservative:.0f} (2% OTM)")
                         st.markdown("- ⚠️ Bearish setup")
                     
                     else:
                         st.warning("**➡️ IRON CONDOR**")
                         lower = data['current_price'] * 0.95
                         upper = data['current_price'] * 1.05
-                        st.markdown(f"- **Range:** ${lower:.0f} - ${upper:.0f}")
-                        st.markdown("- Collect premium")
+                        st.markdown(f"- **Range:** ${lower:.0f}-${upper:.0f}")
+                    
+                    # Position sizing
+                    st.markdown(f"- **Position Size:** ${position_info['position_size']:,.0f}")
+                    st.markdown(f"- **Portfolio Risk:** {position_info['risk_pct']:.1f}%")
                 
                 # NEW ADVANCED INTELLIGENCE SECTION
                 st.markdown("---")
