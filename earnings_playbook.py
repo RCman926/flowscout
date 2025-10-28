@@ -292,8 +292,9 @@ class EarningsPlaybook:
                 'assessment': 'No data'
             }
         
-    def fetch_real_earnings_data(self, symbol):
-        """Fetch 100% real earnings data - no fake data"""
+    @st.cache_data(ttl=300, show_spinner=False)
+    def fetch_real_earnings_data(_self, symbol):
+        """Fetch 100% real earnings data - no fake data (cached for 5 minutes)"""
         try:
             ticker = yf.Ticker(symbol)
             info = ticker.info
@@ -303,8 +304,8 @@ class EarningsPlaybook:
             current_price = info.get('currentPrice', info.get('regularMarketPrice', 0))
             
             # REAL CONFIRMED earnings date (overrides Yahoo Finance API)
-            if symbol in self.confirmed_earnings:
-                confirmed = self.confirmed_earnings[symbol]
+            if symbol in _self.confirmed_earnings:
+                confirmed = _self.confirmed_earnings[symbol]
                 earnings_date_str = confirmed['date']
                 
                 # Parse date from string like "Oct 29 (Tue)"
@@ -331,7 +332,7 @@ class EarningsPlaybook:
             num_analysts = info.get('numberOfAnalystOpinions', 0)
             
             # REAL historical earnings moves (calculate from actual data)
-            earnings_moves = self.calculate_historical_earnings_moves(ticker, symbol)
+            earnings_moves = _self.calculate_historical_earnings_moves(ticker, symbol)
             
             # REAL options data
             try:
@@ -377,11 +378,11 @@ class EarningsPlaybook:
                 price_vs_ma200 = 0
             
             # ===== FETCH ALL 5 ADVANCED FACTORS =====
-            iv_data = self.fetch_implied_volatility(ticker, symbol)
-            institutional_data = self.fetch_institutional_ownership(info, ticker)
-            short_data = self.fetch_short_interest(info)
-            estimate_data = self.fetch_estimate_trends(ticker, info)
-            sector_data = self.fetch_sector_strength(info, hist)
+            iv_data = _self.fetch_implied_volatility(ticker, symbol)
+            institutional_data = _self.fetch_institutional_ownership(info, ticker)
+            short_data = _self.fetch_short_interest(info)
+            estimate_data = _self.fetch_estimate_trends(ticker, info)
+            sector_data = _self.fetch_sector_strength(info, hist)
             
             # ===== FETCH EXTENDED HOURS DATA (Premarket/Afterhours/Overnight) =====
             extended_hours_data = extended_hours.get_extended_hours_data(symbol)
@@ -1058,15 +1059,29 @@ class EarningsPlaybook:
         st.warning("⚠️ **NOT IN THESE 2 WEEKS:** NVDA (Nov 19-20), TSLA (Already reported), NFLX (Not scheduled)")
         st.markdown("---")
         
-        # Fetch REAL data for all major stocks
-        with st.spinner("📊 Fetching REAL live market data for confirmed earnings..."):
-            all_earnings = []
-            for symbol in self.major_tickers:
-                data = self.fetch_real_earnings_data(symbol)
-                if data.get('has_real_data'):
-                    # Calculate quality score for each stock
-                    data['quality_score'] = self._calculate_quality_score(data)
-                    all_earnings.append(data)
+        # Fetch REAL data for all major stocks with progress bar
+        st.info("📊 Loading earnings data... This takes 10-20 seconds on first load, then cached for 5 minutes.")
+        progress_bar = st.progress(0)
+        status_text = st.empty()
+        
+        all_earnings = []
+        total_tickers = len(self.major_tickers)
+        
+        for idx, symbol in enumerate(self.major_tickers):
+            # Update progress
+            progress = (idx + 1) / total_tickers
+            progress_bar.progress(progress)
+            status_text.text(f"Loading {symbol}... ({idx + 1}/{total_tickers})")
+            
+            data = self.fetch_real_earnings_data(symbol)
+            if data.get('has_real_data'):
+                # Calculate quality score for each stock
+                data['quality_score'] = self._calculate_quality_score(data)
+                all_earnings.append(data)
+        
+        # Clear progress indicators
+        progress_bar.empty()
+        status_text.empty()
         
         # Filter to only upcoming (within 30 days)
         upcoming = [e for e in all_earnings if e.get('days_until', 999) <= 30 and e.get('days_until', 999) >= 0]
