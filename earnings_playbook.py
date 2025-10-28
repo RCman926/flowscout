@@ -936,7 +936,10 @@ class EarningsPlaybook:
                     st.markdown(f"- **Beat Streak:** {hist['beat_streak']}Q")
                     rr = hist.get('risk_reward_ratio', 1.0)
                     rr_icon = '✅' if rr >= 2 else '⚠️'
-                    rr_tooltip = "Good: Potential reward is at least 2x the risk" if rr >= 2 else "Warning: Reward is less than 2x the risk - consider skipping"
+                    if rr >= 2:
+                        rr_tooltip = f"Risk/Reward is {rr:.1f}:1 - excellent setup with reward {rr:.1f}x the risk"
+                    else:
+                        rr_tooltip = f"Risk/Reward is {rr:.1f}:1 - below the 2:1 threshold, consider skipping"
                     st.markdown(f"- **Risk/Reward:** {rr:.1f}:1 <span title='{rr_tooltip}'>{rr_icon}</span>", unsafe_allow_html=True)
                 
                 with card_col3:
@@ -1361,7 +1364,10 @@ class EarningsPlaybook:
                     # Risk/Reward
                     rr = hist.get('risk_reward_ratio', 1.0)
                     rr_emoji = "✅" if rr >= 2 else "⚠️"
-                    rr_tooltip = "Good: Potential reward is at least 2x the risk" if rr >= 2 else "Warning: Reward is less than 2x the risk - consider skipping"
+                    if rr >= 2:
+                        rr_tooltip = f"Risk/Reward is {rr:.1f}:1 - excellent setup with reward {rr:.1f}x the risk"
+                    else:
+                        rr_tooltip = f"Risk/Reward is {rr:.1f}:1 - below the 2:1 threshold, consider skipping"
                     st.markdown(f"- ⚖️ **Risk/Reward:** {rr:.1f}:1 <span title='{rr_tooltip}'>{rr_emoji}</span>", unsafe_allow_html=True)
                     
                     # Expected Returns
