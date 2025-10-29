@@ -639,10 +639,17 @@ def options_trading_page():
     # Show market status and data freshness
     market_open = is_market_open()
     data_timestamp = market_data.get('timestamp', datetime.now())
+    
+    # Fix timezone-aware datetime comparison
     if isinstance(data_timestamp, datetime):
-        data_age_seconds = (datetime.now() - data_timestamp).total_seconds()
+        # Make both timezone-naive for comparison
+        if data_timestamp.tzinfo is not None:
+            data_timestamp = data_timestamp.replace(tzinfo=None)
+        current_time = datetime.now()
+        data_age_seconds = (current_time - data_timestamp).total_seconds()
         data_age_minutes = int(data_age_seconds / 60)
     else:
+        data_age_seconds = 0
         data_age_minutes = 0
     
     status_cols = st.columns([3, 1])

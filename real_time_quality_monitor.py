@@ -549,8 +549,19 @@ class RealTimeQualityMonitor:
                 recommended_action='Investigate data sources and refresh data feeds'
             ))
         
-        # Specific metric alerts
-        if metrics.freshness_score < 60:
+        # Specific metric alerts - BUT suppress freshness warnings when market is closed
+        from datetime import time as time_obj
+        from zoneinfo import ZoneInfo
+        
+        # Check if market is open (9:30 AM - 4:00 PM ET)
+        et_now = datetime.now(ZoneInfo('America/New_York'))
+        market_open_time = time_obj(9, 30)
+        market_close_time = time_obj(16, 0)
+        is_market_open = (et_now.weekday() < 5 and 
+                         market_open_time <= et_now.time() <= market_close_time)
+        
+        # Only alert about stale data if market is OPEN
+        if metrics.freshness_score < 60 and is_market_open:
             alerts.append(QualityAlert(
                 severity='WARNING',
                 message=f"Stale data detected: {metrics.freshness_score}% freshness",
