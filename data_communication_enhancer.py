@@ -199,6 +199,11 @@ class DataCommunicationEnhancer:
                 current_price = hist['Close'].iloc[-1]
                 prev_close = info.get('previousClose', current_price)
                 
+                # Get actual timestamp from Yahoo Finance data
+                actual_trade_time = hist.index[-1] if hasattr(hist.index[-1], 'to_pydatetime') else datetime.now()
+                if hasattr(actual_trade_time, 'to_pydatetime'):
+                    actual_trade_time = actual_trade_time.to_pydatetime()
+                
                 data = {
                     'symbol': symbol,
                     'price': float(current_price),
@@ -210,6 +215,8 @@ class DataCommunicationEnhancer:
                     'data_freshness': 'LIVE_API',
                     'quality_score': 90,
                     'last_update_timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                    'actual_trade_time': actual_trade_time,  # CRITICAL: Real trade timestamp
+                    'timestamp': actual_trade_time,  # Use actual trade time, not fetch time
                     'real_data_confirmed': True
                 }
                 

@@ -635,8 +635,28 @@ def options_trading_page():
 
     # === SEAMLESS MAIN DASHBOARD ===
     st.markdown("---")
-    st.markdown("#### 📊 Live Market Data")
-    st.caption("⚡ Real-time market conditions")
+    
+    # Show market status and data freshness
+    market_open = is_market_open()
+    data_timestamp = market_data.get('timestamp', datetime.now())
+    if isinstance(data_timestamp, datetime):
+        data_age_seconds = (datetime.now() - data_timestamp).total_seconds()
+        data_age_minutes = int(data_age_seconds / 60)
+    else:
+        data_age_minutes = 0
+    
+    status_cols = st.columns([3, 1])
+    with status_cols[0]:
+        st.markdown("#### 📊 Market Data")
+    with status_cols[1]:
+        if market_open:
+            st.success(f"🟢 LIVE (Data: {int(data_age_seconds)}s ago)")
+        else:
+            if data_age_minutes < 60:
+                st.info(f"🔵 CLOSED (Last trade: {data_age_minutes}m ago)")
+            else:
+                hours_ago = int(data_age_minutes / 60)
+                st.info(f"🔵 CLOSED (Last trade: {hours_ago}h ago)")
     
     # Create seamless update containers for market overview
     price_container = seamless_updater.create_container('price_display')
@@ -1151,72 +1171,7 @@ def options_trading_page():
         st.metric("Time Frame", time_horizon)
         st.caption("For tracking accuracy")
     
-    # === DUPLICATE SECTION REMOVED ===
-    # User prefers main visual dashboard - duplicate "Live Options Battle" removed
-    
-    # === LIVE OPTIONS CHAIN ===
-    st.markdown("#### 📋 Live Options by Volume - Constantly Updating")
-    
-    # Live options chain with constant updates - FIXED DATA FLOW
-    current_price = market_data.get('price', 100)
-    
-    # CRITICAL FIX: Use enhanced data communicator for reliable data flow
-    live_options_data = flow_data  # Use already-fetched cached flow data
-    
-    # CRITICAL FIX: Handle real data structure correctly
-    live_strikes = []
-    if live_options_data and 'analysis' in live_options_data:
-        # Extract strikes from analysis structure
-        for exp_data in live_options_data['analysis']:
-            if isinstance(exp_data, dict) and 'strikes' in exp_data:
-                live_strikes.extend(exp_data['strikes'])
-    
-    # Fallback: if no strikes from analysis, create from raw flow data
-    if not live_strikes and live_options_data:
-        call_vol = live_options_data.get('call_volume', 0)
-        put_vol = live_options_data.get('put_volume', 0)
-        if call_vol > 0 or put_vol > 0:
-            # Create representative strikes based on current price
-            for i, strike_offset in enumerate([-10, -5, 0, 5, 10]):
-                strike_price = current_price + strike_offset
-                live_strikes.extend([
-                    {
-                        'strike': strike_price,
-                        'volume': int(call_vol * (0.3 - i * 0.05)),
-                        'type': 'CALL',
-                        'flow_direction': 'BULLISH' if call_vol > put_vol else 'BEARISH',
-                        'unusual': i == 2  # Middle strike as unusual
-                    },
-                    {
-                        'strike': strike_price,
-                        'volume': int(put_vol * (0.3 - i * 0.05)),
-                        'type': 'PUT',
-                        'flow_direction': 'BEARISH' if put_vol > call_vol else 'BULLISH',
-                        'unusual': i == 1  # Slightly out-of-money as unusual
-                    }
-                ])
-    
-    # Ensure we have strikes data
-    if not live_strikes:
-        # Last resort fallback with real-looking data
-        live_strikes = [
-            {'strike': current_price - 5, 'volume': 1500, 'type': 'CALL', 'flow_direction': 'BULLISH', 'unusual': True},
-            {'strike': current_price, 'volume': 2200, 'type': 'CALL', 'flow_direction': 'NEUTRAL', 'unusual': False},
-            {'strike': current_price + 5, 'volume': 800, 'type': 'CALL', 'flow_direction': 'BEARISH', 'unusual': False},
-            {'strike': current_price - 5, 'volume': 1100, 'type': 'PUT', 'flow_direction': 'BEARISH', 'unusual': False},
-            {'strike': current_price, 'volume': 1800, 'type': 'PUT', 'flow_direction': 'NEUTRAL', 'unusual': True},
-            {'strike': current_price + 5, 'volume': 900, 'type': 'PUT', 'flow_direction': 'BULLISH', 'unusual': False}
-        ]
-    
-    st.markdown(f"**{selected_symbol} @ ${current_price:.2f} - LIVE FEED - Updated: {datetime.now().strftime('%H:%M:%S')}**")
-    
-    # Note: Calls and Puts volume data is now displayed in the compact "Hottest Strikes" section above
-    # to avoid duplication and maintain clean UI
-    
-    # === INSTITUTIONAL EXECUTION PLAN ===
-    st.markdown("#### 🎯 Institutional Execution Plan")
-    st.caption("⚡ Trade setup and levels")
-    
+    # === EXECUTION LEVELS ===
     # Calculate sophisticated trading levels
     current_price = market_data['price']
     rsi = tech_data.get('rsi', 50)

@@ -133,7 +133,7 @@ class SeamlessUpdateSystem:
                     ${price:.2f} <span style="font-size: 1.2rem;">{arrow} {change_pct:.2f}%</span>
                 </div>
                 <div style="font-size: 0.9rem; color: #888;">
-                    Last Update: {datetime.now().strftime('%H:%M:%S')}
+                    App Check: {datetime.now().strftime('%H:%M:%S')}
                 </div>
             </div>
             """, unsafe_allow_html=True)
