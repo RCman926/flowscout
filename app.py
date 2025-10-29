@@ -274,10 +274,14 @@ def options_trading_page():
                 current_price = float(live_data['Close'].iloc[-1])
                 prev_close = float(live_data['Close'].iloc[0])
                 change_pct = ((current_price - prev_close) / prev_close) * 100
+                current_volume = int(live_data['Volume'].iloc[-1])
+                avg_volume = int(live_data['Volume'].mean())
                 
                 market_data.update({
                     'price': current_price,
                     'change_pct': change_pct,
+                    'volume': current_volume,
+                    'avg_volume': avg_volume,
                     'data_source': 'yahoo_finance_authenticated',
                     'data_freshness': 'LIVE_EMERGENCY_FETCH',
                     'data_integrity': True,
