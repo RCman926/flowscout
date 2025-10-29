@@ -66,6 +66,11 @@ if 'prediction_tracker' not in st.session_state:
     from prediction_tracker import PredictionTracker
     st.session_state.prediction_tracker = PredictionTracker()
 
+if 'rl_engine' not in st.session_state:
+    from reinforcement_learning_engine import ReinforcementLearningEngine
+    st.session_state.rl_engine = ReinforcementLearningEngine()
+    print("🧠 REINFORCEMENT LEARNING: Auto-learning from prediction results enabled")
+
 # Configure Streamlit
 st.set_page_config(
     page_title="Professional Trading Platform",
@@ -1050,6 +1055,62 @@ def options_trading_page():
         else:
             st.info("🎯 No Results Yet")
             st.caption("Make predictions to track")
+    
+    # === REINFORCEMENT LEARNING AUTO-TRIGGER ===
+    rl_engine = st.session_state.rl_engine
+    
+    # Check if we should automatically trigger learning
+    if rl_engine.should_trigger_learning(prediction_tracker):
+        with st.spinner("🧠 Learning from recent results..."):
+            learn_result = rl_engine.learn_from_results(prediction_tracker.predictions)
+            if learn_result['learned']:
+                st.success(f"✅ AI IMPROVED! Learned from {learn_result['training_samples']} predictions (Retrain #{learn_result['total_retrains']})")
+    
+    # Display learning progress
+    learning_summary = rl_engine.get_learning_summary()
+    if learning_summary['is_trained']:
+        st.markdown("**🧠 AI Learning Status**")
+        learn_cols = st.columns(4)
+        
+        with learn_cols[0]:
+            st.metric("Model Retrains", learning_summary['total_retrains'])
+            st.caption("Times AI learned")
+        
+        with learn_cols[1]:
+            last_retrain = learning_summary.get('last_retrain')
+            if last_retrain:
+                retrain_date = datetime.fromisoformat(last_retrain).strftime("%m/%d %H:%M")
+                st.info(f"📅 Last: {retrain_date}")
+            else:
+                st.info("📅 Never learned")
+            st.caption("Last retrain time")
+        
+        with learn_cols[2]:
+            if learning_summary['top_features']:
+                top_feature = learning_summary['top_features'][0][0]
+                top_importance = learning_summary['top_features'][0][1]
+                st.metric("Top Factor", f"{top_importance:.1%}")
+                st.caption(f"{top_feature.replace('_', ' ').title()}")
+            else:
+                st.info("No factors yet")
+        
+        with learn_cols[3]:
+            improvement_history = learning_summary.get('improvement_history', [])
+            if len(improvement_history) >= 2:
+                old_wr = improvement_history[-2].get('win_rate', 0)
+                new_wr = improvement_history[-1].get('win_rate', 0)
+                improvement = new_wr - old_wr
+                if improvement > 0:
+                    st.success(f"📈 +{improvement:.1f}%")
+                    st.caption("Win rate improved")
+                else:
+                    st.metric("Trend", "Stable")
+                    st.caption("Win rate steady")
+            else:
+                st.info("Need more data")
+                st.caption("For trend analysis")
+    else:
+        st.info("🧠 AI will start learning after 10 completed predictions")
     
     # Only show results if we actually have real expired predictions
     if recent_expired:
