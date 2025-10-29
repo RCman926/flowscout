@@ -101,6 +101,9 @@ class MarketDataEngine:
         try:
             # Try IBKR first (uses saved connection settings)
             if await self.connect_ibkr(self.ibkr_host, self.ibkr_port, self.ibkr_client_id):
+                # Clear previous data to avoid contamination
+                self.app.price_data = {}
+                
                 contract = Contract()
                 contract.symbol = symbol
                 contract.secType = "STK"
@@ -249,6 +252,9 @@ class MarketDataEngine:
         try:
             # Try IBKR first (uses saved connection settings)
             if await self.connect_ibkr(self.ibkr_host, self.ibkr_port, self.ibkr_client_id):
+                # Clear previous data to avoid contamination
+                self.app.historical_data = []
+                
                 contract = Contract()
                 contract.symbol = symbol
                 contract.secType = "STK"
