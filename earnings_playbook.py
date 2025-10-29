@@ -16,44 +16,48 @@ class EarningsPlaybook:
     """Professional earnings trading with REAL LIVE DATA ONLY"""
     
     def __init__(self):
-        # REAL CONFIRMED EARNINGS - Week of Oct 28 - Nov 1, 2025
-        # Source: TradingView, Earnings Whispers, Company IR pages
-        self.confirmed_earnings = {
-            # === THIS WEEK (Oct 28 - Nov 1) ===
-            # Tuesday Oct 29 - BIG TECH DAY
-            'GOOGL': {'date': 'Oct 29 (Tue)', 'time': 'After Close'},
-            'MSFT': {'date': 'Oct 29 (Tue)', 'time': 'After Close'},
-            'META': {'date': 'Oct 29 (Tue)', 'time': 'After Close'},
-            'AMD': {'date': 'Oct 29 (Tue)', 'time': 'After Close'},
-            # Wednesday Oct 30
-            'QCOM': {'date': 'Oct 30 (Wed)', 'time': 'After Close'},
-            'UBER': {'date': 'Oct 30 (Wed)', 'time': 'After Close'},
-            # Thursday Oct 31 - MASSIVE DAY
-            'AAPL': {'date': 'Oct 31 (Thu)', 'time': 'After Close'},
-            'AMZN': {'date': 'Oct 31 (Thu)', 'time': 'After Close'},
-            'INTC': {'date': 'Oct 31 (Thu)', 'time': 'After Close'},
-            
-            # === NEXT WEEK (Nov 4-8, 2025) ===
-            # Monday Nov 4
-            'NIO': {'date': 'Nov 4 (Mon)', 'time': 'Before Open'},
-            'XPEV': {'date': 'Nov 4 (Mon)', 'time': 'Before Open'},
-            # Tuesday Nov 5
-            'PLTR': {'date': 'Nov 5 (Tue)', 'time': 'After Close'},
-            'ARM': {'date': 'Nov 5 (Tue)', 'time': 'After Close'},
-            # Wednesday Nov 6
-            'COIN': {'date': 'Nov 6 (Wed)', 'time': 'After Close'},
-            'HOOD': {'date': 'Nov 6 (Wed)', 'time': 'After Close'},
-            # Thursday Nov 7
-            'ABNB': {'date': 'Nov 7 (Thu)', 'time': 'After Close'},
-            'RIVN': {'date': 'Nov 7 (Thu)', 'time': 'After Close'},
-            
-            # NOT THESE WEEKS
-            # 'NVDA': Nov 19-20, 2025 (Later)
-            # 'TSLA': Already reported Q3
-            # 'NFLX': Not in this period
-        }
+        # AUTO-UPDATING EARNINGS - Fetch live from Yahoo Finance
+        # Only show UPCOMING earnings within next 30 days
+        self.major_tickers = [
+            'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'META', 'TSLA', 'NVDA', 'AMD', 'NFLX',
+            'UBER', 'QCOM', 'INTC', 'NIO', 'XPEV', 'PLTR', 'ARM', 'COIN', 'HOOD',
+            'ABNB', 'RIVN', 'COST', 'WMT', 'JPM', 'DIS', 'BA', 'GE', 'F', 'GM'
+        ]
+        self.confirmed_earnings = self._fetch_upcoming_earnings()
+    
+    def _fetch_upcoming_earnings(self):
+        """Fetch live upcoming earnings and filter out past dates"""
+        upcoming = {}
+        today = datetime.now().date()
         
-        self.major_tickers = list(self.confirmed_earnings.keys())
+        for symbol in self.major_tickers:
+            try:
+                ticker = yf.Ticker(symbol)
+                info = ticker.info
+                
+                if 'earningsDate' in info and info['earningsDate']:
+                    earnings_list_data = info['earningsDate']
+                    if isinstance(earnings_list_data, list) and len(earnings_list_data) > 0:
+                        earnings_ts = earnings_list_data[0]
+                        earn_date = datetime.fromtimestamp(earnings_ts)
+                        days_until = (earn_date.date() - today).days
+                        
+                        # Only include UPCOMING earnings (today or future, within 30 days)
+                        if 0 <= days_until <= 30:
+                            # Determine time (AM/PM based on hour)
+                            time_str = 'Before Open' if earn_date.hour < 12 else 'After Close'
+                            date_str = earn_date.strftime('%b %d (%a)')
+                            
+                            upcoming[symbol] = {
+                                'date': date_str,
+                                'time': time_str,
+                                'days_until': days_until
+                            }
+            except Exception as e:
+                # Skip symbols with errors
+                continue
+        
+        return upcoming
     
     def fetch_implied_volatility(self, ticker, symbol):
         """FACTOR 1: Implied Volatility Analysis"""

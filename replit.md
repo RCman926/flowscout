@@ -6,10 +6,10 @@ This project is an institutional-grade options trading platform built with Strea
 
 Preferred communication style: Simple, everyday language.
 UI/UX Preferences:
-- Dislikes: Complex market mood displays, multi-broker dashboards, confusing unified data sections, oversized colored boxes, duplicate/double headers
-- Prefers: Clean, simple layouts with clear data presentation, compact text-based information display, single headers with smaller text (#### instead of ###)
+- Dislikes: Complex market mood displays, multi-broker dashboards, confusing unified data sections, oversized colored boxes, duplicate/double headers, outdated earnings information, duplicate earnings data between sidebar and playbook
+- Prefers: Clean, simple layouts with clear data presentation, compact text-based information display, single headers with smaller text (#### instead of ###), auto-updating earnings that remove past dates
 - Focus on: Live options flow, real news, earnings results, clear trading signals
-- Market Intelligence Requirements: Separate today's earnings from upcoming earnings, include FOMC dates, Fed economic data releases (CPI, PPI, Jobs), global market-moving news
+- Market Intelligence Requirements: World news affecting market predictability on sidebar only, earnings handled in dedicated Earnings Playbook page with live auto-updates
 - Interface Style: Minimal colors, text-based display, compact layout without large colored containers, single headers only (no "PREDICTION PRIORITY TIER" + section title duplicates)
 - Data Source Display: Always show "IBKR" as primary data source in UI, not "live_scraper" or generic terms
 
@@ -50,7 +50,7 @@ UI/UX Preferences:
 - **Signal System Upgrade**: Features a 6-Factor Professional Model (smart money flow, market structure, dark pool intelligence, volatility, cross-asset signals, technical confirmation), advanced ML signal fusion, Kelly Criterion integration, and a 5-level conviction system.
 - **Balanced Trading Strategy System**: Supports conservative, moderate, aggressive, and speculative strategies with professional position sizing.
 - **Institutional-Grade Analytics**: Includes a Gamma Exposure Engine, Institutional Flow Tracker (block trades, sweep orders, dark pool prints), advanced Greeks monitoring, and High-Profit Options Chain.
-- **Earnings Playbook Enhancement**: Offers comprehensive features like Win Rate Analytics, Expected Return Calculator, Risk/Reward Ratio, HOT PLAYS Dashboard, Position Size Recommendations, and an Alert System.
+- **Earnings Playbook Enhancement**: Offers comprehensive features like Win Rate Analytics, Expected Return Calculator, Risk/Reward Ratio, HOT PLAYS Dashboard, Position Size Recommendations, and an Alert System. Auto-updates earnings from Yahoo Finance API, filters out past dates, shows only upcoming earnings within 30 days.
 - **Institutional-Grade Intelligence**: Integrates 8 advanced data sources for professional squeeze detection, including real short interest data, options flow, borrow rate tracking, dark pool detection, float rotation analysis, historical win rate back-testing, catalyst integration, and social sentiment scoring.
 - **Smart Screener Filtering**: Prioritizes PRE-SQUEEZE opportunities based on short interest, borrow difficulty, and early warning scores, with new sorting priority by squeeze stage.
 - **Extended Hours Tracking**: Provides real-time pre-market and after-hours price tracking, including overnight move detection (crash/pump).
