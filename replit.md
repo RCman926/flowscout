@@ -9,7 +9,7 @@ UI/UX Preferences:
 - Dislikes: Complex market mood displays, multi-broker dashboards, confusing unified data sections, oversized colored boxes, duplicate/double headers, outdated earnings information, duplicate earnings data between sidebar and playbook
 - Prefers: Clean, simple layouts with clear data presentation, compact text-based information display, single headers with smaller text (#### instead of ###), auto-updating earnings that remove past dates
 - Focus on: Live options flow, real news, earnings results, clear trading signals
-- Market Intelligence Requirements: World news affecting market predictability on sidebar only, earnings handled in dedicated Earnings Playbook page with live auto-updates
+- Market Intelligence Requirements: World news for market intelligence on sidebar only, earnings handled in dedicated Earnings Playbook page with live auto-updates
 - Interface Style: Minimal colors, text-based display, compact layout without large colored containers, single headers only (no "PREDICTION PRIORITY TIER" + section title duplicates)
 - Data Source Display: Always show "IBKR" as primary data source in UI, not "live_scraper" or generic terms
 
