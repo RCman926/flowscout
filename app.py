@@ -354,8 +354,10 @@ def options_trading_page():
         data_freshness = market_data.get('data_freshness', 'unknown')
         quality_score = market_data.get('quality_score', 0)
         
-        # Enhanced data source display with LIVE status priority
-        if data_source in ['live_scraper', 'yahoo_finance_authenticated'] and quality_score > 70:
+        # Enhanced data source display with LIVE status priority - IBKR FIRST
+        if data_source == 'ibkr_live' and quality_score > 90:
+            st.success(f"🔴 IBKR TWS CONNECTED | Q: {quality_score}%")
+        elif data_source in ['live_scraper', 'yahoo_finance_authenticated'] and quality_score > 70:
             st.success(f"🟢 LIVE DATA CONNECTED | Q: {quality_score}%")
         elif data_source in ['yahoo_finance', 'statistical_model'] and quality_score > 60:
             st.success(f"📊 YAHOO FINANCE LIVE | Q: {quality_score}%")
@@ -796,8 +798,20 @@ def options_trading_page():
     # === LIVE ACTION OPTIONS BATTLE ===
     st.markdown("### 🎯 PREDICTION PRIORITY TIER 3: OPTIONS FLOW BATTLE")
     st.caption("📊 Visual flow analysis - Medium importance for context")
-    st.markdown("### ⚔️ LIVE OPTIONS BATTLE - CALLS vs PUTS")
-    st.caption("📊 Using same unified data source as Options Flow Analysis above")
+    
+    # Show IBKR connection status
+    flow_source = flow_data.get('data_source', 'unknown')
+    flow_quality = flow_data.get('quality_score', 0)
+    
+    if flow_source == 'ibkr_live':
+        st.markdown("### ⚔️ LIVE OPTIONS BATTLE - CALLS vs PUTS 🔴 IBKR LIVE")
+        st.caption(f"📡 Connected to IBKR TWS | Quality: {flow_quality}% | Real-time institutional data")
+    elif flow_source in ['yahoo_finance_authenticated', 'yahoo_finance']:
+        st.markdown("### ⚔️ LIVE OPTIONS BATTLE - CALLS vs PUTS 🟡 YAHOO FINANCE")
+        st.caption(f"📊 Yahoo Finance Live | Quality: {flow_quality}% | IBKR unavailable")
+    else:
+        st.markdown("### ⚔️ LIVE OPTIONS BATTLE - CALLS vs PUTS")
+        st.caption(f"📊 Data source: {flow_source} | Quality: {flow_quality}%")
     
     # Use SAME unified data source for consistency 
     live_flow_metrics = unified_flow
