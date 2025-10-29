@@ -50,7 +50,8 @@ class ReinforcementLearningEngine:
             'last_retrain_date': None,
             'improvement_history': [],
             'feature_importance': {},
-            'model_version': '1.0_rl'
+            'model_version': '1.0_rl',
+            'processed_prediction_ids': []  # Track which predictions we've learned from
         }
         
         self.load_learning_history()
@@ -220,6 +221,9 @@ class ReinforcementLearningEngine:
             'top_features': sorted_features[:3]
         })
         
+        # Track which predictions we've learned from (avoid relearning same data)
+        self.learning_stats['processed_prediction_ids'] = [p.get('id') for p in completed]
+        
         # Save progress
         self.save_learning_history()
         self.save_model_checkpoint()
@@ -302,22 +306,21 @@ class ReinforcementLearningEngine:
     def should_trigger_learning(self, prediction_tracker) -> bool:
         """
         Check if we should trigger automatic learning
-        Returns True if enough new predictions since last retrain
+        Returns True if we have 10+ new unprocessed predictions
         """
         completed = [p for p in prediction_tracker.predictions if p['status'] == 'EXPIRED']
         
-        # Check if we have minimum predictions
-        if len(completed) < self.min_predictions_for_learning:
-            return False
+        # Get list of predictions we've already learned from
+        processed_ids = set(self.learning_stats.get('processed_prediction_ids', []))
         
-        # Check if enough new predictions since last retrain
-        last_retrain_count = 0
-        if self.learning_stats.get('improvement_history'):
-            last_retrain_count = self.learning_stats['improvement_history'][-1].get('training_samples', 0)
+        # Find NEW predictions we haven't learned from yet
+        new_predictions = [p for p in completed if p.get('id') not in processed_ids]
         
-        new_predictions = len(completed) - last_retrain_count
+        # Trigger learning if we have 10+ new predictions OR 10+ total and never trained
+        if not self.is_trained and len(completed) >= self.min_predictions_for_learning:
+            return True  # First time training
         
-        return new_predictions >= self.learning_trigger_interval
+        return len(new_predictions) >= self.learning_trigger_interval
 
 # Global instance
 rl_engine = ReinforcementLearningEngine()

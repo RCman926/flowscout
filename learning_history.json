@@ -1,0 +1,7 @@
+{
+  "total_retrains": 0,
+  "last_retrain_date": null,
+  "improvement_history": [],
+  "feature_importance": {},
+  "model_version": "1.0_rl"
+}
