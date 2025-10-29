@@ -28,10 +28,12 @@ UI/UX Preferences:
 - **AI Prediction Engine**: Features Master Trading Signals with over 40 advanced features, Signal Validation, and a Prediction Results Tracker.
 
 ## Real-time Data Architecture
-- **IBKR API Integration**: Uses EClient/EWrapper for live market data.
-- **Caching Strategy**: Implements a 30-second cache duration for API calls.
-- **Asynchronous Processing**: Employs async/await for non-blocking data fetching.
-- **Data Quality Enforcement**: Strict error handling, fallbacks, real-time authentication, and quality scoring to prevent synthetic/fallback data.
+- **IBKR API Integration**: Primary institutional-grade data source using EClient/EWrapper for live market data with 3-second timeout and automatic Yahoo Finance fallback.
+- **Professional Refresh Rates**: Institutional-grade update intervals - Prices: 3s (real-time), Options Flow: 5s (professional), Technical Indicators: 10s, Gamma Exposure: 30s, News: 60s.
+- **Intelligent Caching Strategy**: Data-type specific cache durations (3s for prices, 5s for flow, 10s for technical) with Last-Known-Good (LKG) fallback system.
+- **Asynchronous Processing**: Employs async/await for non-blocking data fetching with differential refresh coordination.
+- **Data Source Priority**: IBKR TWS (98% quality) → Yahoo Finance (90% quality) → Last-Known-Good Cache (70-85% quality) → Statistical Model (50-75% quality).
+- **Data Quality Enforcement**: Strict error handling, multi-tier fallbacks, real-time authentication, and quality scoring to prevent synthetic/fallback data.
 - **Web Scraping Infrastructure**: Gathers live data from sources like Yahoo Finance, MarketWatch, CNBC, and Bloomberg.
 
 ## Alert System Architecture
