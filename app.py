@@ -4415,6 +4415,149 @@ def main():
     
     st.sidebar.markdown("---")
     
+    # === IBKR CONNECTION ===
+    st.sidebar.markdown("### 🔌 **IBKR CONNECTION**")
+    
+    # Initialize session state for IBKR
+    if 'ibkr_connected' not in st.session_state:
+        st.session_state.ibkr_connected = False
+    if 'ibkr_host' not in st.session_state:
+        st.session_state.ibkr_host = "127.0.0.1"
+    if 'ibkr_port' not in st.session_state:
+        st.session_state.ibkr_port = 7497
+    if 'ibkr_client_id' not in st.session_state:
+        st.session_state.ibkr_client_id = 1
+    
+    # Connection status - check real connection state
+    is_actually_connected = (
+        st.session_state.ibkr_connected and 
+        'ibkr_client' in st.session_state and 
+        st.session_state.ibkr_client.app and 
+        st.session_state.ibkr_client.app.isConnected()
+    )
+    
+    # Sync session state with actual connection
+    if st.session_state.ibkr_connected and not is_actually_connected:
+        st.session_state.ibkr_connected = False
+    
+    if is_actually_connected:
+        st.sidebar.success(f"✅ Connected to {st.session_state.ibkr_host}:{st.session_state.ibkr_port}")
+    else:
+        st.sidebar.error("❌ Not Connected")
+    
+    # Connection settings in expander
+    with st.sidebar.expander("⚙️ Connection Settings", expanded=not st.session_state.ibkr_connected):
+        st.caption("Configure your TWS/IB Gateway connection")
+        
+        ibkr_host = st.text_input(
+            "Host",
+            value=st.session_state.ibkr_host,
+            help="Usually 127.0.0.1 for local TWS/Gateway",
+            key="ibkr_host_input"
+        )
+        
+        ibkr_port = st.number_input(
+            "Port",
+            min_value=1000,
+            max_value=9999,
+            value=st.session_state.ibkr_port,
+            help="7497 for TWS (live), 7496 for TWS (paper), 4001 for Gateway (live), 4002 for Gateway (paper)",
+            key="ibkr_port_input"
+        )
+        
+        ibkr_client_id = st.number_input(
+            "Client ID",
+            min_value=0,
+            max_value=100,
+            value=st.session_state.ibkr_client_id,
+            help="Unique ID for this connection (0-100)",
+            key="ibkr_client_id_input"
+        )
+        
+        # Update session state
+        st.session_state.ibkr_host = ibkr_host
+        st.session_state.ibkr_port = int(ibkr_port)
+        st.session_state.ibkr_client_id = int(ibkr_client_id)
+        
+        st.caption("📌 **Common Ports:**")
+        st.caption("• TWS Live: 7497")
+        st.caption("• TWS Paper: 7496")
+        st.caption("• Gateway Live: 4001")
+        st.caption("• Gateway Paper: 4002")
+    
+    # Initialize persistent IBKR client
+    if 'ibkr_client' not in st.session_state:
+        from market_data import MarketDataEngine
+        st.session_state.ibkr_client = MarketDataEngine()
+    
+    # Connect/Disconnect button
+    if st.session_state.ibkr_connected:
+        if st.sidebar.button("🔌 Disconnect", use_container_width=True):
+            try:
+                import asyncio
+                asyncio.run(st.session_state.ibkr_client.disconnect_ibkr())
+                st.session_state.ibkr_connected = False
+                st.sidebar.success("Disconnected from IBKR")
+                st.rerun()
+            except Exception as e:
+                st.sidebar.error(f"Disconnect error: {str(e)}")
+    else:
+        if st.sidebar.button("🔗 Connect to IBKR", use_container_width=True, type="primary"):
+            try:
+                with st.spinner(f"Connecting to {st.session_state.ibkr_host}:{st.session_state.ibkr_port}..."):
+                    import asyncio
+                    success = asyncio.run(
+                        st.session_state.ibkr_client.connect_ibkr(
+                            host=st.session_state.ibkr_host,
+                            port=st.session_state.ibkr_port,
+                            client_id=st.session_state.ibkr_client_id
+                        )
+                    )
+                    
+                    if success:
+                        st.session_state.ibkr_connected = True
+                        st.sidebar.success("✅ Connected to IBKR!")
+                        st.rerun()
+                    else:
+                        st.sidebar.error("❌ Connection failed. Is TWS/Gateway running?")
+            except Exception as e:
+                st.sidebar.error(f"Connection error: {str(e)}")
+    
+    # Setup instructions
+    with st.sidebar.expander("📖 Setup Instructions"):
+        st.markdown("""
+        **Step 1: Install TWS or IB Gateway**
+        
+        Download from Interactive Brokers:
+        - [TWS (Trader Workstation)](https://www.interactivebrokers.com/en/trading/tws.php)
+        - [IB Gateway](https://www.interactivebrokers.com/en/trading/ibgateway-stable.php)
+        
+        **Step 2: Enable API Access**
+        
+        In TWS/Gateway:
+        1. Go to **File > Global Configuration**
+        2. Click **API > Settings**
+        3. ✅ Enable ActiveX and Socket Clients
+        4. ✅ Allow connections from localhost
+        5. Set Socket Port (7497 for live, 7496 for paper)
+        6. ✅ Download open orders on connection
+        7. Click **OK** and restart TWS/Gateway
+        
+        **Step 3: Login & Connect**
+        
+        1. Login to TWS/IB Gateway
+        2. Make sure it's running
+        3. Click "Connect to IBKR" above
+        
+        **Troubleshooting:**
+        - Ensure TWS/Gateway is running
+        - Check firewall settings
+        - Verify port number matches TWS settings
+        - Try different Client ID (0-100)
+        """)
+    
+    st.sidebar.markdown("---")
+    
     # === UPCOMING EARNINGS - HIGH-END OPTIONS PLAYS ===
     st.sidebar.markdown("### 📅 **EARNINGS CALENDAR**")
     st.sidebar.caption("🔄 Live - Options opportunities")

@@ -40,16 +40,38 @@ class MarketDataEngine:
         self.cache = {}
         self.cache_expiry = {}
         self.cache_duration = 120  # Cache duration in seconds - increased to avoid rate limits
+        # Store connection settings
+        self.ibkr_host = "127.0.0.1"
+        self.ibkr_port = 7497
+        self.ibkr_client_id = 1
         
-    async def connect_ibkr(self):
-        """Connect to IBKR API"""
+    async def connect_ibkr(self, host="127.0.0.1", port=7497, client_id=1):
+        """Connect to IBKR API with configurable parameters"""
         try:
+            # Save connection settings for future reconnects
+            self.ibkr_host = host
+            self.ibkr_port = port
+            self.ibkr_client_id = client_id
+            
+            # Don't reconnect if already connected with same settings
+            if self.app and self.app.isConnected():
+                print(f"ℹ️ Already connected to IBKR at {host}:{port}")
+                return True
+            
+            # Create new connection
             self.app = MarketDataApp()
-            self.app.connect("127.0.0.1", 7497, clientId=3)
+            self.app.connect(host, port, clientId=client_id)
             await asyncio.sleep(2)
-            return True
+            
+            # Test if connection is actually working
+            if self.app.isConnected():
+                print(f"✅ IBKR connected successfully to {host}:{port} (Client ID: {client_id})")
+                return True
+            else:
+                print(f"❌ IBKR connection failed to {host}:{port}")
+                return False
         except Exception as e:
-            print(f"IBKR connection failed: {e}")
+            print(f"IBKR connection error: {e}")
             return False
             
     async def disconnect_ibkr(self):
@@ -77,8 +99,8 @@ class MarketDataEngine:
             return self.cache[cache_key]
             
         try:
-            # Try IBKR first
-            if await self.connect_ibkr():
+            # Try IBKR first (uses saved connection settings)
+            if await self.connect_ibkr(self.ibkr_host, self.ibkr_port, self.ibkr_client_id):
                 contract = Contract()
                 contract.symbol = symbol
                 contract.secType = "STK"
@@ -90,11 +112,10 @@ class MarketDataEngine:
                 
                 if 1 in self.app.price_data:
                     price = self.app.price_data[1]
-                    await self.disconnect_ibkr()
                     self._update_cache(cache_key, price)
                     return price
                     
-                await self.disconnect_ibkr()
+                # Note: Keep connection alive for subsequent requests
             
             # Fallback to Yahoo Finance
             return await self._get_yahoo_price(symbol)
@@ -226,8 +247,8 @@ class MarketDataEngine:
             return self.cache[cache_key]
             
         try:
-            # Try IBKR first
-            if await self.connect_ibkr():
+            # Try IBKR first (uses saved connection settings)
+            if await self.connect_ibkr(self.ibkr_host, self.ibkr_port, self.ibkr_client_id):
                 contract = Contract()
                 contract.symbol = symbol
                 contract.secType = "STK"
@@ -246,11 +267,10 @@ class MarketDataEngine:
                     df.set_index('Date', inplace=True)
                     df.columns = ['Open', 'High', 'Low', 'Close', 'Volume']
                     
-                    await self.disconnect_ibkr()
                     self._update_cache(cache_key, df)
                     return df
                     
-                await self.disconnect_ibkr()
+                # Note: Keep connection alive for subsequent requests
             
             # Fallback to Yahoo Finance
             return await self._get_yahoo_historical(symbol, period, interval)
