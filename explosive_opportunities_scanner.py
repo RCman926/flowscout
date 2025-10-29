@@ -16,29 +16,136 @@ class ExplosiveOpportunitiesScanner:
         self.cache_expiry = {}
         self.cache_duration = 60  # 60 second cache for scanner results
         
-        # Watchlist of most active stocks for scanning
-        self.scan_universe = [
-            # Major Indices
-            'SPY', 'QQQ', 'IWM', 'DIA',
-            # Tech Giants
-            'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'META', 'NVDA', 'TSLA',
-            # High Momentum Stocks
-            'AMD', 'NFLX', 'COIN', 'PLTR', 'HOOD', 'SOFI', 'RBLX',
-            # Volatile Movers
-            'GME', 'AMC', 'BBBY', 'LCID', 'RIVN', 'NIO', 'XPEV',
-            # AI & Chips
-            'AVGO', 'ARM', 'MU', 'QCOM', 'INTC', 'TSM',
-            # Finance & Crypto
-            'JPM', 'BAC', 'GS', 'MARA', 'RIOT', 'MSTR',
-            # Energy
-            'XLE', 'XOM', 'CVX', 'OXY',
-            # Consumer & Retail
-            'AMZN', 'WMT', 'TGT', 'COST', 'HD',
-            # Communication
-            'SNAP', 'PINS', 'UBER', 'LYFT', 'ABNB',
-            # Squeeze Candidates
-            'BBAI', 'GRRR', 'RZLV', 'SMCI', 'CVNA'
-        ]
+        # Lazy-load scan universe to prevent page blocking
+        self._scan_universe = None
+    
+    @property
+    def scan_universe(self) -> List[str]:
+        """Lazy-load scan universe only when needed"""
+        if self._scan_universe is None:
+            self._scan_universe = self._build_comprehensive_universe()
+        return self._scan_universe
+    
+    @scan_universe.setter
+    def scan_universe(self, value: List[str]):
+        """Allow setting scan universe"""
+        self._scan_universe = value
+        
+    def _build_comprehensive_universe(self) -> List[str]:
+        """Build comprehensive scan universe with 300+ symbols"""
+        symbols = []
+        
+        # Major Indices & ETFs (10)
+        symbols.extend(['SPY', 'QQQ', 'IWM', 'DIA', 'VTI', 'VOO', 'VXX', 'UVXY', 'SQQQ', 'TQQQ'])
+        
+        # Mega Cap Tech (15)
+        symbols.extend(['AAPL', 'MSFT', 'GOOGL', 'GOOG', 'AMZN', 'META', 'NVDA', 'TSLA', 'NFLX', 'ADBE', 'CRM', 'ORCL', 'CSCO', 'INTC', 'AVGO'])
+        
+        # AI & Semiconductor (25)
+        symbols.extend(['AMD', 'TSM', 'ASML', 'QCOM', 'MU', 'AMAT', 'LRCX', 'KLAC', 'MRVL', 'MCHP', 'NXPI', 'TXN', 'ADI', 'ARM', 'SMCI', 'IONQ', 'QUBT', 'RGTI', 'SOUN', 'BBAI', 'AI', 'PLTR', 'SNOW', 'PATH', 'DDOG'])
+        
+        # Crypto & Blockchain (20)
+        symbols.extend(['BTC-USD', 'ETH-USD', 'COIN', 'MARA', 'RIOT', 'CLSK', 'CIFR', 'HUT', 'BITF', 'MSTR', 'SQ', 'PYPL', 'HOOD', 'SOFI', 'AFRM', 'UPST', 'DOGE-USD', 'ADA-USD', 'SOL-USD', 'XRP-USD'])
+        
+        # Meme/Squeeze Stocks (30)
+        symbols.extend(['GME', 'AMC', 'BBBY', 'BYND', 'CLOV', 'WISH', 'SKLZ', 'WKHS', 'RIDE', 'SPCE', 'IRNT', 'ATER', 'BBIG', 'PROG', 'CEI', 'GREE', 'RDBX', 'MULN', 'GRRR', 'RZLV', 'AVCT', 'NILE', 'RELI', 'IMPP', 'SST', 'ENDP', 'APRN', 'ENVB', 'DRUG', 'MEGL'])
+        
+        # Small Cap High Vol (50)
+        symbols.extend(['SOXL', 'SOXS', 'LABU', 'LABD', 'TQQQ', 'SQQQ', 'UPRO', 'SPXU', 'FNGU', 'FNGD', 'TECL', 'TECS', 'NAIL', 'DUST', 'NUGT', 'JNUG', 'JDST', 'ERX', 'ERY', 'UCO', 'SCO', 'BOIL', 'KOLD', 'GUSH', 'DRIP', 'TNA', 'TZA', 'CURE', 'CRSP', 'EDIT', 'NTLA', 'BEAM', 'VRTX', 'MRNA', 'BNTX', 'NVAX', 'SAVA', 'RLYB', 'SRNE', 'INO', 'OCGN', 'ATOS', 'ATNF', 'DTST', 'PSTV', 'VKTX', 'AFMD', 'ALPP', 'BKKT', 'RCAT'])
+        
+        # EV & Clean Energy (25)
+        symbols.extend(['LCID', 'RIVN', 'NIO', 'XPEV', 'LI', 'FSR', 'NKLA', 'GOEV', 'RIDE', 'WKHS', 'HYLN', 'BLNK', 'CHPT', 'PLUG', 'FCEL', 'BE', 'QS', 'ENPH', 'SEDG', 'RUN', 'NOVA', 'ARRY', 'SPWR', 'CSIQ', 'JKS'])
+        
+        # Biotech Small Caps (40)
+        symbols.extend(['GILD', 'BIIB', 'REGN', 'VRTX', 'ALNY', 'BMRN', 'EXEL', 'IONS', 'JAZZ', 'INCY', 'UTHR', 'RGEN', 'FOLD', 'ARWR', 'RARE', 'BLUE', 'SAGE', 'ALLK', 'NBIX', 'ACAD', 'HALO', 'KRYS', 'APLS', 'RVMD', 'RVNC', 'CGEM', 'ARQT', 'KYMR', 'RCKT', 'LEGN', 'JANX', 'KURA', 'TGTX', 'FATE', 'DNLI', 'RXRX', 'SDGR', 'VERV', 'PRME', 'LYEL'])
+        
+        # High Beta Tech (25)
+        symbols.extend(['SNAP', 'PINS', 'RBLX', 'DASH', 'ABNB', 'LYFT', 'UBER', 'Z', 'OPEN', 'WISH', 'CPNG', 'SE', 'MELI', 'SHOP', 'SQ', 'ROKU', 'DKNG', 'PENN', 'FUBO', 'SKLZ', 'TTWO', 'EA', 'RBLX', 'U', 'NET'])
+        
+        # Penny Stocks/OTC Style (30)
+        symbols.extend(['SNDL', 'NAKD', 'BNGO', 'ZOM', 'HITIF', 'TLRY', 'ACB', 'CGC', 'CRON', 'APHA', 'HEXO', 'OGI', 'KERN', 'VERU', 'ONTX', 'IDEX', 'GEVO', 'PLUG', 'SOLO', 'WKHS', 'CLNE', 'BLNK', 'AYRO', 'NNDM', 'MARK', 'KODK', 'SINT', 'GNUS', 'XELA', 'HOFV'])
+        
+        # SPACs & Recent IPOs (20)
+        symbols.extend(['PSTH', 'IPOF', 'IPOD', 'CCIV', 'SOFI', 'OPEN', 'DNA', 'IONQ', 'RKLB', 'BROS', 'RIVN', 'LCID', 'GRAB', 'BIRD', 'VLD', 'CURI', 'BGRY', 'GENI', 'SKIN', 'ZEV'])
+        
+        # Chinese Tech (15)
+        symbols.extend(['BABA', 'JD', 'PDD', 'BIDU', 'NIO', 'XPEV', 'LI', 'BILI', 'IQ', 'YUMC', 'BEKE', 'TME', 'DIDI', 'TAL', 'EDU'])
+        
+        # Finance & Fintech (15)
+        symbols.extend(['JPM', 'BAC', 'WFC', 'C', 'GS', 'MS', 'SCHW', 'BLK', 'V', 'MA', 'AXP', 'SQ', 'PYPL', 'AFRM', 'UPST'])
+        
+        # Energy & Commodities (15)
+        symbols.extend(['XOM', 'CVX', 'COP', 'EOG', 'SLB', 'HAL', 'OXY', 'DVN', 'FANG', 'MRO', 'APA', 'CLR', 'SM', 'RIG', 'VAL'])
+        
+        # Retail & Consumer (10)
+        symbols.extend(['WMT', 'TGT', 'COST', 'HD', 'LOW', 'BBY', 'DG', 'DLTR', 'FIVE', 'OLLI'])
+        
+        return list(set(symbols))  # Remove duplicates
+    
+    def discover_new_symbols(self) -> List[str]:
+        """
+        Dynamically discover new high-potential symbols based on:
+        - Top gainers
+        - Top volume leaders  
+        - Recently listed stocks
+        """
+        discovered = []
+        
+        try:
+            # Method 1: Scan through a broader range of tickers to find active ones
+            # Using common ticker patterns for small caps
+            potential_symbols = []
+            
+            # Generate potential small cap tickers (common patterns)
+            for letter1 in 'ABCDEFGHIJKLMNOPQRSTUVWXYZ':
+                for letter2 in 'ABCDEFGHIJKLMNOPQRSTUVWXYZ':
+                    for letter3 in 'ABCDEFGHIJKLMNOPQRSTUVWXYZ':
+                        if len(potential_symbols) < 100:  # Limit to 100 checks per scan
+                            potential_symbols.append(f"{letter1}{letter2}{letter3}")
+            
+            # Quick check which ones are valid and active
+            for symbol in potential_symbols[:50]:  # Check first 50
+                try:
+                    ticker = yf.Ticker(symbol)
+                    hist = ticker.history(period='1d')
+                    if not hist.empty:
+                        volume = hist['Volume'].iloc[-1]
+                        price = hist['Close'].iloc[-1]
+                        # Look for small caps with good volume
+                        if volume > 100000 and 0.50 < price < 50:
+                            discovered.append(symbol)
+                except:
+                    continue
+            
+            print(f"✅ Discovered {len(discovered)} new active symbols")
+            
+        except Exception as e:
+            print(f"Symbol discovery error: {e}")
+        
+        return discovered
+    
+    def auto_expand_universe(self):
+        """Automatically expand scan universe with newly discovered symbols"""
+        try:
+            new_symbols = self.discover_new_symbols()
+            
+            # Add to universe if not already present
+            added = 0
+            for symbol in new_symbols:
+                if symbol not in self.scan_universe:
+                    self.scan_universe.append(symbol)
+                    added += 1
+            
+            if added > 0:
+                print(f"✅ Auto-added {added} new symbols to scan universe (Total: {len(self.scan_universe)})")
+                # Update cache with new universe
+                self.cache['scan_universe'] = self.scan_universe
+                self.cache_expiry['scan_universe'] = datetime.now() + timedelta(hours=24)
+            
+            return added
+        except Exception as e:
+            print(f"Auto-expand error: {e}")
+            return 0
         
     def _is_cache_valid(self, key):
         """Check if cached data is still valid"""

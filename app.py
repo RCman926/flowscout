@@ -97,6 +97,14 @@ def options_trading_page():
     from datetime import datetime, timedelta
     from seamless_update_system import SeamlessUpdateSystem
     
+    # === PREVENT BLANK SCREEN WITH LOADING STATE ===
+    if 'page_loaded' not in st.session_state:
+        st.session_state.page_loaded = False
+        with st.spinner("🚀 Loading Options Trading Platform..."):
+            import time
+            time.sleep(0.5)  # Brief delay to show spinner
+        st.session_state.page_loaded = True
+    
     # === SEAMLESS UPDATE SYSTEM ===
     # Initialize seamless updates without page flashing
     if 'auto_refresh_enabled' not in st.session_state:
@@ -2541,8 +2549,9 @@ def explosive_opportunities_page():
     col1, col2, col3, col4 = st.columns([2, 1, 1, 1])
     
     with col1:
-        st.markdown("### 🎯 **LIVE MARKET SCANNER**")
-        st.caption("Real-time scanning for explosive opportunities with IBKR integration")
+        symbol_count = len(explosive_scanner.scan_universe)
+        st.markdown(f"### 🎯 **LIVE MARKET SCANNER** ({symbol_count}+ Symbols)")
+        st.caption("Real-time scanning including small caps, crypto, and auto-discovery")
         
     with col2:
         scan_button = st.button("🔍 **SCAN NOW**", type="primary", use_container_width=True)
@@ -2558,12 +2567,25 @@ def explosive_opportunities_page():
             else:
                 st.info("📊 Yahoo")
     
-    # Scan modes
-    scan_mode = st.radio(
-        "**Scan Mode:**",
-        ["💥 Explosive Moves", "📊 Volume Breakouts", "📈 Momentum Plays", "🔥 Hot Sectors"],
-        horizontal=True
-    )
+    # Scan modes and auto-expand
+    mode_col, expand_col = st.columns([3, 1])
+    
+    with mode_col:
+        scan_mode = st.radio(
+            "**Scan Mode:**",
+            ["💥 Explosive Moves", "📊 Volume Breakouts", "📈 Momentum Plays", "🔥 Hot Sectors"],
+            horizontal=True
+        )
+    
+    with expand_col:
+        if st.button("🔄 Auto-Discover", help="Find new trending symbols and add to scanner"):
+            with st.spinner("🔍 Discovering new symbols..."):
+                added = explosive_scanner.auto_expand_universe()
+                if added > 0:
+                    st.success(f"Added {added} new symbols!")
+                else:
+                    st.info("No new symbols found")
+                st.rerun()
     
     if scan_button or auto_refresh:
         st.markdown("---")
