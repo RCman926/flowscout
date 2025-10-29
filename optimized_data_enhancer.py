@@ -40,7 +40,7 @@ class OptimizedDataEnhancer:
     def _register_refresh_tasks(self):
         """Register all data refresh tasks with appropriate priorities"""
         
-        # Register CRITICAL data tasks (5s refresh)
+        # Register CRITICAL data tasks (3s refresh - INSTITUTIONAL REAL-TIME)
         for symbol in self.symbols[:5]:  # Top 5 most important symbols
             refresh_coordinator.register_task(
                 key=f"{symbol}_price",
@@ -50,11 +50,13 @@ class OptimizedDataEnhancer:
                 cache_tier="HOT",
                 batch_group="market_data"
             )
-            
+        
+        # Register MEDIUM priority for options flow (5s refresh - PROFESSIONAL)
+        for symbol in self.symbols[:5]:  # Top 5 most important symbols
             refresh_coordinator.register_task(
                 key=f"{symbol}_volume",
                 data_type="options_flow",
-                priority=DataPriority.CRITICAL,
+                priority=DataPriority.MEDIUM,
                 fetch_function=self._fetch_options_flow,
                 cache_tier="HOT",
                 batch_group="options_flow"

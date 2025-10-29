@@ -16,10 +16,10 @@ import streamlit as st
 from optimized_cache_manager import cache_manager
 
 class DataPriority(Enum):
-    """Data priority levels for refresh scheduling"""
-    CRITICAL = 1    # Prices, volume - 5s refresh
-    HIGH = 2        # Technical indicators - 15s refresh  
-    MEDIUM = 3      # Market structure, flow - 30s refresh
+    """Data priority levels for refresh scheduling - INSTITUTIONAL PROFESSIONAL"""
+    CRITICAL = 1    # Prices - 3s refresh (real-time)
+    HIGH = 2        # Technical indicators - 10s refresh  
+    MEDIUM = 3      # Options flow - 5s refresh (professional)
     LOW = 4         # News, sentiment - 60s refresh
     BACKGROUND = 5  # Company info, earnings - 300s refresh
 
@@ -57,13 +57,13 @@ class DifferentialRefreshCoordinator:
             priority: [] for priority in DataPriority
         }
         
-        # Scheduling configuration
+        # Scheduling configuration - INSTITUTIONAL PROFESSIONAL RATES
         self.base_intervals = {
-            DataPriority.CRITICAL: 5,     # Price/volume data
-            DataPriority.HIGH: 15,        # Technical indicators
-            DataPriority.MEDIUM: 30,      # Market flow/structure
-            DataPriority.LOW: 60,         # News/sentiment
-            DataPriority.BACKGROUND: 300  # Static/company data
+            DataPriority.CRITICAL: 3,     # Price data - 3s (institutional real-time)
+            DataPriority.HIGH: 10,        # Technical indicators - 10s
+            DataPriority.MEDIUM: 5,       # Options flow - 5s (professional)
+            DataPriority.LOW: 60,         # News/sentiment - 60s
+            DataPriority.BACKGROUND: 300  # Static/company data - 5min
         }
         
         # Market-aware scheduling
@@ -78,12 +78,12 @@ class DifferentialRefreshCoordinator:
             'news_apis': {'max_per_minute': 100, 'current_count': 0, 'reset_time': None}
         }
         
-        # Batch processing
+        # Batch processing - INSTITUTIONAL PROFESSIONAL RATES
         self.batch_groups = {
-            'market_data': {'symbols': [], 'interval': 5, 'max_batch_size': 10},
-            'options_flow': {'symbols': [], 'interval': 15, 'max_batch_size': 5},
-            'news_data': {'symbols': [], 'interval': 60, 'max_batch_size': 20},
-            'technical_analysis': {'symbols': [], 'interval': 30, 'max_batch_size': 8}
+            'market_data': {'symbols': [], 'interval': 3, 'max_batch_size': 10},      # 3s real-time
+            'options_flow': {'symbols': [], 'interval': 5, 'max_batch_size': 5},     # 5s professional
+            'technical_analysis': {'symbols': [], 'interval': 10, 'max_batch_size': 8},  # 10s
+            'news_data': {'symbols': [], 'interval': 60, 'max_batch_size': 20}       # 60s
         }
         
         # Performance tracking
