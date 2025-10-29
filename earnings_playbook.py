@@ -16,7 +16,9 @@ class EarningsPlaybook:
     """Professional earnings trading with REAL LIVE DATA ONLY"""
     
     def __init__(self):
-        # AUTO-UPDATING EARNINGS - Fetch live from Yahoo Finance
+        # AUTO-UPDATING EARNINGS - Yahoo Finance (IBKR doesn't provide earnings calendar data)
+        # IBKR provides: prices, options flow, order execution
+        # Yahoo Finance provides: earnings dates, analyst estimates, company events
         # Only show UPCOMING earnings within next 30 days
         self.major_tickers = [
             'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'META', 'TSLA', 'NVDA', 'AMD', 'NFLX',
