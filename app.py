@@ -1132,6 +1132,20 @@ def options_trading_page():
     prediction_engine = st.session_state.professional_ai  # Use upgraded engine
     prediction_data = prediction_engine.generate_advanced_prediction(market_data, tech_data, flow_data)
     
+    # Apply reinforcement learning confidence adjustment
+    original_confidence = prediction_data.get('confidence', 50)
+    rl_features = {
+        'signal_type': 'CALL' if 'CALL' in prediction_data.get('enhanced_signal', '') else 'PUT' if 'PUT' in prediction_data.get('enhanced_signal', '') else 'HOLD',
+        'price_delta_pct': prediction_data.get('price_change_pct', 0),
+        'model_agreement': 0.8,  # Default from ensemble
+        'model_count': 3,
+        'market_regime': prediction_data.get('market_regime', 'normal'),
+        'network_quality': 95,
+        'days_to_expiry': 1,
+        'feature_count': 40
+    }
+    adjusted_confidence, adjustment_reason = rl_engine.adjust_prediction_confidence(rl_features, original_confidence)
+    
     st.markdown("**🤖 Current ML Prediction**")
     pred_cols = st.columns(4)
     
@@ -1149,9 +1163,13 @@ def options_trading_page():
             st.info(f"⚪ {enhanced_signal}")
     
     with pred_cols[1]:
-        ml_confidence = prediction_data.get('confidence', 50)
-        st.metric("ML Confidence", f"{ml_confidence}%")
-        st.caption(f"Score: {prediction_data.get('prediction_score', 0):.3f}")
+        # Show RL-adjusted confidence if trained, otherwise original
+        display_confidence = adjusted_confidence if rl_engine.is_trained else original_confidence
+        st.metric("Confidence", f"{display_confidence:.0f}%")
+        if rl_engine.is_trained and abs(adjusted_confidence - original_confidence) > 1:
+            st.caption(f"🧠 RL: {adjustment_reason[:30]}")
+        else:
+            st.caption(f"Score: {prediction_data.get('prediction_score', 0):.3f}")
     
     with pred_cols[2]:
         pattern_strength = prediction_data.get('pattern_strength', 'MODERATE')
