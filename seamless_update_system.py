@@ -7,6 +7,7 @@ import streamlit as st
 import time
 import threading
 from datetime import datetime
+from zoneinfo import ZoneInfo
 from typing import Dict, Any, Optional
 import asyncio
 
@@ -133,7 +134,7 @@ class SeamlessUpdateSystem:
                     ${price:.2f} <span style="font-size: 1.2rem;">{arrow} {change_pct:.2f}%</span>
                 </div>
                 <div style="font-size: 0.9rem; color: #888;">
-                    App Check: {datetime.now().strftime('%H:%M:%S')}
+                    App Check: {datetime.now(ZoneInfo('America/New_York')).strftime('%H:%M:%S')} ET
                 </div>
             </div>
             """, unsafe_allow_html=True)
