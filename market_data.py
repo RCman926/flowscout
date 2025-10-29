@@ -49,8 +49,8 @@ class MarketDataEngine:
         self.last_ibkr_request = {}
         self.ibkr_request_delay = 0.5  # 500ms between IBKR requests to prevent overwhelming
         
-    async def connect_ibkr(self, host="127.0.0.1", port=7497, client_id=1):
-        """Connect to IBKR API with configurable parameters"""
+    async def connect_ibkr(self, host="127.0.0.1", port=7497, client_id=1, timeout=3):
+        """Connect to IBKR API with configurable parameters and timeout"""
         try:
             # Save connection settings for future reconnects
             self.ibkr_host = host
@@ -62,10 +62,27 @@ class MarketDataEngine:
                 print(f"ℹ️ Already connected to IBKR at {host}:{port}")
                 return True
             
-            # Create new connection
+            # Create new connection with timeout
             self.app = MarketDataApp()
-            self.app.connect(host, port, clientId=client_id)
-            await asyncio.sleep(2)
+            
+            # Wrap connection in timeout to prevent hanging
+            try:
+                async with asyncio.timeout(timeout):
+                    self.app.connect(host, port, clientId=client_id)
+                    await asyncio.sleep(1)  # Brief wait for connection
+            except asyncio.TimeoutError:
+                print(f"⏱️ IBKR connection timed out after {timeout}s - falling back to Yahoo Finance")
+                return False
+            except AttributeError:
+                # Python < 3.11 doesn't have asyncio.timeout, use wait_for instead
+                try:
+                    await asyncio.wait_for(
+                        self._do_connect(host, port, client_id),
+                        timeout=timeout
+                    )
+                except asyncio.TimeoutError:
+                    print(f"⏱️ IBKR connection timed out after {timeout}s - falling back to Yahoo Finance")
+                    return False
             
             # Test if connection is actually working
             if self.app.isConnected():
@@ -75,8 +92,13 @@ class MarketDataEngine:
                 print(f"❌ IBKR connection failed to {host}:{port}")
                 return False
         except Exception as e:
-            print(f"IBKR connection error: {e}")
+            print(f"❌ IBKR connection error: {e} - using Yahoo Finance")
             return False
+    
+    async def _do_connect(self, host, port, client_id):
+        """Helper method for connection with timeout"""
+        self.app.connect(host, port, clientId=client_id)
+        await asyncio.sleep(1)
             
     async def disconnect_ibkr(self):
         """Disconnect from IBKR"""
