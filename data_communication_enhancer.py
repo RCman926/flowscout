@@ -28,8 +28,16 @@ class DataCommunicationEnhancer:
         self.last_successful_fetch = {}
         self.error_counts = {}
         self.max_errors = 3
-        self.cache_duration = 120  # EMERGENCY: Extended to 2 minutes to reduce API calls
-        self.lkg_cache_duration = 1800  # EMERGENCY: Extended to 30 minutes for rate limiting
+        # PROFESSIONAL INSTITUTIONAL CACHE DURATIONS
+        self.cache_durations = {
+            'market_data': 3,    # Price data - 3s (real-time)
+            'flow_data': 5,      # Options flow - 5s (professional)
+            'tech_data': 10,     # Technical indicators - 10s
+            'gex_data': 30,      # Gamma exposure - 30s
+            'news_data': 60      # News/sentiment - 60s
+        }
+        self.cache_duration = 10  # Default cache for backward compatibility
+        self.lkg_cache_duration = 300  # Last-Known-Good cache - 5 minutes max
         
         # CRITICAL: Circuit breaker for Yahoo Finance rate limiting
         self.circuit_breaker = {
@@ -643,15 +651,28 @@ class DataCommunicationEnhancer:
             return 'unknown'
     
     def _is_cache_valid(self, cache_key: str) -> bool:
-        """Check if cached data is still valid"""
+        """Check if cached data is still valid - PROFESSIONAL INSTITUTIONAL RATES"""
         if cache_key not in self.data_cache:
             return False
         
         if cache_key not in self.last_successful_fetch:
             return False
         
+        # Determine cache duration based on data type
+        cache_duration = self.cache_duration  # default 10s
+        if 'market_data' in cache_key:
+            cache_duration = self.cache_durations['market_data']  # 3s real-time
+        elif 'flow_data' in cache_key:
+            cache_duration = self.cache_durations['flow_data']  # 5s professional
+        elif 'tech_data' in cache_key:
+            cache_duration = self.cache_durations['tech_data']  # 10s
+        elif 'gex_data' in cache_key:
+            cache_duration = self.cache_durations['gex_data']  # 30s
+        elif 'news_data' in cache_key:
+            cache_duration = self.cache_durations['news_data']  # 60s
+        
         time_diff = time.time() - self.last_successful_fetch[cache_key]
-        return time_diff < self.cache_duration
+        return time_diff < cache_duration
     
     def _cache_data(self, cache_key: str, data: Dict):
         """Cache data with timestamp"""
