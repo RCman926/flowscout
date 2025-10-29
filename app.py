@@ -658,9 +658,8 @@ def options_trading_page():
 
     # === SEAMLESS MAIN DASHBOARD ===
     st.markdown("---")
-    st.markdown("### 🎯 PREDICTION PRIORITY TIER 2: LIVE MARKET DATA")
-    st.caption("⚡ Real-time market conditions - High importance for predictions")
     st.markdown("#### 📊 Live Market Data")
+    st.caption("⚡ Real-time market conditions")
     
     # Create seamless update containers for market overview
     price_container = seamless_updater.create_container('price_display')
@@ -728,9 +727,8 @@ def options_trading_page():
 
     
     # === GAMMA EXPOSURE ===
-    st.markdown("### 🎯 PREDICTION PRIORITY TIER 2: GAMMA & KEY LEVELS")
-    st.caption("⚡ Institutional positioning - High importance for predictions")
     st.markdown("#### ⚡ Gamma Exposure & Key Strikes")
+    st.caption("⚡ Institutional positioning")
     
     gamma_cols = st.columns(4)
     current_price = market_data['price']
@@ -777,9 +775,8 @@ def options_trading_page():
     # (Market news now displayed in left sidebar with intelligent filtering)
     
     # === MAIN OPTIONS ANALYSIS ===
-    st.markdown("### 🎯 PREDICTION PRIORITY TIER 3: KEY LEVELS")
-    st.caption("📊 Support/Resistance - Medium importance for entries")
     st.markdown("#### 🎯 Key Trading Levels")
+    st.caption("📊 Support/Resistance levels")
     
     # Key levels in a clean 4-column layout
     levels_cols = st.columns(4)
@@ -801,22 +798,19 @@ def options_trading_page():
         st.metric("Vol Regime", vol_regime, f"{daily_range:.1f}% today")
     
     # === LIVE ACTION OPTIONS BATTLE ===
-    st.markdown("### 🎯 PREDICTION PRIORITY TIER 3: OPTIONS FLOW BATTLE")
-    st.caption("📊 Visual flow analysis - Medium importance for context")
-    
     # Show IBKR connection status
     flow_source = flow_data.get('data_source', 'unknown')
     flow_quality = flow_data.get('quality_score', 0)
     
     if flow_source == 'ibkr_live':
-        st.markdown("### ⚔️ LIVE OPTIONS BATTLE - CALLS vs PUTS 🔴 IBKR LIVE")
-        st.caption(f"📡 Connected to IBKR TWS | Quality: {flow_quality}% | Real-time institutional data")
+        st.markdown("#### ⚔️ Live Options Battle - Calls vs Puts")
+        st.caption(f"🔴 IBKR TWS | Quality: {flow_quality}%")
     elif flow_source in ['yahoo_finance_authenticated', 'yahoo_finance']:
-        st.markdown("### ⚔️ LIVE OPTIONS BATTLE - CALLS vs PUTS 🟡 YAHOO FINANCE")
-        st.caption(f"📊 Yahoo Finance Live | Quality: {flow_quality}% | IBKR unavailable")
+        st.markdown("#### ⚔️ Live Options Battle - Calls vs Puts")
+        st.caption(f"🟡 Yahoo Finance | Quality: {flow_quality}% | IBKR unavailable")
     else:
-        st.markdown("### ⚔️ LIVE OPTIONS BATTLE - CALLS vs PUTS")
-        st.caption(f"📊 Data source: {flow_source} | Quality: {flow_quality}%")
+        st.markdown("#### ⚔️ Live Options Battle - Calls vs Puts")
+        st.caption(f"📊 IBKR (Primary) | Quality: {flow_quality}%")
     
     # Use SAME unified data source for consistency 
     live_flow_metrics = unified_flow
@@ -880,9 +874,8 @@ def options_trading_page():
     # === SEAMLESS DATA STATUS === (Removed LIVE ACTION FLOW section per user request)
     
     # === LIVE STREAMING OPTIONS ACTION ===
-    st.markdown("### 🎯 PREDICTION PRIORITY TIER 2: LIVE OPTIONS FLOW")
-    st.caption("⚡ Real-time institutional activity - High importance for predictions")
-    st.markdown("#### ⚡ LIVE STREAMING OPTIONS ACTION")
+    st.markdown("#### ⚡ Live Streaming Options Action")
+    st.caption("⚡ Real-time institutional activity")
     
     # Get comprehensive options data for streaming view
     from real_live_options_scraper import real_live_scraper
@@ -1001,9 +994,8 @@ def options_trading_page():
         st.warning("⚠️ Live options data temporarily unavailable - refreshing...")
     
     # === PREDICTION TRACKER & RESULTS ===
-    st.markdown("### 🎯 PREDICTION PRIORITY TIER 1: AI PREDICTION RESULTS")
-    st.caption("⭐ **HIGHEST PRIORITY** - Track AI accuracy and performance")
     st.markdown("#### 🎯 Prediction Tracker - Real Results")
+    st.caption("⭐ Track AI accuracy and performance")
     
     from prediction_tracker import prediction_tracker
     prediction_engine = st.session_state.professional_ai  # Use upgraded engine
@@ -1245,9 +1237,8 @@ def options_trading_page():
     # to avoid duplication and maintain clean UI
     
     # === INSTITUTIONAL EXECUTION PLAN ===
-    st.markdown("### 🎯 PREDICTION PRIORITY TIER 2: EXECUTION PLAN")
-    st.caption("⚡ Trade setup and levels - High importance for execution")
     st.markdown("#### 🎯 Institutional Execution Plan")
+    st.caption("⚡ Trade setup and levels")
     
     # Calculate sophisticated trading levels
     current_price = market_data['price']
@@ -1463,9 +1454,8 @@ def options_trading_page():
     unified_consensus = signal_validator.integrate_ml_prediction(ml_prediction, unified_consensus)
     
     # === SIGNAL CONSISTENCY DASHBOARD ===
-    st.markdown("### 🎯 PREDICTION PRIORITY TIER 1: SIGNAL VALIDATION")
-    st.caption("⭐ **HIGHEST PRIORITY** - Verify signal quality before trading")
     st.markdown("#### 📊 Signal Validation Dashboard")
+    st.caption("⭐ Verify signal quality before trading")
     consistency_cols = st.columns(4)
     
     with consistency_cols[0]:
@@ -1530,10 +1520,8 @@ def options_trading_page():
             """)
     
     # === TRADING DECISION CENTER (MASTER AUTHORITY) ===
-    st.markdown("### 🎯 PREDICTION PRIORITY TIER 1: MASTER TRADING SIGNALS")
-    st.caption("⭐ **HIGHEST PRIORITY** - Core AI prediction engine with 40+ features")
-    st.markdown("#### 🎯 Trading Decision Center - MASTER SIGNALS")
-    st.caption("🏛️ INSTITUTIONAL GRADE - Final trading authority with signal validation")
+    st.markdown("#### 🎯 Trading Decision Center - Master Signals")
+    st.caption("⭐ Core AI prediction engine with 40+ features")
     
     # Calculate specific recommendation
     current_price = market_data['price']
@@ -1755,9 +1743,8 @@ def options_trading_page():
     
     # Professional risk-based recommendations
     st.markdown("---")
-    st.markdown("### 🎯 PREDICTION PRIORITY TIER 3: STRATEGY BUILDER")
-    st.caption("📊 Portfolio construction - Medium importance for planning")
-    st.markdown("### 🎯 Professional Strategy Builder")
+    st.markdown("#### 🎯 Professional Strategy Builder")
+    st.caption("📊 Portfolio construction and planning")
     
     # Import professional risk management
     from professional_risk_management import professional_risk
@@ -2117,9 +2104,8 @@ def options_trading_page():
         st.error("Options chain temporarily unavailable - Contact broker for live data access")
     
     # === INSTITUTIONAL ANALYTICS DASHBOARD ===
-    st.markdown("### 🎯 PREDICTION PRIORITY TIER 2: INSTITUTIONAL ANALYTICS")
-    st.caption("⚡ Smart money positioning - High importance for predictions")
     st.markdown("#### 🏛️ Institutional Analytics Dashboard")
+    st.caption("⚡ Smart money positioning")
     
     # Import advanced engines
     from gamma_exposure_engine import gamma_exposure_engine
@@ -2365,9 +2351,8 @@ def options_trading_page():
             st.error("🎯 **DATA REJECTED**: This data failed authentication and has been rejected according to zero tolerance policy. Connect IBKR or enable live data feeds for authentic data.")
         
         # === AI-POWERED TRADING ASSISTANT ===
-        st.markdown("### 🎯 PREDICTION PRIORITY TIER 1: AI TRADING ASSISTANT")
-        st.caption("⭐ **HIGHEST PRIORITY** - AI-powered trade recommendations and analysis")
         st.markdown("#### 🤖 AI Trading Assistant")
+        st.caption("⭐ AI-powered trade recommendations")
         
         # Import AI and advanced modules
         from ai_trading_assistant import ai_assistant
@@ -2493,9 +2478,8 @@ def options_trading_page():
             st.warning(f"Performance: {algo_performance['overall_performance']}")
     
     # === PROFESSIONAL RISK MANAGEMENT ===
-    st.markdown("### 🎯 PREDICTION PRIORITY TIER 3: RISK MANAGEMENT")
-    st.caption("📊 Portfolio protection - Medium importance for safety")
     st.markdown("#### ⚠️ Professional Risk Management")
+    st.caption("📊 Portfolio protection and safety")
     
     # Sample portfolio for risk analysis
     sample_positions = [

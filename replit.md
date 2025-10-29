@@ -6,11 +6,12 @@ This project is an institutional-grade options trading platform built with Strea
 
 Preferred communication style: Simple, everyday language.
 UI/UX Preferences:
-- Dislikes: Complex market mood displays, multi-broker dashboards, confusing unified data sections, oversized colored boxes
-- Prefers: Clean, simple layouts with clear data presentation, compact text-based information display
+- Dislikes: Complex market mood displays, multi-broker dashboards, confusing unified data sections, oversized colored boxes, duplicate/double headers
+- Prefers: Clean, simple layouts with clear data presentation, compact text-based information display, single headers with smaller text (#### instead of ###)
 - Focus on: Live options flow, real news, earnings results, clear trading signals
 - Market Intelligence Requirements: Separate today's earnings from upcoming earnings, include FOMC dates, Fed economic data releases (CPI, PPI, Jobs), global market-moving news
-- Interface Style: Minimal colors, text-based display, compact layout without large colored containers
+- Interface Style: Minimal colors, text-based display, compact layout without large colored containers, single headers only (no "PREDICTION PRIORITY TIER" + section title duplicates)
+- Data Source Display: Always show "IBKR" as primary data source in UI, not "live_scraper" or generic terms
 
 # System Architecture
 
@@ -43,7 +44,8 @@ UI/UX Preferences:
 - **Configurable Triggers**: Alerts can be set based on price and technical indicator conditions.
 
 ## System Design Choices
-- **Prediction Priority System**: Features are categorized into Tiers 1-4 based on their importance for trading predictions (Core AI Predictions, Live Market Intelligence, Strategy & Context, Diagnostic & Info).
+- **Reinforcement Learning System**: Automatic learning from prediction wins/losses with RandomForest models, tracks processed predictions to avoid duplicate training, retrains after every 10 new completed predictions, adjusts confidence based on historical accuracy, displays learning progress in UI (retrains, improvement trends, top factors).
+- **Prediction Priority System**: Features are categorized into Tiers 1-4 based on their importance for trading predictions (Core AI Predictions, Live Market Intelligence, Strategy & Context, Diagnostic & Info) - UI now uses single compact headers instead of double tier headers.
 - **Institutional-Grade Screener**: Incorporates an advanced ML prediction model with 10 factors, professional technical analysis, risk/reward analysis, confidence scoring, and expected move predictions. Includes a pre-squeeze early warning system with 5-stage classification and an early warning score.
 - **Signal System Upgrade**: Features a 6-Factor Professional Model (smart money flow, market structure, dark pool intelligence, volatility, cross-asset signals, technical confirmation), advanced ML signal fusion, Kelly Criterion integration, and a 5-level conviction system.
 - **Balanced Trading Strategy System**: Supports conservative, moderate, aggressive, and speculative strategies with professional position sizing.
