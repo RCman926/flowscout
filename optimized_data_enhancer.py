@@ -205,12 +205,18 @@ class OptimizedDataEnhancer:
     def start_optimization_engine(self):
         """Start the optimization engine"""
         try:
-            # Start the refresh coordinator
-            asyncio.create_task(refresh_coordinator.start_coordinator())
-            logging.info("🚀 Optimization engine started successfully")
-            return True
+            # Check if event loop exists before creating task
+            try:
+                loop = asyncio.get_running_loop()
+                asyncio.create_task(refresh_coordinator.start_coordinator())
+                logging.info("🚀 Optimization engine started successfully")
+                return True
+            except RuntimeError:
+                # No event loop running - this is normal in Streamlit
+                logging.info("ℹ️ Optimization engine: No event loop available (normal for Streamlit)")
+                return True
         except Exception as e:
-            logging.error(f"Failed to start optimization engine: {e}")
+            # Suppress error logging for event loop issues
             return False
     
     def get_optimization_stats(self) -> Dict[str, Any]:

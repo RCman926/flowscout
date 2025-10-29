@@ -39,11 +39,15 @@ class MarketDataEngine:
         self.app = None
         self.cache = {}
         self.cache_expiry = {}
-        self.cache_duration = 120  # Cache duration in seconds - increased to avoid rate limits
+        self.cache_duration = 10  # Cache duration in seconds - faster for live updates
+        self.options_cache_duration = 30  # Separate cache for options data
         # Store connection settings
         self.ibkr_host = "127.0.0.1"
         self.ibkr_port = 7497
         self.ibkr_client_id = 1
+        # IBKR rate limiting
+        self.last_ibkr_request = {}
+        self.ibkr_request_delay = 0.5  # 500ms between IBKR requests to prevent overwhelming
         
     async def connect_ibkr(self, host="127.0.0.1", port=7497, client_id=1):
         """Connect to IBKR API with configurable parameters"""
@@ -79,6 +83,14 @@ class MarketDataEngine:
         if self.app:
             self.app.disconnect()
             
+    async def _throttle_ibkr_request(self, request_type):
+        """Throttle IBKR requests to prevent overwhelming the system"""
+        if request_type in self.last_ibkr_request:
+            time_since_last = (datetime.now() - self.last_ibkr_request[request_type]).total_seconds()
+            if time_since_last < self.ibkr_request_delay:
+                await asyncio.sleep(self.ibkr_request_delay - time_since_last)
+        self.last_ibkr_request[request_type] = datetime.now()
+            
     def _is_cache_valid(self, key):
         """Check if cached data is still valid"""
         return (key in self.cache and 
@@ -101,6 +113,9 @@ class MarketDataEngine:
         try:
             # Try IBKR first (uses saved connection settings)
             if await self.connect_ibkr(self.ibkr_host, self.ibkr_port, self.ibkr_client_id):
+                # Throttle IBKR requests to prevent overwhelming
+                await self._throttle_ibkr_request(f"price_{symbol}")
+                
                 # Clear previous data to avoid contamination
                 self.app.price_data = {}
                 
@@ -111,16 +126,18 @@ class MarketDataEngine:
                 contract.currency = "USD"
                 
                 self.app.reqMktData(1, contract, "", False, False, [])
-                await asyncio.sleep(3)
+                await asyncio.sleep(2)  # Reduced from 3s to 2s for faster updates
                 
                 if 1 in self.app.price_data:
                     price = self.app.price_data[1]
                     self._update_cache(cache_key, price)
+                    print(f"✅ IBKR price for {symbol}: ${price:.2f}")
                     return price
                     
                 # Note: Keep connection alive for subsequent requests
             
             # Fallback to Yahoo Finance
+            print(f"⚠️ IBKR unavailable, using Yahoo for {symbol}")
             return await self._get_yahoo_price(symbol)
             
         except Exception as e:
@@ -252,6 +269,9 @@ class MarketDataEngine:
         try:
             # Try IBKR first (uses saved connection settings)
             if await self.connect_ibkr(self.ibkr_host, self.ibkr_port, self.ibkr_client_id):
+                # Throttle IBKR requests to prevent overwhelming
+                await self._throttle_ibkr_request(f"hist_{symbol}")
+                
                 # Clear previous data to avoid contamination
                 self.app.historical_data = []
                 
@@ -265,7 +285,7 @@ class MarketDataEngine:
                 self.app.reqHistoricalData(
                     2, contract, "", "60 D", "1 day", "TRADES", 1, 1, False, []
                 )
-                await asyncio.sleep(5)
+                await asyncio.sleep(4)  # Reduced from 5s to 4s
                 
                 if self.app.historical_data:
                     df = pd.DataFrame(self.app.historical_data)
@@ -274,11 +294,13 @@ class MarketDataEngine:
                     df.columns = ['Open', 'High', 'Low', 'Close', 'Volume']
                     
                     self._update_cache(cache_key, df)
+                    print(f"✅ IBKR historical data for {symbol}: {len(df)} days")
                     return df
                     
                 # Note: Keep connection alive for subsequent requests
             
             # Fallback to Yahoo Finance
+            print(f"⚠️ IBKR unavailable, using Yahoo for {symbol} historical data")
             return await self._get_yahoo_historical(symbol, period, interval)
             
         except Exception as e:

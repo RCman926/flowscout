@@ -2532,30 +2532,70 @@ def options_trading_page():
 def explosive_opportunities_page():
     """Explosive stock opportunities screener - MARKET-WIDE SCAN"""
     
-    st.title("🚀 EXPLOSIVE STOCK OPPORTUNITIES - MARKET-WIDE SCAN")
-    st.markdown("*Scanning the entire market for short squeeze candidates and explosive plays*")
+    st.title("🚀 EXPLOSIVE STOCK OPPORTUNITIES - REAL-TIME SCANNER")
+    st.markdown("*Live market scanning for explosive moves, volume spikes, and momentum plays*")
     
-    from market_wide_screener import market_screener
+    from explosive_opportunities_scanner import explosive_scanner
     
     # Control panel
-    col1, col2, col3 = st.columns([2, 1, 1])
+    col1, col2, col3, col4 = st.columns([2, 1, 1, 1])
     
     with col1:
-        st.markdown("### 🎯 **MARKET-WIDE SQUEEZE SCANNER**")
-        st.caption("Focuses on: High short interest, small caps, OTC stocks, squeeze potential")
+        st.markdown("### 🎯 **LIVE MARKET SCANNER**")
+        st.caption("Real-time scanning for explosive opportunities with IBKR integration")
         
     with col2:
-        scan_button = st.button("🔍 **SCAN MARKET**", type="primary", use_container_width=True)
+        scan_button = st.button("🔍 **SCAN NOW**", type="primary", use_container_width=True)
         
     with col3:
-        auto_refresh = st.checkbox("🔄 Auto-refresh", value=False)  # Manual by default (takes time)
+        auto_refresh = st.checkbox("🔄 Auto (30s)", value=False)
+        
+    with col4:
+        # IBKR status indicator
+        if 'ibkr_client' in st.session_state and st.session_state.ibkr_client.app:
+            if st.session_state.ibkr_client.app.isConnected():
+                st.success("🟢 IBKR Live")
+            else:
+                st.info("📊 Yahoo")
+    
+    # Scan modes
+    scan_mode = st.radio(
+        "**Scan Mode:**",
+        ["💥 Explosive Moves", "📊 Volume Breakouts", "📈 Momentum Plays", "🔥 Hot Sectors"],
+        horizontal=True
+    )
     
     if scan_button or auto_refresh:
         st.markdown("---")
         
-        # Run market-wide scan
-        with st.spinner("🔍 Scanning entire market for squeeze candidates..."):
-            opportunities = market_screener.scan_entire_market()
+        # Run selected scan (synchronous - Streamlit compatible)
+        if scan_mode == "💥 Explosive Moves":
+            with st.spinner("🔍 Scanning for explosive price & volume moves..."):
+                opportunities = explosive_scanner.scan_for_explosive_moves(
+                    min_volume_spike=2.0, 
+                    min_price_move=3.0
+                )
+                scan_type = "explosive"
+        
+        elif scan_mode == "📊 Volume Breakouts":
+            with st.spinner("🔍 Scanning for unusual volume breakouts..."):
+                opportunities = explosive_scanner.scan_for_volume_breakouts(
+                    min_multiplier=3.0
+                )
+                scan_type = "volume"
+        
+        elif scan_mode == "📈 Momentum Plays":
+            with st.spinner("🔍 Scanning for multi-day momentum..."):
+                opportunities = explosive_scanner.scan_for_momentum_plays(
+                    min_consecutive_days=3
+                )
+                scan_type = "momentum"
+        
+        else:  # Hot Sectors
+            with st.spinner("🔍 Analyzing sector rotation..."):
+                sector_data = explosive_scanner.get_hot_sector_rotation()
+                scan_type = "sectors"
+                opportunities = None
         
         if opportunities:
             st.success(f"🎯 **Found {len(opportunities)} squeeze candidates!**")

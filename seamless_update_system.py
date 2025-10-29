@@ -21,12 +21,12 @@ class SeamlessUpdateSystem:
         self.containers = {}
         self.last_update_times = {}
         self.update_intervals = {
-            'price_data': 5,      # Price updates every 5 seconds
-            'options_flow': 10,   # Options flow every 10 seconds
-            'technical_data': 15, # Technical indicators every 15 seconds
-            'charts': 30,         # Charts every 30 seconds
+            'price_data': 3,      # Price updates every 3 seconds (LIVE)
+            'options_flow': 5,    # Options flow every 5 seconds (LIVE)
+            'technical_data': 10, # Technical indicators every 10 seconds
+            'charts': 20,         # Charts every 20 seconds
             'news': 60,           # News every 60 seconds
-            'alerts': 5           # Alerts every 5 seconds
+            'alerts': 3           # Alerts every 3 seconds (LIVE)
         }
         
         # Initialize session state for seamless data persistence
@@ -259,7 +259,7 @@ class SeamlessUpdateSystem:
                         timestamp: Date.now()
                     }, '*');
                 }
-            }, 5000); // 5 second intervals
+            }, 3000); // 3 second intervals for live trading
             
             // Add subtle indicator (optional)
             const indicator = document.createElement('div');
