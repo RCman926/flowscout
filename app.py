@@ -722,46 +722,63 @@ def options_trading_page():
                 hours_ago = int(data_age_minutes / 60)
                 st.info(f"🔵 CLOSED (Last trade: {hours_ago}h ago)")
     
-    # Create seamless update containers for market overview
-    price_container = seamless_updater.create_container('price_display')
+    # === CLEAN MARKET OVERVIEW (NO DUPLICATE PRICE) ===
     overview_cols = st.columns(3)
     
     with overview_cols[0]:
-        # Extended hours info only (price shown below in Gamma section)
+        # Volume with proper data handling
+        current_volume = market_data.get('volume', 0)
+        avg_volume = market_data.get('avg_volume', 0)
+        
+        # If volume is 0, try to fetch it directly
+        if current_volume == 0:
+            try:
+                import yfinance as yf
+                ticker = yf.Ticker(selected_symbol)
+                hist = ticker.history(period="1d", interval="1m")
+                if not hist.empty and 'Volume' in hist.columns:
+                    current_volume = int(hist['Volume'].sum())
+                    avg_volume = market_data.get('avg_volume', current_volume)
+            except:
+                current_volume = 0
+                avg_volume = 1
+        
+        if avg_volume > 0 and current_volume > 0:
+            volume_ratio = current_volume / avg_volume
+            st.metric("Volume", f"{current_volume/1e6:.1f}M", f"{volume_ratio:.1f}x avg")
+        else:
+            st.metric("Volume", "Loading...", "")
+    
+    with overview_cols[1]:
+        st.metric("RSI", f"{tech_data['rsi']:.1f}", 
+                 "Overbought" if tech_data['rsi'] > 70 else "Oversold" if tech_data['rsi'] < 30 else "Normal")
+    
+    with overview_cols[2]:
+        # Extended hours status (clean display)
         try:
             from extended_hours_tracker import ExtendedHoursTracker
             ext_tracker = ExtendedHoursTracker()
             ext_data = ext_tracker.get_extended_hours_data(selected_symbol)
             
             if ext_data['extended_hours_active']:
-                ext_price = ext_data['current_price']
-                ext_change = ext_data['extended_hours_change']
                 ext_type = ext_data['extended_hours_type']
+                ext_change = ext_data['extended_hours_change']
                 
-                # Display extended hours session type
-                if ext_type == 'OVERNIGHT':
-                    st.metric("Extended Hours", "Overnight", f"${ext_price:.2f}")
+                # Clean display of extended hours
+                if ext_type == 'PRE_MARKET':
+                    st.metric("Session", "Pre-Market", f"{ext_change:+.1f}%")
                 elif ext_type == 'AFTER_HOURS':
-                    st.metric("Extended Hours", "After-Hours", f"${ext_price:.2f}")
-                elif ext_type == 'PRE_MARKET':
-                    st.metric("Extended Hours", "Pre-Market", f"${ext_price:.2f}")
+                    st.metric("Session", "After-Hours", f"{ext_change:+.1f}%")
+                elif ext_type == 'OVERNIGHT':
+                    st.metric("Session", "Overnight", f"{ext_change:+.1f}%")
             else:
-                # Show market status when closed
-                st.metric("Market Status", "Closed", f"Last: ${current_price:.2f}")
-        except Exception as ext_error:
-            st.metric("Market Status", "Open" if market_open else "Closed", "")
-    
-    with overview_cols[1]:
-        avg_volume = market_data.get('avg_volume', market_data.get('volume', 1000000))
-        if avg_volume > 0:
-            volume_ratio = market_data['volume'] / avg_volume
-        else:
-            volume_ratio = 1.0
-        st.metric("Volume", f"{market_data['volume']/1e6:.1f}M", f"{volume_ratio:.1f}x avg")
-    
-    with overview_cols[2]:
-        st.metric("RSI", f"{tech_data['rsi']:.1f}", 
-                 "Overbought" if tech_data['rsi'] > 70 else "Oversold" if tech_data['rsi'] < 30 else "Normal")
+                # Market hours or closed
+                if market_open:
+                    st.metric("Session", "Regular", "Market Open")
+                else:
+                    st.metric("Session", "Closed", "")
+        except:
+            st.metric("Session", "Regular" if market_open else "Closed", "")
     
 
     
