@@ -3798,9 +3798,12 @@ def main():
         st.session_state.ibkr_connected = False
     
     if is_actually_connected:
-        st.sidebar.success(f"✅ Connected to {st.session_state.ibkr_host}:{st.session_state.ibkr_port}")
+        st.sidebar.success(f"🟢 **IBKR ACTIVE - AUTO-MODE**")
+        st.sidebar.info(f"📍 {st.session_state.ibkr_host}:{st.session_state.ibkr_port}")
+        st.sidebar.success(f"✅ **All data using IBKR**")
     else:
-        st.sidebar.error("❌ Not Connected")
+        st.sidebar.warning("⚠️ **IBKR Not Connected**")
+        st.sidebar.info("💡 Using Yahoo Finance")
     
     # Connection settings in expander
     with st.sidebar.expander("⚙️ Connection Settings", expanded=not st.session_state.ibkr_connected):

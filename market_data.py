@@ -57,9 +57,9 @@ class MarketDataEngine:
             self.ibkr_port = port
             self.ibkr_client_id = client_id
             
-            # Don't reconnect if already connected with same settings
+            # ✅ PERSISTENCE: Don't reconnect if already connected with same settings
             if self.app and self.app.isConnected():
-                print(f"ℹ️ Already connected to IBKR at {host}:{port}")
+                print(f"✅ IBKR ACTIVE - Using persistent connection to {host}:{port}")
                 return True
             
             # Create new connection with timeout
@@ -86,10 +86,11 @@ class MarketDataEngine:
             
             # Test if connection is actually working
             if self.app.isConnected():
-                print(f"✅ IBKR connected successfully to {host}:{port} (Client ID: {client_id})")
+                print(f"🟢 IBKR CONNECTED - All data will now use IBKR at {host}:{port} (Client ID: {client_id})")
+                print(f"✅ AUTO-MODE: IBKR will be used for all subsequent requests")
                 return True
             else:
-                print(f"❌ IBKR connection failed to {host}:{port}")
+                print(f"❌ IBKR connection failed to {host}:{port} - using Yahoo Finance fallback")
                 return False
         except Exception as e:
             print(f"❌ IBKR connection error: {e} - using Yahoo Finance")
