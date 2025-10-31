@@ -786,7 +786,6 @@ def options_trading_page():
     gamma_header_cols = st.columns([4, 1])
     with gamma_header_cols[0]:
         st.markdown("#### ⚡ Gamma Exposure & Key Strikes")
-        st.caption("⚡ Institutional positioning")
     with gamma_header_cols[1]:
         # Track live price updates
         if 'last_price_change' not in st.session_state:
@@ -860,7 +859,6 @@ def options_trading_page():
     
     # === MAIN OPTIONS ANALYSIS ===
     st.markdown("#### 🎯 Key Trading Levels")
-    st.caption("📊 Support/Resistance levels")
     
     # Key levels in a clean 4-column layout
     levels_cols = st.columns(4)
@@ -1003,7 +1001,6 @@ def options_trading_page():
     
     # === LIVE STREAMING OPTIONS ACTION ===
     st.markdown("#### ⚡ Live Streaming Options Action")
-    st.caption("⚡ Real-time institutional activity")
     
     # Get comprehensive options data for streaming view
     from real_live_options_scraper import real_live_scraper
@@ -1125,7 +1122,6 @@ def options_trading_page():
     tracker_header_cols = st.columns([4, 1])
     with tracker_header_cols[0]:
         st.markdown("#### 🎯 Prediction Tracker - Real Results")
-        st.caption("⭐ Track AI accuracy and performance")
     with tracker_header_cols[1]:
         # Track prediction updates
         if 'last_tracker_update' not in st.session_state:
@@ -1535,7 +1531,6 @@ def options_trading_page():
     signal_header_cols = st.columns([4, 1])
     with signal_header_cols[0]:
         st.markdown("#### 📊 Signal Validation Dashboard")
-        st.caption("⭐ Verify signal quality before trading")
     with signal_header_cols[1]:
         # Track signal updates
         if 'last_signal_update' not in st.session_state:
@@ -1621,7 +1616,6 @@ def options_trading_page():
     decision_header_cols = st.columns([4, 1])
     with decision_header_cols[0]:
         st.markdown("#### 🎯 Trading Decision Center - Master Signals")
-        st.caption("⭐ Core AI prediction engine with 40+ features")
     with decision_header_cols[1]:
         # Track decision updates
         if 'last_decision_update' not in st.session_state:
@@ -1958,7 +1952,6 @@ def options_trading_page():
     
     with sentiment_cols[2]:
         st.metric("Smart Money", "ACTIVE" if total_vol > 1000 else "QUIET")
-        st.caption("Institutional positioning")
     
     # === ADVANCED GREEKS MONITORING ===
     st.markdown("**📊 Portfolio Greeks Analysis**")
