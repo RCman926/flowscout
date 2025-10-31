@@ -1968,12 +1968,12 @@ def explosive_opportunities_page():
                     
                     with main_col:
                         # Stock info and squeeze score
-                        score = opp['squeeze_score']
+                        score = opp.get('squeeze_score', 0)  # Safe get with default
                         score_color = "🚀" if score >= 80 else "⚡" if score >= 70 else "📈"
-                        momentum_color = "🟢" if opp['price_momentum_5d'] > 0 else "🔴"
+                        momentum_color = "🟢" if opp.get('price_momentum_5d', 0) > 0 else "🔴"
                         
                         # Market cap display
-                        market_cap = opp['market_cap']
+                        market_cap = opp.get('market_cap', 1000000000)
                         if market_cap < 100_000_000:
                             cap_display = f"${market_cap/1_000_000:.0f}M 💎"  # Micro cap
                         elif market_cap < 1_000_000_000:
@@ -2020,12 +2020,13 @@ def explosive_opportunities_page():
                         
                         # AI Probability display (PROMINENT)
                         squeeze_prob = opp.get('squeeze_probability', 0)
+                        momentum_5d = opp.get('price_momentum_5d', 0)
                         if squeeze_prob >= 75:
-                            st.markdown(f"🚀 **AI SQUEEZE PROBABILITY: {squeeze_prob:.0f}%** | Squeeze Score: **{score:.0f}/100** | {momentum_color} 5D: **{opp['price_momentum_5d']:+.1f}%**")
+                            st.markdown(f"🚀 **AI SQUEEZE PROBABILITY: {squeeze_prob:.0f}%** | Squeeze Score: **{score:.0f}/100** | {momentum_color} 5D: **{momentum_5d:+.1f}%**")
                         elif squeeze_prob >= 60:
-                            st.markdown(f"⚡ **AI SQUEEZE PROBABILITY: {squeeze_prob:.0f}%** | Squeeze Score: **{score:.0f}/100** | {momentum_color} 5D: **{opp['price_momentum_5d']:+.1f}%**")
+                            st.markdown(f"⚡ **AI SQUEEZE PROBABILITY: {squeeze_prob:.0f}%** | Squeeze Score: **{score:.0f}/100** | {momentum_color} 5D: **{momentum_5d:+.1f}%**")
                         else:
-                            st.markdown(f"📊 **AI PROBABILITY: {squeeze_prob:.0f}%** | Squeeze Score: **{score:.0f}/100** | {momentum_color} 5D: **{opp['price_momentum_5d']:+.1f}%**")
+                            st.markdown(f"📊 **AI PROBABILITY: {squeeze_prob:.0f}%** | Squeeze Score: **{score:.0f}/100** | {momentum_color} 5D: **{momentum_5d:+.1f}%**")
                     
                     with squeeze_col:
                         # Squeeze metrics
@@ -2037,22 +2038,24 @@ def explosive_opportunities_page():
                         else:
                             st.markdown(f"⚪ Short Interest: N/A")
                         
-                        vol_surge = opp['volume_surge']
+                        vol_surge = opp.get('volume_surge', 1.0)
                         vol_display = "🚀" if vol_surge > 3 else "⚡" if vol_surge > 2 else "📊"
                         st.markdown(f"{vol_display} Volume Surge: **{vol_surge:.1f}x** avg")
                         
-                        volatility = opp['volatility']
+                        volatility = opp.get('volatility', 50)
                         vol_emoji = "🌪️" if volatility > 100 else "⚡" if volatility > 75 else "📈"
                         st.markdown(f"{vol_emoji} Volatility: **{volatility:.0f}%**")
                     
                     with metrics_col:
                         # Quick stats
                         st.markdown("**📊 Stats:**")
-                        st.markdown(f"Vol: **{opp['volume']:,.0f}**")
-                        if opp['short_ratio'] > 0:
-                            st.markdown(f"Days to Cover: **{opp['short_ratio']:.1f}**")
-                        if opp['float_shares'] > 0:
-                            float_m = opp['float_shares'] / 1_000_000
+                        st.markdown(f"Vol: **{opp.get('volume', 0):,.0f}**")
+                        short_ratio = opp.get('short_ratio', 0)
+                        if short_ratio > 0:
+                            st.markdown(f"Days to Cover: **{short_ratio:.1f}**")
+                        float_shares = opp.get('float_shares', 0)
+                        if float_shares > 0:
+                            float_m = float_shares / 1_000_000
                             st.markdown(f"Float: **{float_m:.1f}M**")
                     
                     # Expandable detailed analysis WITH CHARTS
@@ -2436,11 +2439,11 @@ def explosive_opportunities_page():
                             st.markdown("**🎯 Squeeze Indicators:**")
                             st.markdown(f"• Squeeze Score: **{score:.0f}/100**")
                             st.markdown(f"• Short Interest: **{opp.get('real_short_float', 0):.1f}%** of float")
-                            if opp['shares_short'] > 0:
+                            if opp.get('shares_short', 0) > 0:
                                 st.markdown(f"• Shares Short: **{opp['shares_short']:,.0f}**")
-                            st.markdown(f"• Days to Cover: **{opp['short_ratio']:.1f}** days")
+                            st.markdown(f"• Days to Cover: **{opp.get('short_ratio', 0):.1f}** days")
                             st.markdown(f"• Volume Surge: **{vol_surge:.1f}x** average")
-                            st.markdown(f"• 5D Momentum: **{opp['price_momentum_5d']:+.1f}%**")
+                            st.markdown(f"• 5D Momentum: **{opp.get('price_momentum_5d', 0):+.1f}%**")
                             if 'recent_move_3d' in opp:
                                 st.markdown(f"• 3D Move: **{opp['recent_move_3d']:+.1f}%** (recent)")
                             
