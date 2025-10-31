@@ -218,8 +218,29 @@ def options_trading_page():
                 else:
                     st.caption(f"Est EPS: ${next_earning.get('estimate_eps', 0):.2f}")
             
-            # === WORLD NEWS - MARKET INTELLIGENCE ===
-            st.markdown("**🌍 Market Intelligence:**")
+            # === WORLD NEWS - MARKET INTELLIGENCE WITH LIVE INDICATOR ===
+            news_header_row = st.columns([2, 1])
+            with news_header_row[0]:
+                st.markdown("**🌍 Market Intelligence:**")
+            with news_header_row[1]:
+                # Track news updates
+                if 'last_news_update' not in st.session_state:
+                    st.session_state.last_news_update = datetime.now()
+                    st.session_state.prev_news_count = len(significant_news)
+                
+                news_changed = len(significant_news) != st.session_state.prev_news_count
+                
+                if news_changed:
+                    st.success("🔴 NEW")
+                    st.session_state.last_news_update = datetime.now()
+                    st.session_state.prev_news_count = len(significant_news)
+                else:
+                    news_secs = int((datetime.now() - st.session_state.last_news_update).total_seconds())
+                    if news_secs < 60:
+                        st.info(f"✓ {news_secs}s")
+                    else:
+                        mins = news_secs // 60
+                        st.caption(f"⏸️ {mins}m")
             
             # === SIGNIFICANT GLOBAL NEWS (High impact only) ===
             for news in significant_news[:3]:  # Only top 3 significant
@@ -355,17 +376,34 @@ def options_trading_page():
         data_freshness = market_data.get('data_freshness', 'unknown')
         quality_score = market_data.get('quality_score', 0)
         
-        # Enhanced data source display with LIVE status priority - IBKR FIRST
-        if data_source == 'ibkr_live' and quality_score > 90:
-            st.success(f"🔴 IBKR TWS CONNECTED | Q: {quality_score}%")
-        elif data_source in ['live_scraper', 'yahoo_finance_authenticated'] and quality_score > 70:
-            st.success(f"🟢 LIVE DATA CONNECTED | Q: {quality_score}%")
-        elif data_source in ['yahoo_finance', 'statistical_model'] and quality_score > 60:
-            st.success(f"📊 YAHOO FINANCE LIVE | Q: {quality_score}%")
-        elif quality_score > 50:
-            st.warning(f"⚠️ PARTIAL CONNECTION | Q: {quality_score}%")
-        else:
-            st.error(f"❌ CONNECTION ERROR | Q: {quality_score}%")
+        # Track data refresh timing
+        if 'last_data_refresh' not in st.session_state:
+            st.session_state.last_data_refresh = datetime.now()
+        
+        time_since_refresh = (datetime.now() - st.session_state.last_data_refresh).total_seconds()
+        st.session_state.last_data_refresh = datetime.now()
+        
+        # Enhanced data source display with LIVE status priority + REFRESH INDICATOR
+        status_col1, status_col2 = st.columns([3, 1])
+        with status_col1:
+            if data_source == 'ibkr_live' and quality_score > 90:
+                st.success(f"🔴 IBKR TWS CONNECTED | Q: {quality_score}%")
+            elif data_source in ['live_scraper', 'yahoo_finance_authenticated'] and quality_score > 70:
+                st.success(f"🟢 LIVE DATA CONNECTED | Q: {quality_score}%")
+            elif data_source in ['yahoo_finance', 'statistical_model'] and quality_score > 60:
+                st.success(f"📊 YAHOO FINANCE LIVE | Q: {quality_score}%")
+            elif quality_score > 50:
+                st.warning(f"⚠️ PARTIAL CONNECTION | Q: {quality_score}%")
+            else:
+                st.error(f"❌ CONNECTION ERROR | Q: {quality_score}%")
+        
+        with status_col2:
+            if time_since_refresh < 3:
+                st.success("⚡ REFRESHING")
+            elif time_since_refresh < 10:
+                st.info(f"🔄 {int(time_since_refresh)}s")
+            else:
+                st.warning(f"⏳ {int(time_since_refresh)}s")
             
         # Enhanced timestamp with LIVE time display (FIXED with timezone)
         et_time = now_et()
@@ -1060,9 +1098,24 @@ def options_trading_page():
     else:
         st.warning("⚠️ Live options data temporarily unavailable - refreshing...")
     
-    # === PREDICTION TRACKER & RESULTS ===
-    st.markdown("#### 🎯 Prediction Tracker - Real Results")
-    st.caption("⭐ Track AI accuracy and performance")
+    # === PREDICTION TRACKER & RESULTS WITH LIVE INDICATOR ===
+    tracker_header_cols = st.columns([4, 1])
+    with tracker_header_cols[0]:
+        st.markdown("#### 🎯 Prediction Tracker - Real Results")
+        st.caption("⭐ Track AI accuracy and performance")
+    with tracker_header_cols[1]:
+        # Track prediction updates
+        if 'last_tracker_update' not in st.session_state:
+            st.session_state.last_tracker_update = datetime.now()
+        
+        tracker_age = (datetime.now() - st.session_state.last_tracker_update).total_seconds()
+        
+        if tracker_age < 10:
+            st.info(f"✓ {int(tracker_age)}s")
+        else:
+            st.caption(f"⏸️ {int(tracker_age)}s")
+        
+        st.session_state.last_tracker_update = datetime.now()
     
     from prediction_tracker import prediction_tracker
     prediction_engine = st.session_state.professional_ai  # Use upgraded engine
@@ -1455,9 +1508,29 @@ def options_trading_page():
     
     unified_consensus = signal_validator.integrate_ml_prediction(ml_prediction, unified_consensus)
     
-    # === SIGNAL CONSISTENCY DASHBOARD ===
-    st.markdown("#### 📊 Signal Validation Dashboard")
-    st.caption("⭐ Verify signal quality before trading")
+    # === SIGNAL CONSISTENCY DASHBOARD WITH LIVE INDICATOR ===
+    signal_header_cols = st.columns([4, 1])
+    with signal_header_cols[0]:
+        st.markdown("#### 📊 Signal Validation Dashboard")
+        st.caption("⭐ Verify signal quality before trading")
+    with signal_header_cols[1]:
+        # Track signal updates
+        if 'last_signal_update' not in st.session_state:
+            st.session_state.last_signal_update = datetime.now()
+            st.session_state.prev_signal_conf = unified_consensus.get('confidence', 0)
+        
+        signal_changed = abs(unified_consensus.get('confidence', 0) - st.session_state.prev_signal_conf) > 1
+        
+        if signal_changed:
+            st.success("🔄 UPDATED")
+            st.session_state.last_signal_update = datetime.now()
+            st.session_state.prev_signal_conf = unified_consensus.get('confidence', 0)
+        else:
+            signal_secs = int((datetime.now() - st.session_state.last_signal_update).total_seconds())
+            if signal_secs < 10:
+                st.info(f"✓ {signal_secs}s")
+            else:
+                st.caption(f"⏸️ {signal_secs}s")
     consistency_cols = st.columns(4)
     
     with consistency_cols[0]:
@@ -1521,9 +1594,26 @@ def options_trading_page():
             • **This is CORRECT behavior** - protects against conflicting low-quality signals
             """)
     
-    # === TRADING DECISION CENTER (MASTER AUTHORITY) ===
-    st.markdown("#### 🎯 Trading Decision Center - Master Signals")
-    st.caption("⭐ Core AI prediction engine with 40+ features")
+    # === TRADING DECISION CENTER (MASTER AUTHORITY) WITH LIVE INDICATOR ===
+    decision_header_cols = st.columns([4, 1])
+    with decision_header_cols[0]:
+        st.markdown("#### 🎯 Trading Decision Center - Master Signals")
+        st.caption("⭐ Core AI prediction engine with 40+ features")
+    with decision_header_cols[1]:
+        # Track decision updates
+        if 'last_decision_update' not in st.session_state:
+            st.session_state.last_decision_update = datetime.now()
+        
+        decision_age = (datetime.now() - st.session_state.last_decision_update).total_seconds()
+        
+        if decision_age < 5:
+            st.success("🔴 LIVE")
+        elif decision_age < 15:
+            st.info(f"✓ {int(decision_age)}s")
+        else:
+            st.caption(f"⏸️ {int(decision_age)}s")
+        
+        st.session_state.last_decision_update = datetime.now()
     
     # Calculate specific recommendation
     current_price = market_data['price']
