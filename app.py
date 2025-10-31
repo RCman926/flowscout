@@ -709,16 +709,19 @@ def options_trading_page():
         data_age_seconds = 0
         data_age_minutes = 0
     
-    # === COMPACT PROFESSIONAL OVERVIEW ===
-    overview_cols = st.columns([2, 1, 1, 1, 1, 1])
+    # === CLEAR READABLE OVERVIEW ===
+    st.markdown("---")
     
-    with overview_cols[0]:
-        # Current Price - Main display
-        current_price = market_data['price']
-        change_pct = market_data.get('change_pct', 0)
-        st.metric("Price", f"${current_price:.2f}", f"{change_pct:+.1f}%")
+    # Top row - Main metrics (BIGGER, EASIER TO READ)
+    top_cols = st.columns(4)
     
-    with overview_cols[1]:
+    current_price = market_data['price']
+    change_pct = market_data.get('change_pct', 0)
+    
+    with top_cols[0]:
+        st.metric("💰 Current Price", f"${current_price:.2f}", f"{change_pct:+.1f}%")
+    
+    with top_cols[1]:
         # Volume
         current_volume = market_data.get('volume', 0)
         if current_volume == 0:
@@ -730,30 +733,42 @@ def options_trading_page():
                     current_volume = int(hist['Volume'].sum())
             except:
                 pass
-        st.metric("Vol", f"{current_volume/1e6:.1f}M")
+        avg_volume = market_data.get('avg_volume', current_volume)
+        vol_ratio = current_volume / avg_volume if avg_volume > 0 else 1
+        st.metric("📊 Volume", f"{current_volume/1e6:.1f}M", f"{vol_ratio:.1f}x avg")
     
-    with overview_cols[2]:
-        st.metric("RSI", f"{tech_data['rsi']:.0f}")
+    with top_cols[2]:
+        rsi_val = tech_data['rsi']
+        rsi_status = "Overbought" if rsi_val > 70 else "Oversold" if rsi_val < 30 else "Neutral"
+        st.metric("📈 RSI", f"{rsi_val:.1f}", rsi_status)
     
-    with overview_cols[3]:
-        # Pin Risk
+    with top_cols[3]:
+        if market_open:
+            st.metric("🔴 Market", "LIVE", "Open Now")
+        else:
+            st.metric("🔵 Market", "CLOSED", "After Hours")
+    
+    # Second row - Key levels
+    levels_cols = st.columns(4)
+    
+    with levels_cols[0]:
+        support = current_price * 0.95
+        st.metric("🛡️ Support", f"${support:.2f}", "-5.0%")
+    
+    with levels_cols[1]:
+        resistance = current_price * 1.05
+        st.metric("🎯 Resistance", f"${resistance:.2f}", "+5.0%")
+    
+    with levels_cols[2]:
         pin_strike = round(current_price / 5) * 5
         distance = abs(current_price - pin_strike)
-        pin_risk = "🔴" if distance < 2 else "🟡" if distance < 5 else "🟢"
-        st.metric("Pin", f"{pin_risk} ${pin_strike:.0f}")
+        pin_risk = "HIGH" if distance < 2 else "MEDIUM" if distance < 5 else "LOW"
+        st.metric("📍 Pin Level", f"${pin_strike:.0f}", pin_risk)
     
-    with overview_cols[4]:
-        # Volume regime
-        daily_range = abs(market_data['change_pct'])
-        vol_regime = "🔥" if daily_range > 2 else "📊" if daily_range > 0.5 else "😴"
-        st.metric("Vol", f"{vol_regime} {daily_range:.1f}%")
-    
-    with overview_cols[5]:
-        # Market status
-        if market_open:
-            st.metric("Status", "🟢 LIVE")
-        else:
-            st.metric("Status", "🔵 CLOSED")
+    with levels_cols[3]:
+        daily_range = abs(change_pct)
+        vol_regime = "HIGH" if daily_range > 2 else "NORMAL" if daily_range > 0.5 else "LOW"
+        st.metric("⚡ Volatility", vol_regime, f"{daily_range:.1f}%")
     
 
     
