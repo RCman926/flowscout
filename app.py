@@ -709,8 +709,75 @@ def options_trading_page():
         data_age_seconds = 0
         data_age_minutes = 0
     
-    # === CLEAR READABLE OVERVIEW ===
+    # === TRADING SIGNAL AT THE TOP ===
     st.markdown("---")
+    
+    # Calculate the best signal first
+    current_price = market_data['price']
+    change_pct = market_data.get('change_pct', 0)
+    rsi_val = tech_data.get('rsi', 50)
+    
+    # Get flow data
+    unified_flow = flow_data
+    call_volume = unified_flow.get('call_volume', 0)
+    put_volume = unified_flow.get('put_volume', 0)
+    total_volume = call_volume + put_volume
+    
+    # Determine signal
+    if total_volume > 0:
+        put_pct = (put_volume / total_volume) * 100
+        call_pct = (call_volume / total_volume) * 100
+    else:
+        put_pct = 50
+        call_pct = 50
+    
+    # Signal logic
+    if put_pct > 55 and rsi_val > 50:
+        signal = "BUY PUTS"
+        signal_color = "#EF4444"
+        signal_emoji = "📉"
+        entry = current_price * 0.995
+        stop = current_price * 1.015
+        target = current_price * 0.97
+        confidence = min(95, int(put_pct))
+    elif call_pct > 55 and rsi_val < 50:
+        signal = "BUY CALLS"
+        signal_color = "#10B981"
+        signal_emoji = "📈"
+        entry = current_price * 1.005
+        stop = current_price * 0.985
+        target = current_price * 1.03
+        confidence = min(95, int(call_pct))
+    else:
+        signal = "NEUTRAL"
+        signal_color = "#6B7280"
+        signal_emoji = "⚡"
+        entry = current_price
+        stop = current_price * 0.985
+        target = current_price * 1.015
+        confidence = 50
+    
+    # Display compact signal box
+    st.markdown(f"""
+    <div style='background: linear-gradient(135deg, {signal_color}22 0%, {signal_color}11 100%); 
+                border-left: 4px solid {signal_color}; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;'>
+        <div style='display: flex; justify-content: space-between; align-items: center;'>
+            <div>
+                <h2 style='margin: 0; color: {signal_color};'>{signal_emoji} {signal} @ ${entry:.2f}</h2>
+                <p style='margin: 0.5rem 0 0 0; color: #666; font-size: 0.9rem;'>
+                    🎯 Target: ${target:.2f} ({((target-entry)/entry*100):+.1f}%) | 
+                    🛡️ Stop: ${stop:.2f} ({((stop-entry)/entry*100):+.1f}%) | 
+                    💪 Confidence: {confidence}%
+                </p>
+            </div>
+            <div style='text-align: right;'>
+                <div style='font-size: 1.5rem; font-weight: bold; color: {signal_color};'>
+                    {call_pct:.0f}% CALLS vs {put_pct:.0f}% PUTS
+                </div>
+            </div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
     
     # Top row - Main metrics (BIGGER, EASIER TO READ)
     top_cols = st.columns(4)
@@ -772,11 +839,7 @@ def options_trading_page():
     
 
     
-    # Gamma data prep (no display, just calculations)
-    unified_flow = flow_data
-    call_volume = unified_flow.get('call_volume', 0)
-    put_volume = unified_flow.get('put_volume', 0)
-    total_volume = call_volume + put_volume
+    # Flow data already calculated above for signal
     
     # Get signal data for Trading Decision Center (but don't display the redundant section)
     from highest_level_signal_system import highest_level_signal_system
