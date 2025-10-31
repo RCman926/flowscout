@@ -709,28 +709,18 @@ def options_trading_page():
         data_age_seconds = 0
         data_age_minutes = 0
     
-    status_cols = st.columns([3, 1])
-    with status_cols[0]:
-        st.markdown("#### 📊 Market Data")
-    with status_cols[1]:
-        if market_open:
-            st.success(f"🟢 LIVE (Data: {int(data_age_seconds)}s ago)")
-        else:
-            if data_age_minutes < 60:
-                st.info(f"🔵 CLOSED (Last trade: {data_age_minutes}m ago)")
-            else:
-                hours_ago = int(data_age_minutes / 60)
-                st.info(f"🔵 CLOSED (Last trade: {hours_ago}h ago)")
-    
-    # === CLEAN MARKET OVERVIEW (NO DUPLICATE PRICE) ===
-    overview_cols = st.columns(3)
+    # === COMPACT PROFESSIONAL OVERVIEW ===
+    overview_cols = st.columns([2, 1, 1, 1, 1, 1])
     
     with overview_cols[0]:
-        # Volume with proper data handling
+        # Current Price - Main display
+        current_price = market_data['price']
+        change_pct = market_data.get('change_pct', 0)
+        st.metric("Price", f"${current_price:.2f}", f"{change_pct:+.1f}%")
+    
+    with overview_cols[1]:
+        # Volume
         current_volume = market_data.get('volume', 0)
-        avg_volume = market_data.get('avg_volume', 0)
-        
-        # If volume is 0, try to fetch it directly
         if current_volume == 0:
             try:
                 import yfinance as yf
@@ -738,108 +728,40 @@ def options_trading_page():
                 hist = ticker.history(period="1d", interval="1m")
                 if not hist.empty and 'Volume' in hist.columns:
                     current_volume = int(hist['Volume'].sum())
-                    avg_volume = market_data.get('avg_volume', current_volume)
             except:
-                current_volume = 0
-                avg_volume = 1
-        
-        if avg_volume > 0 and current_volume > 0:
-            volume_ratio = current_volume / avg_volume
-            st.metric("Volume", f"{current_volume/1e6:.1f}M", f"{volume_ratio:.1f}x avg")
-        else:
-            st.metric("Volume", "Loading...", "")
-    
-    with overview_cols[1]:
-        st.metric("RSI", f"{tech_data['rsi']:.1f}", 
-                 "Overbought" if tech_data['rsi'] > 70 else "Oversold" if tech_data['rsi'] < 30 else "Normal")
+                pass
+        st.metric("Vol", f"{current_volume/1e6:.1f}M")
     
     with overview_cols[2]:
-        # Extended hours status (clean display)
-        try:
-            from extended_hours_tracker import ExtendedHoursTracker
-            ext_tracker = ExtendedHoursTracker()
-            ext_data = ext_tracker.get_extended_hours_data(selected_symbol)
-            
-            if ext_data['extended_hours_active']:
-                ext_type = ext_data['extended_hours_type']
-                ext_change = ext_data['extended_hours_change']
-                
-                # Clean display of extended hours
-                if ext_type == 'PRE_MARKET':
-                    st.metric("Session", "Pre-Market", f"{ext_change:+.1f}%")
-                elif ext_type == 'AFTER_HOURS':
-                    st.metric("Session", "After-Hours", f"{ext_change:+.1f}%")
-                elif ext_type == 'OVERNIGHT':
-                    st.metric("Session", "Overnight", f"{ext_change:+.1f}%")
-            else:
-                # Market hours or closed
-                if market_open:
-                    st.metric("Session", "Regular", "Market Open")
-                else:
-                    st.metric("Session", "Closed", "")
-        except:
-            st.metric("Session", "Regular" if market_open else "Closed", "")
+        st.metric("RSI", f"{tech_data['rsi']:.0f}")
+    
+    with overview_cols[3]:
+        # Pin Risk
+        pin_strike = round(current_price / 5) * 5
+        distance = abs(current_price - pin_strike)
+        pin_risk = "🔴" if distance < 2 else "🟡" if distance < 5 else "🟢"
+        st.metric("Pin", f"{pin_risk} ${pin_strike:.0f}")
+    
+    with overview_cols[4]:
+        # Volume regime
+        daily_range = abs(market_data['change_pct'])
+        vol_regime = "🔥" if daily_range > 2 else "📊" if daily_range > 0.5 else "😴"
+        st.metric("Vol", f"{vol_regime} {daily_range:.1f}%")
+    
+    with overview_cols[5]:
+        # Market status
+        if market_open:
+            st.metric("Status", "🟢 LIVE")
+        else:
+            st.metric("Status", "🔵 CLOSED")
     
 
     
-    # === GAMMA EXPOSURE WITH LIVE PRICE INDICATOR ===
-    gamma_header_cols = st.columns([4, 1])
-    with gamma_header_cols[0]:
-        st.markdown("#### ⚡ Gamma Exposure & Key Strikes")
-    with gamma_header_cols[1]:
-        # Track live price updates
-        if 'last_price_change' not in st.session_state:
-            st.session_state.last_price_change = datetime.now()
-            st.session_state.prev_live_price = market_data.get('price', 0)
-        
-        current_live_price = market_data.get('price', 0)
-        price_diff = abs(current_live_price - st.session_state.prev_live_price)
-        
-        if price_diff > 0.01:  # Price changed by more than 1 cent
-            st.success("💰 LIVE")
-            st.session_state.last_price_change = datetime.now()
-            st.session_state.prev_live_price = current_live_price
-        else:
-            price_secs = int((datetime.now() - st.session_state.last_price_change).total_seconds())
-            if price_secs < 5:
-                st.info(f"✓ {price_secs}s")
-            else:
-                st.caption(f"⏸️ {price_secs}s")
-    
-    gamma_cols = st.columns(4)
-    current_price = market_data['price']
-    
-    with gamma_cols[0]:
-        # Show price with change tracking
-        price_change = current_price - st.session_state.prev_live_price
-        if abs(price_change) > 0.01:
-            change_emoji = "📈" if price_change > 0 else "📉"
-            st.metric("Current Price", f"${current_price:.2f}", 
-                     f"{market_data['change_pct']:+.1f}% {change_emoji}")
-        else:
-            st.metric("Current Price", f"${current_price:.2f}", 
-                     f"{market_data['change_pct']:+.1f}%")
-    
-    with gamma_cols[1]:
-        # Estimate pin risk
-        pin_strike = round(current_price / 5) * 5
-        distance = abs(current_price - pin_strike)
-        pin_risk = "HIGH" if distance < 2 else "MEDIUM" if distance < 5 else "LOW"
-        st.metric("Pin Risk", pin_risk, f"${pin_strike:.0f} level")
-    
-    with gamma_cols[2]:
-        gamma_flip = round(current_price / 5) * 5
-        direction = "UP" if current_price > gamma_flip else "DOWN"
-        st.metric("Gamma Flip", f"${gamma_flip:.0f}", f"Bias {direction}")
-    
-    with gamma_cols[3]:
-        # Get volume from unified flow data (using cached data)
-        unified_flow = flow_data  # Use already-fetched cached flow data
-        call_volume = unified_flow.get('call_volume', 0)
-        put_volume = unified_flow.get('put_volume', 0)
-        total_volume = call_volume + put_volume
-        pressure = "HIGH" if total_volume > 100000 else "MEDIUM" if total_volume > 50000 else "LOW"
-        st.metric("MM Pressure", pressure, f"{total_volume/1000:.0f}K vol")
+    # Gamma data prep (no display, just calculations)
+    unified_flow = flow_data
+    call_volume = unified_flow.get('call_volume', 0)
+    put_volume = unified_flow.get('put_volume', 0)
+    total_volume = call_volume + put_volume
     
     # Get signal data for Trading Decision Center (but don't display the redundant section)
     from highest_level_signal_system import highest_level_signal_system
@@ -857,27 +779,7 @@ def options_trading_page():
     # === MARKET INTELLIGENCE MOVED TO SIDEBAR === 
     # (Market news now displayed in left sidebar with intelligent filtering)
     
-    # === MAIN OPTIONS ANALYSIS ===
-    st.markdown("#### 🎯 Key Trading Levels")
-    
-    # Key levels in a clean 4-column layout
-    levels_cols = st.columns(4)
-    
-    with levels_cols[0]:
-        support = market_data['price'] * 0.95
-        st.metric("Support", f"${support:.2f}", f"{-5.0:.1f}%")
-    
-    with levels_cols[1]:
-        resistance = market_data['price'] * 1.05
-        st.metric("Resistance", f"${resistance:.2f}", f"{+5.0:.1f}%")
-    
-    with levels_cols[2]:
-        daily_range = abs(market_data['change_pct'])
-        st.metric("Daily Range", f"{daily_range:.1f}%", f"${daily_range * market_data['price'] / 100:.2f}")
-    
-    with levels_cols[3]:
-        vol_regime = "HIGH" if daily_range > 2 else "NORMAL" if daily_range > 0.5 else "LOW"
-        st.metric("Vol Regime", vol_regime, f"{daily_range:.1f}% today")
+    # Key levels integrated into compact display above
     
     # === LIVE ACTION OPTIONS BATTLE ===
     # Show IBKR connection status with LIVE UPDATE TIMESTAMP
