@@ -724,13 +724,10 @@ def options_trading_page():
     
     # Create seamless update containers for market overview
     price_container = seamless_updater.create_container('price_display')
-    overview_cols = st.columns(4)
+    overview_cols = st.columns(3)
     
     with overview_cols[0]:
-        # Update price display seamlessly
-        seamless_updater.update_price_display('price_metric', market_data)
-        
-        # Add REAL extended hours pricing (pre-market, after-hours, overnight)
+        # Extended hours info only (price shown below in Gamma section)
         try:
             from extended_hours_tracker import ExtendedHoursTracker
             ext_tracker = ExtendedHoursTracker()
@@ -741,19 +738,18 @@ def options_trading_page():
                 ext_change = ext_data['extended_hours_change']
                 ext_type = ext_data['extended_hours_type']
                 
-                # Display based on session type
+                # Display extended hours session type
                 if ext_type == 'OVERNIGHT':
-                    st.caption(f"🌑 Overnight: ${ext_price:.2f} ({ext_change:+.1f}%)")
+                    st.metric("Extended Hours", "Overnight", f"${ext_price:.2f}")
                 elif ext_type == 'AFTER_HOURS':
-                    st.caption(f"🌙 After-Hours: ${ext_price:.2f} ({ext_change:+.1f}%)")
+                    st.metric("Extended Hours", "After-Hours", f"${ext_price:.2f}")
                 elif ext_type == 'PRE_MARKET':
-                    st.caption(f"🌅 Pre-Market: ${ext_price:.2f} ({ext_change:+.1f}%)")
+                    st.metric("Extended Hours", "Pre-Market", f"${ext_price:.2f}")
             else:
-                # Market closed, no extended hours data
-                st.caption(f"📊 Last Close: ${current_price:.2f}")
+                # Show market status when closed
+                st.metric("Market Status", "Closed", f"Last: ${current_price:.2f}")
         except Exception as ext_error:
-            # Fallback to regular price
-            st.caption(f"📊 Price: ${current_price:.2f}")
+            st.metric("Market Status", "Open" if market_open else "Closed", "")
     
     with overview_cols[1]:
         avg_volume = market_data.get('avg_volume', market_data.get('volume', 1000000))
@@ -766,24 +762,6 @@ def options_trading_page():
     with overview_cols[2]:
         st.metric("RSI", f"{tech_data['rsi']:.1f}", 
                  "Overbought" if tech_data['rsi'] > 70 else "Oversold" if tech_data['rsi'] < 30 else "Normal")
-    
-    with overview_cols[3]:
-        # Seamless options flow update container
-        if selected_symbol in ['SPY', 'QQQ', 'IWM', 'DIA']:
-            # Update options flow seamlessly
-            seamless_updater.update_options_flow('options_flow_signal', {
-                'call_volume': flow_data.get('call_volume', 0),
-                'put_volume': flow_data.get('put_volume', 0),
-                'symbol': selected_symbol
-            })
-        else:
-            # Seamless data status display
-            data_freshness = market_data.get('data_freshness', 'UNKNOWN')
-            seamless_updater.update_container('data_status', f"""
-            {'✅ LIVE DATA' if data_freshness == 'LIVE_SCRAPED' else '📊 DATA STATUS'}
-            
-            {data_freshness}
-            """)
     
 
     
