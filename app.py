@@ -158,9 +158,14 @@ def options_trading_page():
             st.session_state.last_significant_news = set()
         
         # Get only truly significant market events
-        from enhanced_market_intelligence import market_intelligence
-        significant_news = market_intelligence.get_significant_market_events()
-        earnings_today = market_intelligence.get_major_earnings_beats_misses()
+        try:
+            from enhanced_market_intelligence import market_intelligence
+            significant_news = market_intelligence.get_significant_market_events()
+            earnings_today = market_intelligence.get_major_earnings_beats_misses()
+        except Exception as e:
+            print(f"Market intelligence error: {e}")
+            significant_news = []
+            earnings_today = []
         
         # Check if any new significant events to refresh
         current_significant = set([n['id'] for n in significant_news if n.get('id')])
@@ -234,6 +239,11 @@ def options_trading_page():
                         st.caption(f"🟠 {time_str} ago • {news.get('source', 'News')} • HOT")
                     else:
                         st.caption(f"{time_str} ago • {news.get('source', 'News')}")
+            
+            # Show fallback if no significant news available
+            if not significant_news and not major_earnings:
+                st.info("📊 Monitoring markets...")
+                st.caption("No major events currently")
             
             # Update cache
             st.session_state.last_significant_news = current_significant
@@ -2841,6 +2851,57 @@ def personalized_watchlists_page():
                                     positions = json.load(f)
                             except:
                                 positions = {}
+                            
+                            # === SPECIAL RECOVERY SECTION FOR RR ===
+                            if symbol == 'RR' and symbol in positions:
+                                st.markdown("### 🔄 **RR RECOVERY INTELLIGENCE**")
+                                entry = positions[symbol]['entry_price']
+                                pnl_pct = ((current_price - entry) / entry) * 100
+                                
+                                rec_col1, rec_col2, rec_col3 = st.columns(3)
+                                with rec_col1:
+                                    st.metric("Entry", f"${entry:.2f}")
+                                    st.metric("Current", f"${current_price:.2f}")
+                                with rec_col2:
+                                    st.metric("P&L", f"{pnl_pct:+.1f}%")
+                                    to_breakeven = ((entry - current_price) / current_price) * 100
+                                    st.metric("To Breakeven", f"+{to_breakeven:.1f}%")
+                                with rec_col3:
+                                    st.metric("52W High", f"${week_52_high:.2f}")
+                                    upside = ((week_52_high - current_price) / current_price) * 100
+                                    st.metric("Upside", f"+{upside:.0f}%")
+                                
+                                # Recovery prediction
+                                oversold = rsi < 35
+                                near_low = current_price < (week_52_low * 1.15)
+                                strong_target = target_mean > current_price * 1.20 if target_mean > 0 else False
+                                
+                                recovery_score = 0
+                                if oversold: recovery_score += 30
+                                if near_low: recovery_score += 25
+                                if strong_target: recovery_score += 25
+                                if revenue_growth > 0.10: recovery_score += 10
+                                if insider_pct > 0.10: recovery_score += 10
+                                
+                                # Predict timeframe
+                                if recovery_score >= 70:
+                                    timeframe, outlook = "2-4 weeks", "🚀 STRONG Recovery"
+                                    st.success(f"{outlook} - Score: {recovery_score}/100")
+                                elif recovery_score >= 50:
+                                    timeframe, outlook = "4-8 weeks", "📊 MODERATE Recovery"
+                                    st.info(f"{outlook} - Score: {recovery_score}/100")
+                                else:
+                                    timeframe, outlook = "8-12+ weeks", "⚠️ WEAK Signal"
+                                    st.warning(f"{outlook} - Score: {recovery_score}/100")
+                                
+                                st.caption(f"**Est. time to ${entry:.2f}+:** {timeframe}")
+                                
+                                # Key factors
+                                st.markdown("**Recovery Factors:**")
+                                st.caption(f"{'✅' if oversold else '⏸️'} RSI: {rsi:.0f} {'(Oversold)' if oversold else ''}")
+                                st.caption(f"{'✅' if near_low else '⏸️'} Price vs 52W Low: {((current_price/week_52_low-1)*100):.0f}%")
+                                st.caption(f"{'✅' if strong_target else '⏸️'} Analyst Target: ${target_mean:.2f}")
+                                st.markdown("---")
                             
                             if symbol in positions:
                                 pos = positions[symbol]
