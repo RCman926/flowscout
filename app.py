@@ -119,16 +119,11 @@ def options_trading_page():
         loading_placeholder.empty()
         st.session_state.page_loaded = True
     
-    # === LIVE AUTO-REFRESH FOR CONSTANT UPDATES ===
-    # Auto-refresh every 3 seconds for institutional-grade live updates
-    from streamlit_autorefresh import st_autorefresh
-    refresh_count = st_autorefresh(interval=3000, limit=None, key="live_dashboard_refresh")
-    
     # === SEAMLESS UPDATE SYSTEM ===
     # Initialize seamless updates without page flashing
     if 'auto_refresh_enabled' not in st.session_state:
         st.session_state.auto_refresh_enabled = True
-        st.session_state.refresh_count = refresh_count
+        st.session_state.refresh_count = 0
     
     # Initialize seamless updater - prevents crashes
     seamless_updater = SeamlessUpdateSystem()
@@ -676,8 +671,9 @@ def options_trading_page():
     # === ENHANCED ACCURACY DASHBOARD ===
     if ACCURACY_MODULES_LOADED:
         try:
-            # Create enhanced accuracy dashboard with fetch timing
-            fetch_start_time = time.time()
+            # Create enhanced accuracy dashboard with fetch timing (using proper time import)
+            import time as time_module
+            fetch_start_time = time_module.time()
             
             # Run enhanced accuracy analysis with SYNCHRONOUS methods only
             quality_summary = data_quality_visualizer.render_quality_dashboard(
@@ -690,10 +686,11 @@ def options_trading_page():
                 print(f"🎯 ACCURACY ANALYSIS {selected_symbol}: Combined confidence {confidence}%")
                 
         except Exception as e:
-            st.error(f"⚠️ Accuracy Dashboard Error: {str(e)}")
+            # Suppress error display on screen - just log it
             print(f"Accuracy dashboard error: {e}")
     else:
-        st.info("💡 Enhanced accuracy modules not loaded - using standard analysis")
+        # Don't show info message - just continue
+        pass
 
     # === SEAMLESS MAIN DASHBOARD ===
     st.markdown("---")
