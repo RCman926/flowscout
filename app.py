@@ -102,12 +102,21 @@ def options_trading_page():
     from datetime import datetime, timedelta
     from seamless_update_system import SeamlessUpdateSystem
     
-    # === PREVENT BLANK SCREEN WITH LOADING STATE ===
+    # === PREVENT WHITE SCREEN - AGGRESSIVE LOADING STATE ===
     if 'page_loaded' not in st.session_state:
         st.session_state.page_loaded = False
-        with st.spinner("🚀 Loading Options Trading Platform..."):
-            import time
-            time.sleep(0.5)  # Brief delay to show spinner
+    
+    # Show persistent loading overlay to prevent white screen
+    if not st.session_state.page_loaded:
+        loading_placeholder = st.empty()
+        with loading_placeholder:
+            st.info("🚀 Loading Options Trading Platform...")
+            st.caption("Connecting to data sources...")
+        
+        # Brief delay then clear
+        import time
+        time.sleep(0.3)
+        loading_placeholder.empty()
         st.session_state.page_loaded = True
     
     # === SEAMLESS UPDATE SYSTEM ===
@@ -812,19 +821,45 @@ def options_trading_page():
         st.metric("Vol Regime", vol_regime, f"{daily_range:.1f}% today")
     
     # === LIVE ACTION OPTIONS BATTLE ===
-    # Show IBKR connection status
+    # Show IBKR connection status with LIVE UPDATE TIMESTAMP
     flow_source = flow_data.get('data_source', 'unknown')
     flow_quality = flow_data.get('quality_score', 0)
     
-    if flow_source == 'ibkr_live':
-        st.markdown("#### ⚔️ Live Options Battle - Calls vs Puts")
-        st.caption(f"🔴 IBKR TWS | Quality: {flow_quality}%")
-    elif flow_source in ['yahoo_finance_authenticated', 'yahoo_finance']:
-        st.markdown("#### ⚔️ Live Options Battle - Calls vs Puts")
-        st.caption(f"🟡 Yahoo Finance | Quality: {flow_quality}% | IBKR unavailable")
-    else:
-        st.markdown("#### ⚔️ Live Options Battle - Calls vs Puts")
-        st.caption(f"📊 IBKR (Primary) | Quality: {flow_quality}%")
+    # Calculate seconds since last update
+    import time
+    if 'last_flow_update' not in st.session_state:
+        st.session_state.last_flow_update = time.time()
+    
+    # Track previous values to show changes
+    if 'prev_call_volume' not in st.session_state:
+        st.session_state.prev_call_volume = 0
+        st.session_state.prev_put_volume = 0
+    
+    seconds_ago = int(time.time() - st.session_state.last_flow_update)
+    
+    # Update timestamp every refresh
+    st.session_state.last_flow_update = time.time()
+    
+    title_col, status_col = st.columns([3, 1])
+    with title_col:
+        if flow_source == 'ibkr_live':
+            st.markdown("#### ⚔️ Live Options Battle - Calls vs Puts")
+            st.caption(f"🔴 IBKR TWS | Quality: {flow_quality}%")
+        elif flow_source in ['yahoo_finance_authenticated', 'yahoo_finance']:
+            st.markdown("#### ⚔️ Live Options Battle - Calls vs Puts")
+            st.caption(f"🟡 Yahoo Finance | Quality: {flow_quality}% | IBKR unavailable")
+        else:
+            st.markdown("#### ⚔️ Live Options Battle - Calls vs Puts")
+            st.caption(f"📊 IBKR (Primary) | Quality: {flow_quality}%")
+    
+    with status_col:
+        # LIVE UPDATE INDICATOR - Shows data is moving
+        if seconds_ago < 3:
+            st.success("🔴 LIVE NOW")
+        elif seconds_ago < 10:
+            st.info(f"🟢 {seconds_ago}s ago")
+        else:
+            st.warning(f"⚠️ {seconds_ago}s ago")
     
     # Use SAME unified data source for consistency 
     live_flow_metrics = unified_flow
@@ -837,13 +872,22 @@ def options_trading_page():
         battle_call_volume = call_volume  # Same unified data
         # Calculate REAL pressure from flow momentum (no random/fake data)
         call_pressure = min(int((call_volume / max(total_volume, 1)) * 100), 100)
+        
+        # Show change indicator
+        call_change = battle_call_volume - st.session_state.prev_call_volume
+        change_indicator = f"📈 +{call_change:,}" if call_change > 0 else f"📉 {call_change:,}" if call_change < 0 else "⏸️ No change"
+        
         st.markdown(f"""
         <div style='background: linear-gradient(90deg, #00ff00 0%, #004400 100%); padding: 20px; border-radius: 10px; text-align: center;'>
             <h2 style='color: white; margin: 0;'>🟢 CALLS ARMY</h2>
             <h1 style='color: white; margin: 10px 0;'>{battle_call_volume:,}</h1>
             <p style='color: #ccffcc; margin: 0;'>Pressure: {call_pressure}%</p>
+            <p style='color: #ffff00; margin: 5px 0; font-size: 0.9em;'>{change_indicator}</p>
         </div>
         """, unsafe_allow_html=True)
+        
+        # Update tracking
+        st.session_state.prev_call_volume = battle_call_volume
     
     with battle_cols[1]:
         # Using same total_volume as Options Flow Analysis section
@@ -877,13 +921,22 @@ def options_trading_page():
         battle_put_volume = put_volume  # Same unified data
         # Calculate REAL pressure from flow momentum (no random/fake data)
         put_pressure = min(int((put_volume / max(total_volume, 1)) * 100), 100)
+        
+        # Show change indicator
+        put_change = battle_put_volume - st.session_state.prev_put_volume
+        put_change_indicator = f"📈 +{put_change:,}" if put_change > 0 else f"📉 {put_change:,}" if put_change < 0 else "⏸️ No change"
+        
         st.markdown(f"""
         <div style='background: linear-gradient(90deg, #440000 0%, #ff0000 100%); padding: 20px; border-radius: 10px; text-align: center;'>
             <h2 style='color: white; margin: 0;'>🔴 PUTS ARMY</h2>
             <h1 style='color: white; margin: 10px 0;'>{battle_put_volume:,}</h1>
             <p style='color: #ffcccc; margin: 0;'>Pressure: {put_pressure}%</p>
+            <p style='color: #ffff00; margin: 5px 0; font-size: 0.9em;'>{put_change_indicator}</p>
         </div>
         """, unsafe_allow_html=True)
+        
+        # Update tracking
+        st.session_state.prev_put_volume = battle_put_volume
     
     # === SEAMLESS DATA STATUS === (Removed LIVE ACTION FLOW section per user request)
     
