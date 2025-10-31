@@ -787,16 +787,44 @@ def options_trading_page():
     
 
     
-    # === GAMMA EXPOSURE ===
-    st.markdown("#### ⚡ Gamma Exposure & Key Strikes")
-    st.caption("⚡ Institutional positioning")
+    # === GAMMA EXPOSURE WITH LIVE PRICE INDICATOR ===
+    gamma_header_cols = st.columns([4, 1])
+    with gamma_header_cols[0]:
+        st.markdown("#### ⚡ Gamma Exposure & Key Strikes")
+        st.caption("⚡ Institutional positioning")
+    with gamma_header_cols[1]:
+        # Track live price updates
+        if 'last_price_change' not in st.session_state:
+            st.session_state.last_price_change = datetime.now()
+            st.session_state.prev_live_price = market_data.get('price', 0)
+        
+        current_live_price = market_data.get('price', 0)
+        price_diff = abs(current_live_price - st.session_state.prev_live_price)
+        
+        if price_diff > 0.01:  # Price changed by more than 1 cent
+            st.success("💰 LIVE")
+            st.session_state.last_price_change = datetime.now()
+            st.session_state.prev_live_price = current_live_price
+        else:
+            price_secs = int((datetime.now() - st.session_state.last_price_change).total_seconds())
+            if price_secs < 5:
+                st.info(f"✓ {price_secs}s")
+            else:
+                st.caption(f"⏸️ {price_secs}s")
     
     gamma_cols = st.columns(4)
     current_price = market_data['price']
     
     with gamma_cols[0]:
-        st.metric("Current Price", f"${current_price:.2f}", 
-                 f"{market_data['change_pct']:+.1f}%")
+        # Show price with change tracking
+        price_change = current_price - st.session_state.prev_live_price
+        if abs(price_change) > 0.01:
+            change_emoji = "📈" if price_change > 0 else "📉"
+            st.metric("Current Price", f"${current_price:.2f}", 
+                     f"{market_data['change_pct']:+.1f}% {change_emoji}")
+        else:
+            st.metric("Current Price", f"${current_price:.2f}", 
+                     f"{market_data['change_pct']:+.1f}%")
     
     with gamma_cols[1]:
         # Estimate pin risk
