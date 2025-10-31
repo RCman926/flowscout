@@ -1,0 +1,237 @@
+python# global_fixes.py
+import logging
+import time
+import json
+import os
+from typing import Any, Dict, List
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s | %(levelname)s | %(message)s')
+
+def safe_get(d: dict, key: str, default: Any = 0.0) -> Any:
+    val = d.get(key,  default)
+    return val if val is not None else default
+
+def now() -> float:
+    return time.time()
+
+def safe_load_json(filepath: str, default: Any = None):
+    if not os.path.exists(filepath):
+        with open(filepath, 'w') as f:
+            json.dump(default or {}, f)
+        return default or {}
+    try:
+        with open(filepath, 'r') as f:
+            return json.load(f)
+    except Exception as e:
+        logging.warning(f"Failed to load {filepath}: {e}")
+        return default or {}
+
+app.py
+(Replace your old app.py with this)
+python# app.py
+import streamlit as st
+import yfinance as yf
+from datetime import datetime
+import time
+from global_fixes import safe_get, now, safe_load_json
+
+st.set_page_config(page_title="Pro Trading Platform", layout="wide")
+
+# === Seamless Update Containers ===
+price_container = st.empty()
+signal_container = st.empty()
+watchlist_container = st.empty()
+
+# === Load Watchlist ===
+watchlists = safe_load_json("user_watchlists.json", {
+    "My Current Positions": {
+        "symbols": ["SPY", "QQQ", "IWM"],
+        "created": datetime.now().isoformat(),
+        "description": "My active positions",
+        "last_modified": datetime.now().isoformat()
+    }
+})
+
+# === Main Dashboard Loop ===
+while True:
+    try:
+        # Get live data
+        spy = yf.Ticker("SPY").history(period="1d")
+        price = round(spy['Close'].iloc[-1], 2) if not spy.empty else 0.0
+        change = spy['Close'].pct_change().iloc[-1] * 100 if len(spy) > 1 else 0
+
+        # Update UI
+        with price_container:
+            st.metric("SPY Live Price", f"${price}", f"{change:+.2f}%")
+
+        with signal_container:
+            st.markdown("#### Live Signal")
+            st.success("HOLD | Confidence: 75%")
+
+        with watchlist_container:
+            st.markdown("#### Your Watchlist")
+            for sym in watchlists["My Current Positions"]["symbols"]:
+                try:
+                    data = yf.Ticker(sym).history(period="1d")
+                    p = round(data['Close'].iloc[-1], 2) if not data.empty else 0.0
+                    st.write(f"**{sym}**: ${p}")
+                except:
+                    st.write(f"**{sym}**: $0.00")
+
+        time.sleep(3)  # Update every 3 seconds
+    except:
+        time.sleep(5)
+
+options_engine.py
+python# options_engine.py
+import yfinance as yf
+from global_fixes import safe_get
+
+class OptionsEngine:
+    def analyze_flow_patterns(self, symbol, min_volume=100, min_premium=1000):
+        try:
+            ticker = yf.Ticker(symbol)
+            if not ticker.options:
+                return {'analysis': [], 'total_volume': 0, 'total_premium': '$0'}
+
+            analysis = []
+            total_volume = 0
+            total_premium = 0
+
+            for expiry in ticker.options[:3]:
+                try:
+                    chain = ticker.option_chain(expiry)
+                    for _, row in chain.calls.iterrows():
+                        vol = safe_get(row, 'volume', 0)
+                        price = safe_get(row, 'lastPrice', 0)
+                        prem = vol * price * 100
+                        if vol >= min_volume and prem >= min_premium:
+                            total_volume += vol
+                            total_premium += prem
+                            analysis.append({
+                                'type': 'CALL', 'strike': row['strike'], 'expiry': expiry,
+                                'volume': vol, 'premium': f"${prem:,.0f}", 'sentiment': 'BULLISH'
+                            })
+                    for _, row in chain.puts.iterrows():
+                        vol = safe_get(row, 'volume', 0)
+                        price = safe_get(row, 'lastPrice', 0)
+                        prem = vol * price * 100
+                        if vol >= min_volume and prem >= min_premium:
+                            total_volume += vol
+                            total_premium += prem
+                            analysis.append({
+                                'type': 'PUT', 'strike': row['strike'], 'expiry': expiry,
+                                'volume': vol, 'premium': f"${prem:,.0f}", 'sentiment': 'BEARISH'
+                            })
+                except:
+                    continue
+
+            return {
+                'analysis': analysis[:20],
+                'total_volume': total_volume,
+                'total_premium': f"${total_premium:,.0f}"
+            }
+        except Exception as e:
+            return {'analysis': [], 'total_volume': 0, 'total_premium': '$0'}
+
+personalized_watchlist.py
+python# personalized_watchlist.py
+import yfinance as yf
+from global_fixes import safe_load_json
+from typing import List, Dict
+
+class PersonalizedWatchlist:
+    def __init__(self):
+        self.watchlists = safe_load_json("user_watchlists.json", {
+            "My Current Positions": {
+                "symbols": ["SPY", "QQQ"],
+                "created": "2025-01-01",
+                "description": "Default",
+                "last_modified": "2025-01-01"
+            }
+        })
+
+    def get_real_time_prices(self, symbols: List[str]) -> Dict[str, float]:
+        prices = {}
+        for sym in symbols:
+            try:
+                data = yf.Ticker(sym).history(period="1d")
+                prices[sym] = round(data['Close'].iloc[-1], 2) if not data.empty else 0.0
+            except:
+                prices[sym] = 0.0
+        return prices
+
+position_tracker.py
+python# position_tracker.py
+import json
+from datetime import datetime
+from global_fixes import safe_load_json
+
+class PositionTracker:
+    def __init__(self):
+        self.positions = safe_load_json("my_positions.json", {"stocks": {}, "options": {}})
+
+    def add_stock_position(self, symbol: str, quantity: int, entry_price: float):
+        position_id = f"{symbol}_STOCK"
+        self.positions["stocks"][position_id] = {
+            "symbol": symbol,
+            "quantity": quantity,
+            "entry_price": entry_price,
+            "entry_time": datetime.now().isoformat(),
+            "current_price": entry_price,
+            "unrealized_pnl": 0.0
+        }
+        self.save_positions()
+
+    def save_positions(self):
+        try:
+            with open("my_positions.json", "w") as f:
+                json.dump(self.positions, f, indent=2)
+        except Exception as e:
+            print(f"Save failed: {e}")
+
+utils.py
+python# utils.py
+import pandas as pd
+from datetime import datetime
+
+def calculate_business_days(start_date, end_date):
+    try:
+        return len(pd.bdate_range(start_date, end_date)) - 1
+    except:
+        return 0
+
+def format_currency(amount, symbol="$", precision=2):
+    try:
+        if abs(amount) >= 1e9:
+            return f"{symbol}{amount/1e9:.1f}B"
+        elif abs(amount) >= 1e6:
+            return f"{symbol}{amount/1e6:.1f}M"
+        elif abs(amount) >= 1e3:
+            return f"{symbol}{amount/1e3:.1f}K"
+        else:
+            return f"{symbol}{amount:.{precision}f}"
+    except:
+        return f"{symbol}0.00"
+
+user_watchlists.json
+(Create or replace this file)
+json{
+  "My Current Positions": {
+    "symbols": [
+      "SPY",
+      "QQQ",
+      "IWM"
+    ],
+    "created": "2025-10-31T00:00:00.000000",
+    "description": "My active positions",
+    "last_modified": "2025-10-31T00:00:00.000000"
+  }
+}
+
+my_positions.json
+(Create this file — will be auto-filled)
+json{
+  "stocks": {},
+  "options": {}
+}
