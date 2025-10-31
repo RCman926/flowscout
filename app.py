@@ -119,11 +119,16 @@ def options_trading_page():
         loading_placeholder.empty()
         st.session_state.page_loaded = True
     
+    # === LIVE AUTO-REFRESH FOR CONSTANT UPDATES ===
+    # Auto-refresh every 3 seconds for institutional-grade live updates
+    from streamlit_autorefresh import st_autorefresh
+    refresh_count = st_autorefresh(interval=3000, limit=None, key="live_dashboard_refresh")
+    
     # === SEAMLESS UPDATE SYSTEM ===
     # Initialize seamless updates without page flashing
     if 'auto_refresh_enabled' not in st.session_state:
         st.session_state.auto_refresh_enabled = True
-        st.session_state.refresh_count = 0
+        st.session_state.refresh_count = refresh_count
     
     # Initialize seamless updater - prevents crashes
     seamless_updater = SeamlessUpdateSystem()

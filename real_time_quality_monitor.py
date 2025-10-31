@@ -6,8 +6,9 @@ SYNCHRONOUS implementation for maximum compatibility
 
 import time
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, time as time_obj
 from typing import Dict, List, Any, Optional, Tuple
+from zoneinfo import ZoneInfo
 import yfinance as yf
 import numpy as np
 import pandas as pd
@@ -550,9 +551,6 @@ class RealTimeQualityMonitor:
             ))
         
         # Specific metric alerts - BUT suppress freshness warnings when market is closed
-        from datetime import time as time_obj
-        from zoneinfo import ZoneInfo
-        
         # Check if market is open (9:30 AM - 4:00 PM ET)
         et_now = datetime.now(ZoneInfo('America/New_York'))
         market_open_time = time_obj(9, 30)
