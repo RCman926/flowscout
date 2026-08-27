@@ -5415,6 +5415,20 @@
                             signal: message.signal || message.data?.signal,
                             market_status: message.market_status || message.data?.market_status
                         };
+                        // Carry Boss/lesson forward: a Boss-less tick must not drop
+                        // what the cache is already holding, or the bubble redraws
+                        // from a payload that has no Boss in it.
+                        const prevCached = window.symbolDataCache[messageSymbol] || {};
+                        ['boss_decision', 'paper_boss', 'trade_lesson'].forEach(key => {
+                            const incoming = fullData[key];
+                            if (incoming && typeof incoming === 'object' && Object.keys(incoming).length) return;
+                            const held = prevCached[key];
+                            if (held && typeof held === 'object' && Object.keys(held).length) {
+                                fullData[key] = held;
+                            } else {
+                                delete fullData[key];
+                            }
+                        });
                         window.symbolDataCache[messageSymbol] = fullData;
                         
                         // Update the bubble for this specific symbol immediately (don't wait for throttle)
@@ -7198,6 +7212,22 @@
                 paintLessonInto('0dte', L);
             }
             if (pack && pack.big_run) paintLessonInto('br', pack.big_run);
+        }
+
+        /**
+         * Boss from this payload, else the last real one we painted.
+         * Lite ticks and connect payloads can arrive without a Boss (or with an
+         * empty {}, which is truthy); reading those straight through blanks
+         * whichever panel is asking. Never returns {}.
+         */
+        function bossOrLastGood(data) {
+            const src = data || {};
+            const boss = src.boss_decision || src.signal?.boss_decision || src.data?.boss_decision || null;
+            if (boss && typeof boss === 'object' && Object.keys(boss).length) {
+                window._lastBossDecision = boss;
+                return boss;
+            }
+            return window._lastBossDecision || null;
         }
 
         function updateBossArmButton(armed) {
@@ -9697,7 +9727,7 @@
         /** Fill Lab prediction strip + Hybrid toolstrip from WS payload */
         function updateModeChrome(data) {
             if (!data || typeof data !== 'object') return;
-            const boss = data.boss_decision || data.signal?.boss_decision || {};
+            const boss = bossOrLastGood(data) || {};
             const workers = boss.workers || data.session_structure?.workers || data.signal?.session_structure?.workers || {};
             const opening = workers.opening_range || {};
             const emaW = workers.ema_regime || {};
@@ -12216,7 +12246,7 @@
                 let strength = (ss && ss.score != null) ? Number(ss.score) : null;
                 if (strength == null || Number.isNaN(strength)) {
                     const signal = data?.signal || data?.data?.signal || null;
-                    const bossConf = data?.boss_decision || data?.data?.boss_decision || signal?.boss_decision;
+                    const bossConf = bossOrLastGood(data);
                     const signalConfidence = (bossConf && bossConf.confidence != null) ? bossConf.confidence : (signal?.confidence || 0);
                     const flowMetrics = data?.flow_metrics || data?.data?.flow_metrics || {};
                     const callVolume = flowMetrics.total_call_volume || 0;
@@ -12239,7 +12269,7 @@
             }
             
             // Bubble verb = Boss only (never legacy flow)
-            const boss = data?.boss_decision || data?.signal?.boss_decision || data?.data?.boss_decision || null;
+            const boss = bossOrLastGood(data);
             const sess = (data?.market_status?.session || data?.data?.market_status?.session || '').toUpperCase();
             if (signalEl) {
                 const hasBoss = boss && typeof boss === 'object' && Object.keys(boss).length > 0;
