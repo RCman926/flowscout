@@ -63,13 +63,21 @@ def check(name: str, ok: bool, detail: str = "") -> bool:
 
 
 def get(base: str, path: str, headers: dict | None = None, timeout: float = 30.0):
-    """Return (status, body_text, response_headers). Never raises on HTTP status."""
+    """Return (status, body_text, response_headers). Never raises on HTTP status.
+
+    Header keys are lowercased: uvicorn sends them lowercase over HTTP/1.1, so a
+    case-sensitive lookup silently misses ETag.
+    """
     req = urllib.request.Request(base + path, headers=headers or {})
     try:
         with urllib.request.urlopen(req, timeout=timeout) as r:
-            return r.status, r.read().decode("utf-8", "replace"), dict(r.headers)
+            return r.status, r.read().decode("utf-8", "replace"), _lower(r.headers)
     except urllib.error.HTTPError as e:
-        return e.code, e.read().decode("utf-8", "replace"), dict(e.headers)
+        return e.code, e.read().decode("utf-8", "replace"), _lower(e.headers)
+
+
+def _lower(headers) -> dict:
+    return {str(k).lower(): v for k, v in dict(headers).items()}
 
 
 def get_json(base: str, path: str, timeout: float = 30.0):
@@ -191,7 +199,7 @@ def check_big_run(base: str) -> None:
         record("INFO", "Big Run has not scanned yet",
                "expected while closed / Yahoo cooling -- not a failure")
 
-    etag = hdrs.get("ETag")
+    etag = hdrs.get("etag")
     if not etag:
         record("INFO", "squeeze-radar sent no ETag", "revalidation check skipped")
         return

@@ -14713,55 +14713,10 @@
             }
         }
         
-        // Historical Accuracy Dashboard
-        async function loadHistoricalAccuracy() {
-            try {
-                const response = await fetch('/api/analytics/historical-accuracy');
-                
-                if (!response.ok) {
-                    console.warn(`Historical accuracy endpoint returned ${response.status}. Endpoint may not be available.`);
-                    return;
-                }
-                
-                const data = await response.json();
-                
-                // Check if data has required structure
-                if (!data || !data.summary) {
-                    console.warn('Historical accuracy data missing summary');
-                    return;
-                }
-                
-                const statsContainer = document.getElementById('historical-accuracy-stats');
-                const chartsContainer = document.getElementById('historical-accuracy-charts');
-                
-                if (!statsContainer || !chartsContainer) return;
-                
-                // Show dashboard
-                const dashboard = document.getElementById('historical-accuracy-dashboard');
-                if (dashboard) dashboard.style.display = 'block';
-                
-                // Display confidence level stats
-                if (data.by_confidence) {
-                    statsContainer.innerHTML = Object.values(data.by_confidence).map(conf => `
-                        <div style="background: rgba(0,0,0,0.2); border-radius: 4px; padding: 4px 6px; text-align: center;">
-                            <div style="font-size: 0.55rem; color: var(--text-muted); margin-bottom: 2px;">${conf.confidence_range}%</div>
-                            <div style="font-size: 0.75rem; font-weight: 800; color: #6366f1; margin-bottom: 2px;">${conf.win_rate.toFixed(1)}%</div>
-                            <div style="font-size: 0.5rem; color: var(--text-secondary);">${conf.total_trades}</div>
-                        </div>
-                    `).join('');
-                }
-                
-                chartsContainer.innerHTML = `
-                    <div style="font-size: 0.6rem; color: var(--text-muted);">
-                        Overall: <strong style="color: var(--text-primary);">${data.summary.overall_win_rate || 0}%</strong> 
-                        (${data.summary.total_closed_trades || 0} trades)
-                    </div>
-                `;
-            } catch (error) {
-                console.error('Error loading historical accuracy:', error);
-                // Don't show error to user - just log it
-            }
-        }
+        // Stage A: historical accuracy came from the quarantined ledger.
+        // No-op stub so page load does not fetch a 410 and warn (same as
+        // loadBestTimeAnalytics / updateMLModelStatus above).
+        async function loadHistoricalAccuracy() { return; }
         
         // Multi-Symbol Comparison
         const comparisonSymbols = new Set();
@@ -14786,36 +14741,9 @@
             `).join('');
         }
         
-        // Advanced Analytics
-        async function loadAdvancedAnalytics() {
-            try {
-                const timeResponse = await fetch('/api/analytics/time-of-day');
-                if (!timeResponse.ok) {
-                    console.warn('Time-of-day analytics endpoint not available (404). Feature may require server restart.');
-                    return;
-                }
-                const timeData = await timeResponse.json();
-                
-                if (!timeData || timeData.error) {
-                    console.warn('Time-of-day analytics data not available:', timeData.error || 'Unknown error');
-                    return;
-                }
-                
-                const timeWinrateEl = document.getElementById('analytics-time-winrate');
-                const optimalTimeEl = document.getElementById('analytics-optimal-time');
-                
-                if (timeData.best_hours && timeData.best_hours.length > 0) {
-                    const bestHour = timeData.best_hours[0];
-                    if (timeWinrateEl) timeWinrateEl.textContent = `${bestHour.win_rate.toFixed(1)}%`;
-                    if (optimalTimeEl) optimalTimeEl.textContent = bestHour.hour_display;
-                }
-                
-                const dashboard = document.getElementById('advanced-analytics-dashboard');
-                if (dashboard) dashboard.style.display = 'block';
-            } catch (error) {
-                console.error('Error loading advanced analytics:', error);
-            }
-        }
+        // Stage A: time-of-day analytics came from the quarantined ledger, and
+        // the dashboard ids it wrote to no longer exist. No-op stub.
+        async function loadAdvancedAnalytics() { return; }
         
         // Store backtest results globally for integration
         let lastBacktestResults = null;
