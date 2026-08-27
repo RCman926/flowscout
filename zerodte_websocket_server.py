@@ -193,6 +193,39 @@ def _trade_lesson_payload(boss_decision=None, paper_boss=None):
     except Exception:
         return None
 
+
+def _remember_boss_paint(symbol, boss_decision=None, paper_boss=None, trade_lesson=None):
+    """Keep the last Boss paint so keepalive/connect payloads can reuse it."""
+    if not symbol or not isinstance(boss_decision, dict) or not boss_decision:
+        return
+    slot = _last_boss_paint.setdefault(symbol, {})
+    slot["boss_decision"] = boss_decision
+    if isinstance(paper_boss, dict) and paper_boss:
+        slot["paper_boss"] = paper_boss
+    if isinstance(trade_lesson, dict) and trade_lesson:
+        slot["trade_lesson"] = trade_lesson
+
+
+def _attach_last_boss_paint(data, symbol):
+    """Fill in Boss/paper/lesson on a payload that has none.
+
+    An empty dict is truthy on the client, so a missing key must stay missing
+    rather than become {} — that is what wiped the Boss card between cycles.
+    """
+    if not isinstance(data, dict):
+        return data
+    slot = _last_boss_paint.get(symbol) or {}
+    for key in ("boss_decision", "paper_boss", "trade_lesson"):
+        current = data.get(key)
+        if isinstance(current, dict) and current:
+            continue
+        remembered = slot.get(key)
+        if isinstance(remembered, dict) and remembered:
+            data[key] = remembered
+        elif key in data and not data[key]:
+            data.pop(key)
+    return data
+
 # ========== INPUT VALIDATION & SANITIZATION ==========
 # Production-grade security to prevent injection attacks and data corruption
 
@@ -1200,6 +1233,11 @@ _data_source_failure_count = {}  # symbol -> int (count consecutive failures)
 _last_successful_flow_data = {}  # symbol -> dict (full flow_data structure)
 _last_successful_data_timestamp = {}  # symbol -> float (timestamp of when data was cached)
 _last_expiry_terms = {}  # symbol -> last good expiry_terms payload (with buckets)
+# Last real Boss paint per symbol. _last_successful_flow_data holds the raw
+# chain only — Boss lives on signal_analysis, so reading boss_decision off the
+# chain cache always came back empty and every keepalive/connect payload went
+# out Boss-less, blanking the card and chrome the desk had just painted.
+_last_boss_paint = {}  # symbol -> {'boss_decision','paper_boss','trade_lesson'}
 # Backoff tracking for yfinance rate limits/errors
 _yfinance_backoff_until = {}  # symbol -> timestamp
 _rate_limit_last_log = {}  # api_name -> timestamp (throttle warning spam)
@@ -1497,12 +1535,23 @@ async def _format_and_send_data(websocket: WebSocket, symbol: str, flow_data: di
         }
         # Ensure client paths that read data.boss_decision work
         if isinstance(message['data'], dict):
-            message['data']['boss_decision'] = convert_datetime(boss_decision) if boss_decision else {}
-            message['data']['paper_boss'] = convert_datetime(paper_boss) if paper_boss else {}
+            if boss_decision:
+                message['data']['boss_decision'] = convert_datetime(boss_decision)
+            if paper_boss:
+                message['data']['paper_boss'] = convert_datetime(paper_boss)
             try:
-                message['data']['trade_lesson'] = _trade_lesson_payload(boss_decision, paper_boss)
+                lesson = _trade_lesson_payload(boss_decision, paper_boss)
+                if lesson:
+                    message['data']['trade_lesson'] = lesson
             except Exception:
                 pass
+            _attach_last_boss_paint(message['data'], symbol)
+            _remember_boss_paint(
+                symbol,
+                message['data'].get('boss_decision'),
+                message['data'].get('paper_boss'),
+                message['data'].get('trade_lesson'),
+            )
             # Snapshot path omits tenor mix. Attach last-good buckets for this symbol only.
             existing_terms = message['data'].get('expiry_terms')
             if not (isinstance(existing_terms, dict) and existing_terms.get('buckets')):
@@ -1757,7 +1806,9 @@ async def background_data_updater(update_interval: float = 2.5):
                                     # Hold last paint. Do not re-run Boss, do not send
                                     # a ticking "cooling Ns" error — that toast/banner
                                     # is what makes the page jump while Yahoo waits.
-                                    last_boss = cached.get('boss_decision') if isinstance(cached.get('boss_decision'), dict) else None
+                                    last_boss = (_last_boss_paint.get(symbol) or {}).get('boss_decision')
+                                    if not isinstance(last_boss, dict) or not last_boss:
+                                        last_boss = None
                                     last_signal = cached.get('signal') if isinstance(cached.get('signal'), dict) else None
                                     warm_data = {
                                         'stock_price': spot,
@@ -1779,8 +1830,7 @@ async def background_data_updater(update_interval: float = 2.5):
                                         'dte': 0 if current_session == 'REGULAR' else cached.get('dte', 0),
                                         'expiration_label': cached.get('expiration_label') or '0DTE',
                                     }
-                                    if last_boss:
-                                        warm_data['boss_decision'] = last_boss
+                                    _attach_last_boss_paint(warm_data, symbol)
                                     if isinstance(_last_expiry_terms.get(symbol), dict) and _last_expiry_terms[symbol].get('buckets'):
                                         warm_data['expiry_terms'] = _last_expiry_terms[symbol]
                                     warm = {
@@ -2270,6 +2320,8 @@ async def background_data_updater(update_interval: float = 2.5):
                                     'unusual_activity': None
                                 }
                             }
+                            _attach_last_boss_paint(message['data'], symbol)
+                            _remember_boss_paint(symbol, prep_boss, prep_paper)
                             # IMPROVED: Always try to broadcast, even if no subscriptions tracked
                             # Sometimes subscriptions exist but aren't tracked correctly
                             try:
@@ -2390,15 +2442,6 @@ async def background_data_updater(update_interval: float = 2.5):
                                     'data_freshness': 'NEW',
                                     'data_age_seconds': 0,
                                     'market_status': market_status,
-                                    # Only ship Boss if we actually have one. An empty
-                                    # dict is truthy on the client and used to blank
-                                    # the Boss card between full cycles.
-                                    **(
-                                        {'boss_decision': prev_cached['boss_decision']}
-                                        if isinstance(prev_cached.get('boss_decision'), dict)
-                                        and prev_cached['boss_decision']
-                                        else {}
-                                    ),
                                     # Same for tenor mix: empty {} wipes "Flow by expiration".
                                     **(
                                         {'expiry_terms': _last_expiry_terms[symbol]}
@@ -2407,8 +2450,8 @@ async def background_data_updater(update_interval: float = 2.5):
                                         else {}
                                     ),
                                     'signal': prev_cached.get('signal') or {
-                                        'action': (prev_cached.get('boss_decision') or {}).get('action', 'NO_TRADE'),
-                                        'confidence': (prev_cached.get('boss_decision') or {}).get('confidence', 0),
+                                        'action': (_last_boss_paint.get(symbol) or {}).get('boss_decision', {}).get('action', 'NO_TRADE'),
+                                        'confidence': (_last_boss_paint.get(symbol) or {}).get('boss_decision', {}).get('confidence', 0),
                                     },
                                     'shadow_learning': prev_cached.get('shadow_learning') or {},
                                     'lite_tick': True,
@@ -2420,6 +2463,7 @@ async def background_data_updater(update_interval: float = 2.5):
                                     ),
                                 },
                             }
+                            _attach_last_boss_paint(lite['data'], symbol)
                             await manager.broadcast_to_symbol(lite, symbol)
                     except Exception as lite_err:
                         logger.debug(f"Lite tick skipped for {symbol}: {lite_err}")
@@ -4584,6 +4628,14 @@ async def background_data_updater(update_interval: float = 2.5):
                         }
                     }
                     
+                    _attach_last_boss_paint(message['data'], symbol)
+                    _remember_boss_paint(
+                        symbol,
+                        message['data'].get('boss_decision'),
+                        message['data'].get('paper_boss'),
+                        message['data'].get('trade_lesson'),
+                    )
+
                     # CRITICAL: Cache successful flow_data BEFORE broadcasting (for fallback when markets closed)
                     if flow_data and isinstance(flow_data, dict) and stock_price_for_message > 0:
                         _last_successful_flow_data[symbol] = flow_data.copy()
@@ -4627,6 +4679,9 @@ async def background_data_updater(update_interval: float = 2.5):
                                 }
                             }
                         }
+                        # A fetch error is not a reason to blank the Boss card the
+                        # desk is already reading.
+                        _attach_last_boss_paint(error_message['data'], symbol)
                         client_count = len(manager.symbol_subscriptions.get(symbol, set()))
                         if client_count > 0:
                             logger.warning(f"⚠️ Sending error update for {symbol} to {client_count} client(s)")
@@ -4922,6 +4977,10 @@ async def websocket_endpoint(websocket: WebSocket, symbol: str = "SPY"):
                     'unusual_activity': None
                 }
             }
+            # Connect payloads land after the immediate cached paint, so without
+            # the last-good Boss they arrive Boss-less and blank the card and Lab
+            # chrome on every browser refresh.
+            _attach_last_boss_paint(initial_message['data'], symbol)
             logger.info(f"Initial message (no flow_data) - Extended hours: aftermarket={aftermarket_price}, premarket={premarket_price}, regular_close={regular_close}")
             logger.info(f"[WebSocket] ⚠️ NO FLOW_DATA - Sending minimal initial message with stock_price={regular_close} for {symbol}")
             try:
@@ -5239,6 +5298,7 @@ async def websocket_endpoint(websocket: WebSocket, symbol: str = "SPY"):
                     }
                 }
             }
+            _attach_last_boss_paint(initial_message['data'], symbol)
             logger.info(f"Initial message (with flow_data) - Extended hours: aftermarket={aftermarket_price}, premarket={premarket_price}, regular_close={regular_close}")
             logger.info(f"[WebSocket] ✅ HAS FLOW_DATA - Sending initial message with stock_price={flow_data.get('stock_price', 0)}, calls={len(calls_sorted)}, puts={len(puts_sorted)} for {symbol}")
             try:
