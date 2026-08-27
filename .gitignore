@@ -1,0 +1,147 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+venv/
+ENV/
+env/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+paper_arm_state.json
+paper_trades.json
+
+# Sensitive config files
+ibkr_connection_config.json
+api_config.json
+*.encrypted
+.encryption_key
+user_watchlists.json
+my_positions.json
+price_alerts.json
+trading_bot_history.json
+
+# Logs
+logs/
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Data files
+*.db
+*.sqlite
+*.sqlite3
+
+# Cache
+.cache/
+*.cache
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Temporary files
+*.tmp
+*.temp
+*.backup
+*.backup_*
+
+# Large data files (frequently changing, shouldn't be in git)
+zerodte_trades.json
+zerodte_trades.json.archive_*.json
+zerodte_signal_history.json
+*.json.backup*
+
+# Archive directories (old code, don't track)
+ARCHIVED_OLD_CODE/
+archive_old_system/
+
+# Config directories
+.config/
+.local/
+
+# Test files
+test_*.py
+*_test.py
+tests/
+
+# Documentation that changes frequently (keep only essential)
+*.md
+!README.md
+!CHANGELOG.md
+!QUICK_START_GUIDE.md
+!TROUBLESHOOTING_GUIDE.md
+!USER_GUIDE.md
+*.backup_*
+
+# Data files (large, frequently changing)
+zerodte_trades.json
+zerodte_signal_history.json
+*.json.backup*
+
+# Archive directories
+ARCHIVED_OLD_CODE/
+archive_old_system/
+
+# Config directories
+.config/
+.local/
+
+# Test files
+test_*.py
+*_test.py
+tests/
+
+# Documentation that changes frequently
+*.md
+!README.md
+!CHANGELOG.md
+!AGENTS.md
+
+# Local runtime / desk state (not source)
+_archive_unused/
+squeeze_radar_state.json
+shadow_learning_trades.json
+boss_decision_journal.json
+big_run_base_rates.json
+big_run_predictions.json
+ibkr_persistent_config.json
+manifest.json
+api_usage_stats.json
+api_rotation_stats.json
+.flowscout_boot_*.txt

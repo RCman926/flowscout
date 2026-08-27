@@ -1,0 +1,60 @@
+/* Browser Compatibility Fixes for Dash App */
+/* Fixes CSS warnings for -moz-box-*, print-color-adjust, color-adjust */
+
+/* ReactVirtualized Table Header Row - Fix Mozilla prefixes */
+.ReactVirtualized_Table_headerRow {
+    -webkit-box-align: center;
+    -moz-box-align: center;
+    box-align: center;
+    
+    -webkit-box-direction: normal;
+    -moz-box-direction: normal;
+    box-direction: normal;
+    
+    -webkit-box-flex: 0;
+    -moz-box-flex: 0;
+    box-flex: 0;
+    
+    -webkit-box-orient: horizontal;
+    -moz-box-orient: horizontal;
+    box-orient: horizontal;
+    
+    display: flex;
+    align-items: center;
+}
+
+/* Fix all -moz-box-* properties with webkit prefixes for broader compatibility */
+* {
+    /* Ensure webkit prefixes are available for all box properties */
+}
+
+/* Dash debug menu and other components using -moz-box-* */
+.dash-debug-menu,
+.dash-debug-menu *,
+[class*="dash-debug"] {
+    -webkit-box-align: center;
+    -moz-box-align: center;
+    -webkit-box-direction: normal;
+    -moz-box-direction: normal;
+    -webkit-box-flex: 0;
+    -moz-box-flex: 0;
+    -webkit-box-orient: horizontal;
+    -moz-box-orient: horizontal;
+}
+
+/* Form Check Input - Fix print-color-adjust (color-adjust is deprecated) */
+.form-check-input {
+    -webkit-print-color-adjust: exact;  /* Chrome 17+, Chrome Android 18+, Edge 79+ */
+    print-color-adjust: exact;  /* Standard property */
+    /* Note: color-adjust is deprecated, use print-color-adjust instead */
+}
+
+/* Additional compatibility fixes for common Bootstrap components */
+.form-check {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+}
+
+/* Ensure proper charset encoding for all styles */
+@charset "utf-8";
+

@@ -1,0 +1,47 @@
+# === MARKET DATA APIs ===
+FINNHUB_API_KEY=your_finnhub_key_here
+IEX_CLOUD_API_KEY=your_iex_key_here
+TWELVE_DATA_API_KEY=your_twelve_key_here
+ALPHA_VANTAGE_API_KEY=your_key_here
+
+# === OPTIONS DATA APIs (Polygon.io) ===
+# Polygon.io API key (recommended for real-time options with Greeks)
+# Get your key at: https://polygon.io/
+POLYGON_API_KEY=your_polygon_api_key_here
+# Alternative name (also supported)
+MASSIVE_API_KEY=your_polygon_api_key_here
+
+# === NEWS & SENTIMENT APIs ===
+MARKETAUX_API_KEY=your_key_here
+# StockData API (Real-Time, News, Sentiment) - Free tier: 100 requests/day
+# Get your key at: https://stockdata.org/
+STOCKDATA_API_KEY=your_stockdata_api_key_here
+
+# === REDDIT API (Optional - for sentiment analysis) ===
+REDDIT_CLIENT_ID=your_reddit_client_id
+REDDIT_SECRET=your_reddit_secret
+REDDIT_USER_AGENT=ShortSqueezeScanner/1.0
+
+# === INTERACTIVE BROKERS (IBKR) Settings ===
+IBKR_HOST=127.0.0.1
+IBKR_PORT=4001
+
+# === APP SETTINGS ===
+APP_MODE=production
+DEBUG=False
+
+# === TELEGRAM NOTIFICATIONS ===
+# Telegram bot token (from @BotFather)
+TELEGRAM_BOT_TOKEN=your_telegram_bot_token_here
+# Telegram chat ID (your user ID or group ID)
+TELEGRAM_CHAT_ID=your_telegram_chat_id_here
+TELEGRAM_BOT_USERNAME=@your_bot_username
+
+# === PAPER / BOSS SAFETY (Stage A) ===
+# false = kill switch on; Boss will not auto-open paper trades
+PAPER_AUTO_ARMED=false
+PAPER_MAX_CONTRACTS=50
+PAPER_MAX_OPEN=1
+# Halt new Boss paper entries after this much realized loss today (USD)
+PAPER_DAILY_LOSS_HALT=500
+PAPER_COOLDOWN_SECONDS=120

@@ -1,0 +1,19 @@
+{
+  "total_requests": {
+    "Polygon": 3280,
+    "yfinance": 950
+  },
+  "total_errors": {
+    "Polygon": 0,
+    "yfinance": 0
+  },
+  "rate_limit_hits": {
+    "Polygon": 0,
+    "yfinance": 0
+  },
+  "last_reset": "2026-08-25T08:41:07.157047",
+  "Polygon_20689": 603,
+  "yfinance_20689": 3666,
+  "Polygon_20690": 2677,
+  "yfinance_20690": 8914
+}

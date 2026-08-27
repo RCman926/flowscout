@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  flowscout:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - PORT=8000
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+      - TELEGRAM_CHAT_IDS=${TELEGRAM_CHAT_IDS:-}
+      - POLYGON_API_KEY=${POLYGON_API_KEY:-}
+      - FINNHUB_API_KEY=${FINNHUB_API_KEY:-}
+      - ALPHAVANTAGE_API_KEY=${ALPHAVANTAGE_API_KEY:-}
+      - IBKR_PORT=${IBKR_PORT:-7497}
+      - IBKR_CLIENT_ID=${IBKR_CLIENT_ID:-}
+    restart: unless-stopped
+    volumes:
+      - ./zerodte_trades.json:/app/zerodte_trades.json
+      - ./active_learning_state.json:/app/active_learning_state.json
+      - ./bot_performance.json:/app/bot_performance.json
+

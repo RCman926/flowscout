@@ -1,0 +1,14 @@
+FlowScout — ONE click
+
+Desktop: double-click "Open FlowScout"
+  → starts the Python server
+  → opens Chrome to the desk
+  → launcher window closes by itself
+
+You only need ONE icon. Do not also open START_FLOWSCOUT.bat or the HTML in Cursor.
+
+Keep the black "FlowScout Server" window open while you trade.
+Close that window when you are done for the day.
+
+Manual path (same thing):
+  StreamlitExcel\bat\OpenFlowScout.vbs

@@ -1,0 +1,26 @@
+﻿# Fat / regenerated data — do not index
+_archive_unused/
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.log
+
+zerodte_trades.json*
+ml_training_data.json
+bot_performance.json
+model_performance.json
+profit_target_learning.json
+zerodte_signal_history.json
+market_data_SPY_*.json
+autonomous_improvements.json
+api_usage_stats.json
+api_rotation_stats.json
+performance_metrics.json
+signal_performance.json
+tracker_state.json
+
+*_preview.html
+*.archive*
+*.backup*
+*.json.backup*

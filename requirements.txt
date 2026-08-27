@@ -1,0 +1,18 @@
+# FlowScout Stage A - FastAPI + yfinance
+# Optional: pip install polygon-api-client ibapi ib-insync
+fastapi>=0.110
+uvicorn[standard]>=0.27
+yfinance>=0.2.40
+pandas>=2.2
+numpy>=1.26
+python-dotenv>=1.0
+requests>=2.32
+httpx>=0.27
+python-telegram-bot>=21.0
+aiohttp>=3.9
+beautifulsoup4>=4.12
+lxml>=5.0
+python-dateutil>=2.9
+pytz>=2024.1
+pydantic>=2.0
+websockets>=12.0
