@@ -1,0 +1,17 @@
+{
+  "name": "FlowScout — Stage A",
+  "install": "python3 -m venv .venv || { sudo apt-get update && sudo apt-get install -y python3-venv && rm -rf .venv && python3 -m venv .venv; } && .venv/bin/pip install --upgrade pip && .venv/bin/pip install -r requirements.txt",
+  "terminals": [
+    {
+      "name": "flowscout-server",
+      "command": "FLOWSCOUT_HOST=0.0.0.0 FLOWSCOUT_PORT=8000 .venv/bin/python zerodte_websocket_server.py",
+      "description": "FlowScout FastAPI + WebSocket server (Boss + shadow ask→bid + Big Run) on http://localhost:8000"
+    }
+  ],
+  "ports": [
+    {
+      "name": "FlowScout web/WS",
+      "port": 8000
+    }
+  ]
+}
