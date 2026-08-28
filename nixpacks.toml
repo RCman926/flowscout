@@ -1,0 +1,12 @@
+# Fallback if Railway builds without the Dockerfile.
+# Always-on Stage A: delayed Yahoo, paper DISARMED, IBKR off.
+
+[start]
+cmd = "python zerodte_websocket_server.py"
+
+[variables]
+FLOWSCOUT_CLOUD = "1"
+PAPER_AUTO_ARMED = "false"
+IBKR_ENABLED = "0"
+UNATTENDED = "0"
+FLOWSCOUT_HOST = "0.0.0.0"

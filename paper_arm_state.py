@@ -9,23 +9,32 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict
 
+from cloud_runtime import (
+    is_cloud_mode,
+    paper_auto_armed_env,
+    state_path,
+    unattended_may_auto_arm,
+)
+
 logger = logging.getLogger(__name__)
 
-STATE_FILE = Path("paper_arm_state.json")
+STATE_FILE = state_path("paper_arm_state.json")
 
 
 class PaperArmState:
     def __init__(self, state_file: Path = STATE_FILE):
-        self.state_file = state_file
-        env_default = os.getenv("PAPER_AUTO_ARMED", "false").lower() in ("1", "true", "yes")
+        self.state_file = Path(state_file)
+        env_default = paper_auto_armed_env()
         self._armed = env_default
         self._updated_at: str | None = None
         self._load()
+        if is_cloud_mode() and self._armed:
+            self._armed = False
+            logger.info("Cloud host: paper DISARMED (PAPER_AUTO_ARMED ignored)")
 
     def _load(self) -> None:
         if not self.state_file.exists():
@@ -35,10 +44,15 @@ class PaperArmState:
             if "armed" in data:
                 self._armed = bool(data["armed"])
             self._updated_at = data.get("updated_at")
-            unattended = os.getenv("UNATTENDED", "").lower() in ("1", "true", "yes")
-            paper_env = os.getenv("PAPER_AUTO_ARMED", "false").lower() in ("1", "true", "yes")
+            unattended = unattended_may_auto_arm()
+            paper_env = paper_auto_armed_env()
             day = str(self._updated_at or "")[:10]
             today = datetime.now().strftime("%Y-%m-%d")
+            if is_cloud_mode():
+                if self._armed:
+                    self._armed = False
+                    logger.info("Cloud host: persisted paper arm cleared — DISARMED")
+                return
             if self._armed and not (unattended or paper_env) and day != today:
                 self._armed = False
                 logger.info("Paper arm expired (prior day) — DISARMED")

@@ -21,8 +21,13 @@ class UserAuth:
     """
     
     def __init__(self):
-        self.users_file = "users.json"
-        self.sessions_file = "sessions.json"
+        try:
+            from cloud_runtime import state_path
+            self.users_file = str(state_path("users.json"))
+            self.sessions_file = str(state_path("sessions.json"))
+        except Exception:
+            self.users_file = "users.json"
+            self.sessions_file = "sessions.json"
         self.users = {}  # username -> {password_hash, email, created_at, preferences}
         self.sessions = {}  # token -> {username, expires_at}
         self.session_duration_hours = 24  # Sessions last 24 hours

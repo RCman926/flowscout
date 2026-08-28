@@ -3,6 +3,10 @@ echo ============================================================
 echo   FlowScout Pro - Starting Server and Cloudflare Tunnel
 echo ============================================================
 echo.
+echo   PC-ON ONLY. This tunnel dies when this machine sleeps.
+echo   For always-on hosting see README (Railway / Docker).
+echo   Paper stays DISARMED. IBKR off. Not live Polygon.
+echo.
 
 REM Start the server in a new window
 REM Use %cd% to make it portable - works from any directory

@@ -30,7 +30,13 @@ class PaperTradingEngine:
     Tracks virtual positions and performance
     """
 
-    def __init__(self, initial_balance: float = 100000, trades_file: str = "paper_trades.json"):
+    def __init__(self, initial_balance: float = 100000, trades_file: str = None):
+        if not trades_file:
+            try:
+                from cloud_runtime import state_path
+                trades_file = str(state_path("paper_trades.json"))
+            except Exception:
+                trades_file = "paper_trades.json"
         self.initial_balance = initial_balance
         self.balance = initial_balance
         self.positions = {}  # position_id -> position dict

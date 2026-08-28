@@ -24,9 +24,11 @@ def _iso_day(iso: Any) -> str:
 
 
 def apply_session_hygiene() -> Dict[str, Any]:
-    unattended = os.getenv("UNATTENDED", "").lower() in ("1", "true", "yes")
-    paper_env = os.getenv("PAPER_AUTO_ARMED", "false").lower() in ("1", "true", "yes")
-    auto_arm = unattended or paper_env
+    from cloud_runtime import is_cloud_mode, paper_auto_armed_env, state_path, unattended_may_auto_arm
+
+    unattended = unattended_may_auto_arm()
+    paper_env = paper_auto_armed_env()
+    auto_arm = (unattended or paper_env) and not is_cloud_mode()
     notes = []
 
     try:
@@ -44,7 +46,7 @@ def apply_session_hygiene() -> Dict[str, Any]:
         notes.append(f"arm: {e}")
 
     try:
-        path = "squeeze_radar_state.json"
+        path = str(state_path("squeeze_radar_state.json"))
         if os.path.exists(path):
             with open(path, "r", encoding="utf-8") as f:
                 st = json.load(f)
