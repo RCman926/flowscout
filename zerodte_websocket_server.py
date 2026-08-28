@@ -5367,47 +5367,43 @@ async def websocket_endpoint(websocket: WebSocket, symbol: str = "SPY"):
             signal = {
                 'action': 'NO_TRADE',
                 'confidence': 0,
-                'reasoning': 'Signal analysis in progress...',
+                'reasoning': 'OFFLINE — sitting out on stale snapshot' if _desk_offline() else 'Signal analysis in progress...',
                 'signal_type': 'WAIT'
             }
-            try:
-                # Add timeout to prevent signal analysis from blocking
-                # CRITICAL FIX: Pass historical_flow to signal analyzer for price momentum
-                flow_history_data = []
+            if not _desk_offline() and not _flow_is_stale(flow_data if isinstance(flow_data, dict) else None):
                 try:
-                    # Get recent flow history for momentum calculation
-                    if hasattr(multi_source_tracker, 'flow_history') and symbol in multi_source_tracker.flow_history:
-                        flow_history_data = multi_source_tracker.flow_history[symbol][-10:]  # Last 10 data points
-                except (AttributeError, KeyError, TypeError) as e:
-                    # Non-critical: Flow history not available, continue without it
-                    logger.debug(f"Could not access flow history for {symbol}: {e}")
-                    pass
-                
-                signal = await asyncio.wait_for(
-                    loop.run_in_executor(
-                        None,
-                        signal_analyzer.analyze_flow_signal,
-                        flow_data,
-                        flow_history_data  # Pass historical flow for momentum
-                    ),
-                    timeout=3.0  # 3 second timeout for signal analysis
-                )
-            except asyncio.TimeoutError:
-                logger.warning(f"Signal analysis timeout for {symbol} - using default signal")
-                signal = {
-                    'action': 'NO_TRADE',
-                    'confidence': 0,
-                    'reasoning': 'Signal analysis timeout - data still loading',
-                    'signal_type': 'WAIT'
-                }
-            except Exception as e:
-                logger.warning(f"Signal analysis failed: {e}")
-                signal = {
-                    'action': 'NO_TRADE',
-                    'confidence': 0,
-                    'reasoning': 'Signal analysis unavailable',
-                    'signal_type': 'WAIT'
-                }
+                    # Add timeout to prevent signal analysis from blocking
+                    flow_history_data = []
+                    try:
+                        if hasattr(multi_source_tracker, 'flow_history') and symbol in multi_source_tracker.flow_history:
+                            flow_history_data = multi_source_tracker.flow_history[symbol][-10:]
+                    except (AttributeError, KeyError, TypeError) as e:
+                        logger.debug(f"Could not access flow history for {symbol}: {e}")
+                    signal = await asyncio.wait_for(
+                        loop.run_in_executor(
+                            None,
+                            signal_analyzer.analyze_flow_signal,
+                            flow_data,
+                            flow_history_data
+                        ),
+                        timeout=3.0
+                    )
+                except asyncio.TimeoutError:
+                    logger.warning(f"Signal analysis timeout for {symbol} - using default signal")
+                    signal = {
+                        'action': 'NO_TRADE',
+                        'confidence': 0,
+                        'reasoning': 'Signal analysis timeout - data still loading',
+                        'signal_type': 'WAIT'
+                    }
+                except Exception as e:
+                    logger.warning(f"Signal analysis failed: {e}")
+                    signal = {
+                        'action': 'NO_TRADE',
+                        'confidence': 0,
+                        'reasoning': 'Signal analysis unavailable',
+                        'signal_type': 'WAIT'
+                    }
             
             # CRITICAL: Ensure all price fields are initialized (never None/undefined)
             regular_close = regular_close if regular_close is not None else 0
@@ -5497,6 +5493,22 @@ async def websocket_endpoint(websocket: WebSocket, symbol: str = "SPY"):
                     }
                 }
             }
+            if _desk_offline() or _flow_is_stale(flow_data if isinstance(flow_data, dict) else None):
+                data = initial_message['data']
+                data['offline'] = True
+                data['stale'] = True
+                data['live'] = False
+                data['snapshot_mode'] = True
+                data['data_freshness'] = 'OFFLINE'
+                data['data_quality'] = 'offline_stale'
+                data['data_source'] = 'offline_snapshot'
+                last_boss = None
+                if isinstance(flow_data, dict) and isinstance(flow_data.get('boss_decision'), dict):
+                    last_boss = flow_data.get('boss_decision')
+                data['boss_decision'] = _sit_out_boss_paint(flow_data if isinstance(flow_data, dict) else None, last_boss)
+                data['paper_boss'] = {'armed': False, 'offline': True, 'can_auto_paper': False}
+                initial_message['offline'] = True
+                initial_message['data_freshness'] = 'OFFLINE'
             logger.info(f"Initial message (with flow_data) - Extended hours: aftermarket={aftermarket_price}, premarket={premarket_price}, regular_close={regular_close}")
             logger.info(f"[WebSocket] ✅ HAS FLOW_DATA - Sending initial message with stock_price={flow_data.get('stock_price', 0)}, calls={len(calls_sorted)}, puts={len(puts_sorted)} for {symbol}")
             try:
@@ -5993,6 +6005,19 @@ async def health_check():
         except Exception as e:
             logger.debug(f"Error building API status details: {e}")
             api_status_detailed = {}
+
+        if _desk_offline():
+            data_sources = {
+                "available": 0,
+                "total": len(api_status_detailed) or 1,
+                "mode": "offline_snapshot",
+                "note": "Live fetches blocked — last-good snapshot only",
+            }
+            for name, row in list(api_status_detailed.items()):
+                row = dict(row)
+                row["available"] = False
+                row["reason"] = "OFFLINE — not fetching live data"
+                api_status_detailed[name] = row
         
         return JSONResponse(
             content={

@@ -156,37 +156,32 @@ def test_offline_server():
         with client.websocket_connect("/ws/SPY") as ws:
             first = ws.receive_json()
             kinds = [first.get("type")]
-            payload = first
-            # connected + maybe flow_update
-            for _ in range(4):
-                if payload.get("type") == "flow_update":
-                    break
-                if payload.get("offline") or (payload.get("data") or {}).get("offline"):
-                    break
+            payloads = [first]
+            for _ in range(5):
                 try:
-                    payload = ws.receive_json()
-                    kinds.append(payload.get("type"))
+                    nxt = ws.receive_json()
+                    payloads.append(nxt)
+                    kinds.append(nxt.get("type"))
                 except Exception:
                     break
-            data = payload.get("data") if isinstance(payload.get("data"), dict) else payload
-            connected_offline = first.get("type") == "connected" and (
-                first.get("offline") or first.get("data_freshness") == "OFFLINE"
+            connected_offline = any(
+                p.get("type") == "connected"
+                and (p.get("offline") or p.get("data_freshness") == "OFFLINE")
+                for p in payloads
             )
-            flow_offline = str((data or {}).get("data_freshness") or "").upper() == "OFFLINE" or bool(
-                (data or {}).get("offline")
-            )
-            assert connected_offline or flow_offline or "connected" in kinds, (kinds, first, payload)
-            boss = (data or {}).get("boss_decision") or payload.get("boss_decision") or {}
-            if boss:
-                assert boss.get("can_auto_paper") is not True
-                assert boss.get("action") in ("NO_TRADE", None, "BUY_CALLS", "BUY_PUTS")
-                if boss.get("action") in ("BUY_CALLS", "BUY_PUTS"):
-                    raise AssertionError("Boss must sit out on stale/offline data, not emit a live ticket")
-            # Snapshot price may be present (stale) but must not look live
-            if (data or {}).get("stock_price"):
-                assert (data or {}).get("live") is not True
-                freshness = str((data or {}).get("data_freshness") or "").upper()
-                assert freshness in ("OFFLINE", "STALE", "CACHED", "") or (data or {}).get("offline")
+            assert connected_offline or "connected" in kinds, (kinds, first)
+            flow_msgs = [p for p in payloads if p.get("type") == "flow_update"]
+            assert flow_msgs, kinds
+            for payload in flow_msgs:
+                data = payload.get("data") if isinstance(payload.get("data"), dict) else {}
+                assert data.get("offline") or str(data.get("data_freshness") or "").upper() == "OFFLINE", payload
+                boss = data.get("boss_decision") or {}
+                if boss:
+                    assert boss.get("can_auto_paper") is not True
+                    if boss.get("action") in ("BUY_CALLS", "BUY_PUTS"):
+                        raise AssertionError("Boss must sit out on stale/offline data, not emit a live ticket")
+                if data.get("stock_price"):
+                    assert data.get("live") is not True
 
     assert not errors, f"background traceback: {errors[:3]}"
 
