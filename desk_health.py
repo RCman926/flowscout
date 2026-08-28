@@ -94,11 +94,20 @@ def worker_squeeze(ctx: Dict[str, Any], clock: Optional[Dict[str, Any]] = None) 
     stale_lim = 45 * 60 if clock.get("closed") else SQUEEZE_STALE_SEC
     if not task_alive:
         issues.append("Big Run scan task is dead")
-    if age is not None and age > stale_lim and not clock.get("closed"):
+    offline_now = False
+    try:
+        from offline_mode import live_market_blocked
+
+        offline_now = bool(live_market_blocked())
+    except Exception:
+        offline_now = False
+    if offline_now:
+        notes.append("Big Run parked — OFFLINE (no live Yahoo scan)")
+    elif age is not None and age > stale_lim and not clock.get("closed"):
         issues.append(f"Big Run last scan {int(age)}s ago (stale)")
     elif clock.get("closed") and age is not None and age > stale_lim:
         notes.append(f"Big Run last scan {int(age // 60)}m ago — weekend/overnight pause is expected")
-    if last_scan is None:
+    if last_scan is None and not offline_now:
         if clock.get("closed"):
             notes.append("Big Run has not scanned yet this closed session")
         else:
@@ -141,6 +150,14 @@ def worker_sources() -> Dict[str, Any]:
         from multi_source_flow_tracker import multi_source_tracker
 
         names = list(getattr(multi_source_tracker, "available_sources", None) or [])
+        try:
+            from offline_mode import live_market_blocked
+
+            if live_market_blocked():
+                notes.append("live fetches blocked — yfinance not required")
+                return {"ok": True, "available": names or ["offline_snapshot"], "issues": issues, "notes": notes}
+        except Exception:
+            pass
         if not names:
             issues.append("no data sources listed")
         elif "yfinance" not in [str(n).lower() for n in names] and "yahoo" not in str(names).lower():
@@ -153,6 +170,17 @@ def worker_sources() -> Dict[str, Any]:
             cool = float(st.get("backoff_remaining_seconds") or 0)
             if cool > 0:
                 notes.append(f"Yahoo cooling {int(cool)}s — holding last quote (Stage A, not a dead site)")
+        except Exception:
+            pass
+        try:
+            from offline_mode import live_market_blocked, status_dict
+
+            if live_market_blocked():
+                off = status_dict()
+                notes.append(
+                    "OFFLINE — last-good snapshot, not live Yahoo. Boss sits out."
+                    + (f" snapshot {int(off['snapshot_age_sec'])}s old" if off.get("snapshot_age_sec") is not None else "")
+                )
         except Exception:
             pass
     except Exception as e:
@@ -227,6 +255,13 @@ class DeskHealthBoss:
         stale = bool(not sq.get("task_alive")) or (
             age is not None and age > stale_lim and not clock.get("closed")
         )
+        try:
+            from offline_mode import live_market_blocked
+
+            if live_market_blocked():
+                stale = False
+        except Exception:
+            pass
         if stale and (time.time() - self._last_nudge_squeeze) > 8 * 60:
             actions.append("NUDGE_SQUEEZE")
             reports.append("Big Run scan stale — nudging a scan pass")
@@ -248,10 +283,22 @@ class DeskHealthBoss:
             status = "UNHEALTHY"
         elif reports:
             status = "DEGRADED"
-        elif clock.get("closed"):
-            status = "CLOSED"
         else:
-            status = "HEALTHY"
+            try:
+                from offline_mode import live_market_blocked
+
+                offline_desk = live_market_blocked()
+            except Exception:
+                offline_desk = False
+            if offline_desk:
+                status = "OFFLINE"
+            elif clock.get("closed"):
+                status = "CLOSED"
+            else:
+                status = "HEALTHY"
+
+        if status == "OFFLINE":
+            notes.append("OFFLINE mode — last-good / stale snapshot. Not live prints. Not a crash.")
 
         snap = {
             "mode": "desk_health",

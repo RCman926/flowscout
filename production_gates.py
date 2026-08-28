@@ -17,6 +17,16 @@ def odte_trade_bar() -> Dict[str, Any]:
     notes: List[str] = []
 
     try:
+        from offline_mode import live_market_blocked
+
+        if live_market_blocked():
+            block = True
+            flags.append("OFFLINE_STALE")
+            notes.append("Offline/stale desk — no new 0DTE from last-good quotes")
+    except Exception:
+        pass
+
+    try:
         from trade_health import trade_health
 
         st = (trade_health.last or {}).get("status") or "HEALTHY"

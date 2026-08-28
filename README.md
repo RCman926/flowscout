@@ -32,7 +32,36 @@ Truth ledger = Boss shadow (buy@ask → mark@bid). Legacy `/performance-stats` a
 
 ## Offline / cloud
 
-Needs network for delayed Yahoo (and optional Polygon/IBKR). Hosting in the cloud does **not** unlock offline trading. Stay local for Stage A.
+Needs network for delayed Yahoo (and optional Polygon/IBKR) when you want **live** prints.
+
+**Offline mode** boots the local desk with no live market fetches. It is not live trading and it does not invent prices.
+
+```bat
+set FLOWSCOUT_OFFLINE=1
+START_FLOWSCOUT.bat
+```
+
+Or in `.env`: `FLOWSCOUT_OFFLINE=1` then start as usual.
+
+What you get:
+
+- FastAPI still serves `http://localhost:8000/` and the WebSocket still connects
+- Last-good snapshot from `offline_snapshot.json` (written whenever a live Yahoo cycle succeeds)
+- UI shows **OFFLINE / stale** — never a fake “LIVE” tape
+- Boss sits out (`NO_TRADE`, `can_auto_paper=false`). Last-good Boss paint stays on the card
+- Paper stays **DISARMED**. IBKR stays off. No paid APIs required
+- A second offline boot still works after the process restarts (same snapshot file)
+
+No snapshot yet (first boot never saw Yahoo): the desk still loads; Boss card says sit-out; freshness badge says OFFLINE.
+
+Hosting in the cloud does **not** unlock offline trading. Stay local for Stage A.
+
+## Tests
+
+```bat
+python qa/stage_a_smoke.py
+python qa/offline_smoke.py
+```
 
 ## Config
 

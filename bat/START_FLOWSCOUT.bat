@@ -20,6 +20,10 @@ if not exist "%PYEXE%" (
 )
 if not defined IBKR_ENABLED set IBKR_ENABLED=0
 
+if /I "%FLOWSCOUT_OFFLINE%"=="1" (
+  echo OFFLINE MODE: last-good snapshot only. No live Yahoo. Paper stays DISARMED.
+)
+
 set OK=0
 
 rem Always restart the server so Python edits take effect. The dashboard

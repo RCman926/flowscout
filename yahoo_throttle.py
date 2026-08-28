@@ -74,6 +74,13 @@ class YahooThrottle:
             self._cache[key] = (data, time.time())
 
     def can_fetch(self, min_interval: float = MIN_INTERVAL_SECONDS) -> Tuple[bool, str]:
+        try:
+            from offline_mode import live_market_blocked
+
+            if live_market_blocked():
+                return False, "offline — not fetching Yahoo"
+        except Exception:
+            pass
         now = time.time()
         with self._lock:
             if now < self._backoff_until:

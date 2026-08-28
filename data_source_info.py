@@ -22,21 +22,34 @@ def get_data_source_info():
     
     # Check yfinance
     try:
-        ticker = yf.Ticker("SPY")
-        exp_dates = ticker.options
-        info['sources']['yfinance'] = {
-            'available': True,
-            'status': 'OK' if exp_dates else 'No data',
-            'expirations_available': len(exp_dates) if exp_dates else 0,
-            'note': 'Free but may have delays and rate limits'
-        }
-    except Exception as e:
+        from offline_mode import live_market_blocked
+
+        yahoo_off = live_market_blocked()
+    except Exception:
+        yahoo_off = False
+    if yahoo_off:
         info['sources']['yfinance'] = {
             'available': False,
-            'status': 'Error',
-            'error': str(e),
-            'note': 'May need cache cleared'
+            'status': 'OFFLINE',
+            'note': 'Live Yahoo disabled — serving last-good snapshot as STALE (not live prints)'
         }
+    else:
+        try:
+            ticker = yf.Ticker("SPY")
+            exp_dates = ticker.options
+            info['sources']['yfinance'] = {
+                'available': True,
+                'status': 'OK' if exp_dates else 'No data',
+                'expirations_available': len(exp_dates) if exp_dates else 0,
+                'note': 'Free but may have delays and rate limits'
+            }
+        except Exception as e:
+            info['sources']['yfinance'] = {
+                'available': False,
+                'status': 'Error',
+                'error': str(e),
+                'note': 'May need cache cleared'
+            }
     
     # Check IBKR
     try:
