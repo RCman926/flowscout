@@ -3707,6 +3707,7 @@
                         <span style="color: var(--text-muted); font-size: 0.7rem;">Source:</span>
                         <strong id="data-source" style="color: #3b82f6; font-weight: 800; font-size: 0.8rem; text-shadow: 0 0 10px rgba(59, 130, 246, 0.5);">yfinance</strong>
                     </div>
+                    <span id="cloud-feed-note" style="display:none; padding: 6px 12px; border-radius: 8px; font-size: 0.68rem; font-weight: 700; color: #fbbf24; background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.35); max-width: 420px;">Cloud: delayed Yahoo — not live</span>
                     <!-- Telegram Toggle Switch -->
                     <div style="display: flex; align-items: center; gap: 8px; padding: 6px 12px; background: rgba(21, 25, 35, 0.6); border-radius: 8px; border: 1px solid rgba(59, 130, 246, 0.3);">
                         <span style="color: var(--text-muted); font-size: 0.7rem; font-weight: 600;">📱 Telegram:</span>
@@ -6992,6 +6993,20 @@
         }
         setTimeout(refreshDeskHealth, 2500);
         setInterval(refreshDeskHealth, 15000);
+        async function refreshCloudRuntime() {
+            try {
+                const r = await fetch('/api/runtime', { cache: 'no-store' });
+                const j = await r.json();
+                window._flowscoutRuntime = j;
+                const el = document.getElementById('cloud-feed-note');
+                if (el && j && j.cloud) {
+                    el.style.display = 'inline';
+                    el.textContent = j.feed_note || 'Cloud: delayed Yahoo — not live. Paper DISARMED.';
+                }
+            } catch (e) { /* local desk without /api/runtime is fine */ }
+        }
+        setTimeout(refreshCloudRuntime, 800);
+        setInterval(refreshCloudRuntime, 60000);
         setTimeout(refreshTradeHealth, 2800);
         setInterval(refreshTradeHealth, 15000);
         async function refreshDeskOrg() {
@@ -7017,12 +7032,21 @@
             const btn = document.getElementById('boss-arm-btn');
             const currentlyArmed = btn && btn.classList.contains('armed');
             try {
+                const token = localStorage.getItem('auth_token') || localStorage.getItem('desk_token') || '';
+                const headers = { 'Content-Type': 'application/json' };
+                if (token) headers['Authorization'] = 'Bearer ' + token;
                 const res = await fetch('/api/paper-trading/arm', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers,
                     body: JSON.stringify({ armed: !currentlyArmed })
                 });
-                const data = await res.json();
+                const data = await res.json().catch(() => ({}));
+                if (res.status === 403) {
+                    updateBossArmButton(false);
+                    const note = document.getElementById('boss-arm-note');
+                    if (note) note.textContent = data.error || data.message || 'Cloud ARM locked — stranger with this URL cannot auto-enter.';
+                    return;
+                }
                 updateBossArmButton(!!data.armed);
             } catch (e) {
                 console.warn('Paper arm toggle failed', e);
@@ -7330,9 +7354,16 @@
             if (venueEl) venueEl.textContent = boss.venue || 'local_sim';
             if (dqEl) {
                 let dq = boss.data_quality || 'delayed';
-                const delayM = ctx.data_delay_minutes;
-                if (delayM != null) dq += ` · ${Number(delayM).toFixed(0)}m`;
-                else if (ctx.data_delay_warning) dq += ' · stale warn';
+                if (ctx.yahoo_cooling || ctx.data_freshness === 'THROTTLED') {
+                    dq = 'throttled · last paint · not live';
+                } else {
+                    const delayM = ctx.data_delay_minutes;
+                    if (delayM != null) dq += ` · ${Number(delayM).toFixed(0)}m`;
+                    else if (ctx.data_delay_warning) dq += ' · stale warn';
+                    if (ctx.quotes_live === false || (window._flowscoutRuntime && window._flowscoutRuntime.cloud)) {
+                        dq += ' · not live';
+                    }
+                }
                 dqEl.textContent = dq;
             }
             if (fillModelEl) fillModelEl.textContent = (boss.fill_model || 'buy_ask_sell_bid').replace(/_/g, ' ');
@@ -8659,7 +8690,13 @@
             
             // Update data freshness badge
             const freshnessBadge = document.getElementById('freshness-badge');
-            if (freshnessBadge && !(data.lite_tick || data.yahoo_cooling)) {
+            if (freshnessBadge) {
+                const throttled = data.lite_tick || data.yahoo_cooling || data.data_freshness === 'THROTTLED' || data.data_freshness === 'STALE';
+                if (throttled) {
+                    freshnessBadge.textContent = 'Throttled · last paint';
+                    freshnessBadge.style.background = 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)';
+                    freshnessBadge.title = 'Yahoo cooling (cloud IPs get throttled). Holding last-good quotes. Not live. Boss sits out.';
+                } else {
                 const msFresh = data.market_status || {};
                 const sessionFresh = String(msFresh.session || '').toUpperCase();
                 const closedSnap = data.data_freshness === 'CLOSED' || data.snapshot_mode ||
@@ -8702,6 +8739,7 @@
                         freshnessBadge.textContent = 'Fresh: --';
                         freshnessBadge.style.background = 'rgba(148, 163, 184, 0.3)';
                     }
+                }
                 }
             }
             
@@ -13669,11 +13707,11 @@
             if (DEBUG_MODE) console.log('[updateDataSourceDisplay] Updating with:', { source, rotationInfo });
             
             const sourceMap = {
-                'IBKR': { icon: '🟢', name: 'IBKR', desc: 'Real-time broker' },
-                'Polygon': { icon: '🔵', name: 'Polygon', desc: 'Primary cloud options (Massive)' },
-                'Finnhub': { icon: '🟡', name: 'Finnhub', desc: 'Backup quotes' },
-                'AlphaVantage': { icon: '🟠', name: 'Alpha Vantage', desc: 'Backup basic' },
-                'yfinance': { icon: '⚪', name: 'yfinance', desc: 'Backup / high-volume free pings' }
+                'IBKR': { icon: '🟢', name: 'IBKR', desc: 'Real-time broker (local TWS — off in cloud)' },
+                'Polygon': { icon: '🔵', name: 'Polygon', desc: 'Optional paid upgrade — not required, not the cloud default' },
+                'Finnhub': { icon: '🟡', name: 'Finnhub', desc: 'Optional backup (limited options)' },
+                'AlphaVantage': { icon: '🟠', name: 'Alpha Vantage', desc: 'Optional backup (limited options)' },
+                'yfinance': { icon: '⚪', name: 'yfinance', desc: 'Delayed Yahoo (free). Cloud IPs get throttled — not live.' }
             };
             const canon = (name) => {
                 const k = String(name || '').toLowerCase().replace(/\s+/g, '').replace('_', '');
@@ -13696,7 +13734,7 @@
             const apiStatus = rotationInfo?.api_status || {};
             const availableSources = (rotationInfo?.available_sources || Object.keys(apiStatus).filter(k => apiStatus[k]?.available) || [source || 'yfinance']).map(canon);
             const currentSource = canon(source || rotationInfo?.current_source || 'yfinance');
-            const primarySource = canon(rotationInfo?.primary_source || availableSources[0] || 'Polygon');
+            const primarySource = canon(rotationInfo?.primary_source || availableSources[0] || 'yfinance');
             const coldSources = rotationInfo?.cold_sources || {};
             const planLimited = rotationInfo?.plan_limited || {};
             const rotationInterval = rotationInfo?.rotation_interval || 3;

@@ -89,7 +89,11 @@ class MultiSourceFlowTracker:
         self.last_source_used = {}
         
         # Rotation tracking with persistent storage
-        self.rotation_stats_file = "api_rotation_stats.json"
+        try:
+            from cloud_runtime import state_path
+            self.rotation_stats_file = str(state_path("api_rotation_stats.json"))
+        except Exception:
+            self.rotation_stats_file = "api_rotation_stats.json"
         self.source_rotation_index = {}  # Track rotation per symbol
         self.source_use_count = {}  # Track how many times each source was used (per symbol)
         self.total_source_use_count = {}  # Track total uses across all symbols
@@ -123,8 +127,32 @@ class MultiSourceFlowTracker:
     def _detect_available_sources(self):
         """Detect which data sources are available and configured"""
         self.available_sources = []
-        
-        # Priority: live broker → paid cloud options → secondary APIs → Yahoo last
+
+        try:
+            from cloud_runtime import allow_source_for_0dte, is_cloud_mode
+            cloud = is_cloud_mode()
+        except Exception:
+            cloud = False
+
+            def allow_source_for_0dte(name: str) -> bool:
+                return True
+
+        if cloud:
+            # Always-on host: delayed Yahoo is the working free path.
+            # IBKR stays off. Polygon/Finnhub/AV are not required.
+            if allow_source_for_0dte("yfinance") and self._check_yfinance_available():
+                self.available_sources.append("yfinance")
+            if allow_source_for_0dte("Polygon") and self._check_polygon_available():
+                self.available_sources.insert(0, "Polygon")
+            if not self.available_sources:
+                self.available_sources = ["yfinance"]
+            logger.info(
+                "Cloud 0DTE feed (priority): %s — delayed Yahoo, not live Polygon",
+                ", ".join(self.available_sources),
+            )
+            return
+
+        # Local Stage A: live broker → paid cloud options → secondary APIs → Yahoo last
         all_sources = [
             ('Polygon', self._check_polygon_available),
             ('Finnhub', self._check_finnhub_available),
@@ -520,6 +548,11 @@ class MultiSourceFlowTracker:
             'yfinance': self._get_yfinance_data
         }
         warm = [s for s in self._warm_sources() if s != 'IBKR']  # IBKR tried above
+        try:
+            from cloud_runtime import allow_source_for_0dte
+            warm = [s for s in warm if allow_source_for_0dte(s)]
+        except Exception:
+            pass
         if not warm:
             warm = [s for s in self.available_sources if s != 'IBKR'] or ['yfinance']
 
@@ -1182,7 +1215,7 @@ class MultiSourceFlowTracker:
             if gated is not None:
                 return gated
 
-            ok, reason = yahoo_throttle.can_fetch(min_interval=MIN_INTERVAL_SECONDS)
+            ok, reason = yahoo_throttle.can_fetch()
             if not ok:
                 stale = yahoo_throttle.get_stale(cache_key)
                 if stale is None and cache_key in self.cache:

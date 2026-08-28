@@ -346,6 +346,15 @@ async def lifespan(app: FastAPI):
         os.chdir(script_dir)
     logger.info(f"Working directory: {os.getcwd()}")
     
+    unattended_arm = False
+    try:
+        from cloud_runtime import apply_cloud_boot_policy, unattended_may_auto_arm
+        apply_cloud_boot_policy()
+        unattended_arm = unattended_may_auto_arm()
+    except Exception as e:
+        logger.warning(f"cloud boot policy: {e}")
+        unattended_arm = os.getenv("UNATTENDED", "").lower() in ("1", "true", "yes")
+
     try:
         from session_hygiene import apply_session_hygiene
         apply_session_hygiene()
@@ -353,7 +362,7 @@ async def lifespan(app: FastAPI):
         logger.warning(f"session hygiene: {e}")
     
     logger.info("📊 Initializing background tasks...")
-    if os.getenv("UNATTENDED", "").lower() in ("1", "true", "yes"):
+    if unattended_arm:
         try:
             if paper_arm_state:
                 paper_arm_state.set_armed(True)
@@ -990,24 +999,29 @@ def _get_comprehensive_rotation_info(current_source: str, symbol: str = "SPY") -
         # Check yfinance (always available, no key needed)
         configured_sources.append('yfinance')
         
-        # Check Polygon
+        # Check Polygon (optional upgrade — not implied by a leftover env key in cloud)
         from config_loader import get_api_key
-        if get_api_key('POLYGON_API_KEY') or get_api_key('MASSIVE_API_KEY'):
+        try:
+            from cloud_runtime import allow_source_for_0dte
+        except Exception:
+            def allow_source_for_0dte(name: str) -> bool:
+                return True
+        if (get_api_key('POLYGON_API_KEY') or get_api_key('MASSIVE_API_KEY')) and allow_source_for_0dte('Polygon'):
             if 'Polygon' not in available_sources:
                 configured_sources.append('Polygon')
         
         # Check Finnhub
-        if get_api_key('FINNHUB_API_KEY'):
+        if get_api_key('FINNHUB_API_KEY') and allow_source_for_0dte('Finnhub'):
             if 'Finnhub' not in available_sources:
                 configured_sources.append('Finnhub')
         
         # Check Alpha Vantage
-        if get_api_key('ALPHA_VANTAGE_API_KEY'):
+        if get_api_key('ALPHA_VANTAGE_API_KEY') and allow_source_for_0dte('AlphaVantage'):
             if 'AlphaVantage' not in available_sources:
                 configured_sources.append('AlphaVantage')
         
         # Check IBKR (if configured)
-        if os.getenv('IBKR_HOST') or get_api_key('IBKR_HOST'):
+        if (os.getenv('IBKR_HOST') or get_api_key('IBKR_HOST')) and allow_source_for_0dte('IBKR'):
             if 'IBKR' not in available_sources:
                 configured_sources.append('IBKR')
         
@@ -1759,6 +1773,21 @@ async def background_data_updater(update_interval: float = 2.5):
                                     # is what makes the page jump while Yahoo waits.
                                     last_boss = cached.get('boss_decision') if isinstance(cached.get('boss_decision'), dict) else None
                                     last_signal = cached.get('signal') if isinstance(cached.get('signal'), dict) else None
+                                    sit_boss = None
+                                    if last_boss:
+                                        sit_boss = dict(last_boss)
+                                        sit_boss['action'] = 'NO_TRADE'
+                                        sit_boss['can_auto_paper'] = False
+                                        sit_boss['executable'] = False
+                                        sit_boss['advisory_only'] = True
+                                        vetoes = list(sit_boss.get('hard_vetoes') or [])
+                                        if 'CLOUD_YAHOO_THROTTLED' not in vetoes:
+                                            vetoes.append('CLOUD_YAHOO_THROTTLED')
+                                        sit_boss['hard_vetoes'] = vetoes
+                                        sit_boss['reason'] = (
+                                            (sit_boss.get('reason') or '')
+                                            + ' | Yahoo throttled — sitting out, last-good paint only'
+                                        ).strip(' |')
                                     warm_data = {
                                         'stock_price': spot,
                                         'regular_close': cached.get('regular_close') or spot,
@@ -1768,19 +1797,23 @@ async def background_data_updater(update_interval: float = 2.5):
                                         'all_puts': cached.get('all_puts') or [],
                                         'market_status': market_status,
                                         'data_source': _last_known_data_source.get(symbol, primary_api),
-                                        'data_freshness': cached.get('data_freshness') or 'RECENT',
+                                        'data_freshness': 'THROTTLED',
+                                        'data_delay_minutes': 15,
+                                        'data_delay_warning': True,
+                                        'quotes_live': False,
                                         'lite_tick': True,
                                         'yahoo_cooling': True,
+                                        'feed_note': 'Yahoo cooling — last-good paint, not live quotes',
                                         'signal': last_signal or {
-                                            'action': (last_boss or {}).get('action', 'NO_TRADE'),
+                                            'action': 'NO_TRADE',
                                             'confidence': (last_boss or {}).get('confidence', 0),
                                         },
                                         'shadow_learning': cached.get('shadow_learning') or {},
                                         'dte': 0 if current_session == 'REGULAR' else cached.get('dte', 0),
                                         'expiration_label': cached.get('expiration_label') or '0DTE',
                                     }
-                                    if last_boss:
-                                        warm_data['boss_decision'] = last_boss
+                                    if sit_boss:
+                                        warm_data['boss_decision'] = sit_boss
                                     if isinstance(_last_expiry_terms.get(symbol), dict) and _last_expiry_terms[symbol].get('buckets'):
                                         warm_data['expiry_terms'] = _last_expiry_terms[symbol]
                                     warm = {
@@ -1841,9 +1874,10 @@ async def background_data_updater(update_interval: float = 2.5):
                                     _last_known_data_source[symbol] = data_source
                                 
                                 # Track data delay info (without annoying warnings)
-                                if data_source.lower() == 'yfinance':
+                                if data_source.lower() in ('yfinance', 'yfinance_fallback', 'yahoo'):
                                     flow_data['data_delay_warning'] = True
                                     flow_data['data_delay_minutes'] = 15  # Approximate delay
+                                    flow_data['quotes_live'] = False
                                 else:
                                     flow_data['data_delay_warning'] = False
                                     flow_data['data_delay_minutes'] = 0
@@ -4549,8 +4583,9 @@ async def background_data_updater(update_interval: float = 2.5):
                             'dte': (0 if current_session == 'REGULAR' else 1),  # Add DTE number
                             # FIXED: Ensure data_source is never 'unknown' - use last known or flow_data source
                             'data_source': flow_data.get('data_source') or _last_known_data_source.get(symbol, 'yfinance'),
-                            'data_delay_warning': flow_data.get('data_delay_warning', False),  # True if using delayed data source
-                            'data_delay_minutes': flow_data.get('data_delay_minutes', 0),  # Delay in minutes (15-20 for yfinance)
+                            'data_delay_warning': flow_data.get('data_delay_warning', True),
+                            'data_delay_minutes': flow_data.get('data_delay_minutes', 15),
+                            'quotes_live': False,
                             'rotation_info': _get_comprehensive_rotation_info(flow_data.get('data_source') or _last_known_data_source.get(symbol, 'yfinance'), symbol),  # Enhanced rotation info with all APIs
                             'error': flow_data.get('error'),  # Pass error to client
                             'market_status': market_status,  # Add market status
@@ -5650,6 +5685,36 @@ async def get_icon(size: str):
         }
     )
 
+def _runtime_for_health():
+    try:
+        from cloud_runtime import runtime_snapshot
+        return runtime_snapshot()
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+
+@app.get("/healthz")
+async def healthz():
+    """Railway / Docker liveness — always 200 once the process is serving."""
+    try:
+        from cloud_runtime import runtime_snapshot
+        body = runtime_snapshot()
+        body["ok"] = True
+        return JSONResponse(body)
+    except Exception:
+        return JSONResponse({"ok": True, "status": "up"})
+
+
+@app.get("/api/runtime")
+async def get_runtime():
+    """Public, no secrets: cloud vs local, feed, paper arm, IBKR."""
+    try:
+        from cloud_runtime import runtime_snapshot
+        return JSONResponse(runtime_snapshot())
+    except Exception as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
+
+
 @app.get("/health")
 async def health_check():
     """Enhanced health check endpoint with comprehensive system status"""
@@ -5734,6 +5799,7 @@ async def health_check():
                 "data_sources": data_sources,
                 "performance": performance_info,
                 "api_status": api_status_detailed,
+                "runtime": _runtime_for_health(),
                 "background_updater": {
                     "running": hasattr(background_data_updater, '_loop_count'),
                     "iterations": getattr(background_data_updater, '_loop_count', 0)
@@ -6180,6 +6246,15 @@ async def get_paper_trading_status():
 async def execute_paper_trade(request: Request):
     """Execute a paper trade on the shared singleton"""
     try:
+        from cloud_runtime import desk_write_permitted, is_cloud_mode
+        if is_cloud_mode() and not desk_write_permitted(request):
+            return JSONResponse(
+                {
+                    "success": False,
+                    "error": "Cloud desk: paper execute requires FLOWSCOUT_DESK_TOKEN or a logged-in session.",
+                },
+                status_code=403,
+            )
         from paper_trading_engine import paper_trading_engine as paper_engine
         data = await request.json()
         if paper_engine is None:
@@ -6210,6 +6285,16 @@ async def set_paper_arm(request: Request):
         from paper_arm_state import paper_arm_state as arm
         data = await request.json()
         armed = bool(data.get('armed', False))
+        from cloud_runtime import desk_write_permitted, is_cloud_mode
+        if armed and is_cloud_mode() and not desk_write_permitted(request):
+            return JSONResponse(
+                {
+                    "armed": False,
+                    "error": "Cloud desk: ARM is locked. Set FLOWSCOUT_DESK_TOKEN (or log in). A public URL cannot auto-enter.",
+                    "message": "Paper auto disarmed — stranger with the URL cannot ARM",
+                },
+                status_code=403,
+            )
         return JSONResponse(arm.set_armed(armed))
     except Exception as e:
         logger.error(f"Error setting paper arm: {e}", exc_info=True)
@@ -6405,6 +6490,15 @@ async def get_performance_trades():
 async def register_user(request: Request):
     """Register a new user"""
     try:
+        from cloud_runtime import public_register_allowed
+        if not public_register_allowed():
+            return JSONResponse(
+                content={
+                    'success': False,
+                    'message': 'Public registration is disabled on the cloud desk. Set FLOWSCOUT_ALLOW_REGISTER=1 only if you intend to allow it.',
+                },
+                status_code=403,
+            )
         data = await request.json()
         username = data.get('username', '').strip()
         password = data.get('password', '')
@@ -6798,9 +6892,10 @@ async def restart_trade_history():
 if __name__ == "__main__":
     # Stage A entry — required for START_FLOWSCOUT.bat / Desktop shortcut
     import uvicorn
+    from cloud_runtime import apply_cloud_boot_policy, listen_host_port
 
-    host = os.getenv("FLOWSCOUT_HOST", "127.0.0.1")
-    port = int(os.getenv("FLOWSCOUT_PORT", "8000"))
+    apply_cloud_boot_policy()
+    host, port = listen_host_port()
     print(f"FlowScout listening on http://{host}:{port}/", flush=True)
     uvicorn.run(
         app,

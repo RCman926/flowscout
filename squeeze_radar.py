@@ -19,8 +19,13 @@ from typing import Any, Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
-WATCH_FILE = "squeeze_watchlist.json"
-STATE_FILE = "squeeze_radar_state.json"
+try:
+    from cloud_runtime import state_path
+    WATCH_FILE = str(state_path("squeeze_watchlist.json"))
+    STATE_FILE = str(state_path("squeeze_radar_state.json"))
+except Exception:
+    WATCH_FILE = "squeeze_watchlist.json"
+    STATE_FILE = "squeeze_radar_state.json"
 COOLDOWN_SEC = 11 * 60
 SCAN_PAUSE_SEC = 1.35  # deep-scan pacing; sweep itself is cheap screener HTTP
 # Sweep = whole Yahoo mover market (cheap). Deep = full workers on a rotating slice.

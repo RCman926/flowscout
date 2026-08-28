@@ -16,7 +16,11 @@ from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
-JOURNAL_FILE = "boss_decision_journal.json"
+try:
+    from cloud_runtime import state_path
+    JOURNAL_FILE = str(state_path("boss_decision_journal.json"))
+except Exception:
+    JOURNAL_FILE = "boss_decision_journal.json"
 MAX_ENTRIES = 400
 MIN_SECONDS_BETWEEN_DUPES = 45.0  # even if reason text wobbles
 

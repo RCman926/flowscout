@@ -31,6 +31,20 @@ def odte_trade_bar() -> Dict[str, Any]:
         pass
 
     try:
+        from cloud_runtime import is_cloud_mode, yahoo_is_throttled
+
+        if is_cloud_mode():
+            floor = max(floor, 70)
+            flags.append("CLOUD_DELAYED_YAHOO")
+            notes.append("Cloud delayed Yahoo — sit out more; quotes are not live")
+            if yahoo_is_throttled():
+                block = True
+                flags.append("CLOUD_YAHOO_THROTTLED")
+                notes.append("Yahoo cooling/throttled — NO_TRADE until a fresh chain")
+    except Exception:
+        pass
+
+    try:
         from shadow_learning_engine import shadow_learning_engine as eng
 
         s = eng.summary()

@@ -5,8 +5,9 @@ TWELVE_DATA_API_KEY=your_twelve_key_here
 ALPHA_VANTAGE_API_KEY=your_key_here
 
 # === OPTIONS DATA APIs (Polygon.io) ===
-# Polygon.io API key (recommended for real-time options with Greeks)
-# Get your key at: https://polygon.io/
+# Polygon.io API key (OPTIONAL later upgrade — not required for local or cloud)
+# Free Polygon does not give delayed quotes. Cloud default is delayed Yahoo.
+# Get a paid key at: https://polygon.io/  — then optionally set FLOWSCOUT_CLOUD_FEED=polygon
 POLYGON_API_KEY=your_polygon_api_key_here
 # Alternative name (also supported)
 MASSIVE_API_KEY=your_polygon_api_key_here
@@ -23,12 +24,25 @@ REDDIT_SECRET=your_reddit_secret
 REDDIT_USER_AGENT=ShortSqueezeScanner/1.0
 
 # === INTERACTIVE BROKERS (IBKR) Settings ===
+# Cloud / Docker: leave 0. Local TWS only.
+IBKR_ENABLED=0
 IBKR_HOST=127.0.0.1
 IBKR_PORT=4001
 
 # === APP SETTINGS ===
 APP_MODE=production
 DEBUG=False
+
+# === ALWAYS-ON CLOUD (Railway / Docker) ===
+# Set automatically by the Docker image. Do not put secrets in git.
+# FLOWSCOUT_CLOUD=1
+# FLOWSCOUT_HOST=0.0.0.0
+# FLOWSCOUT_DATA_DIR=/data
+# Optional: lock ARM on a public URL (if unset, cloud ARM is refused)
+# FLOWSCOUT_DESK_TOKEN=
+# Optional later upgrade — NEVER required. Free Polygon has no delayed quotes.
+# FLOWSCOUT_CLOUD_FEED=yfinance
+# UNATTENDED does not auto-arm paper in cloud.
 
 # === TELEGRAM NOTIFICATIONS ===
 # Telegram bot token (from @BotFather)

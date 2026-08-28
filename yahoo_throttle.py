@@ -22,6 +22,17 @@ CLOSED_SESSION_MIN_INTERVAL = 120.0
 BACKOFF_STEPS = (5.0, 15.0, 45.0, 120.0, 300.0)
 
 
+def _effective_min_interval(override: Optional[float] = None) -> float:
+    if override is not None:
+        return float(override)
+    try:
+        from cloud_runtime import yahoo_min_interval_seconds
+
+        return float(yahoo_min_interval_seconds())
+    except Exception:
+        return MIN_INTERVAL_SECONDS
+
+
 class YahooThrottle:
     def __init__(self) -> None:
         self._lock = threading.Lock()
@@ -42,7 +53,7 @@ class YahooThrottle:
             now = time.time()
             return {
                 **self._stats,
-                "min_interval_seconds": MIN_INTERVAL_SECONDS,
+                "min_interval_seconds": _effective_min_interval(),
                 "cache_ttl_seconds": CACHE_TTL_SECONDS,
                 "backoff_remaining_seconds": max(0.0, round(self._backoff_until - now, 1)),
                 "backoff_level": self._backoff_level,
@@ -73,7 +84,8 @@ class YahooThrottle:
         with self._lock:
             self._cache[key] = (data, time.time())
 
-    def can_fetch(self, min_interval: float = MIN_INTERVAL_SECONDS) -> Tuple[bool, str]:
+    def can_fetch(self, min_interval: Optional[float] = None) -> Tuple[bool, str]:
+        min_interval = _effective_min_interval(min_interval)
         now = time.time()
         with self._lock:
             if now < self._backoff_until:
@@ -122,7 +134,7 @@ class YahooThrottle:
         cache_key: str,
         fetch_fn: Callable[[], Any],
         *,
-        min_interval: float = MIN_INTERVAL_SECONDS,
+        min_interval: Optional[float] = None,
         cache_ttl: float = CACHE_TTL_SECONDS,
         allow_stale_on_block: bool = True,
     ) -> Tuple[Optional[Any], str]:

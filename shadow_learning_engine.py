@@ -18,7 +18,11 @@ from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
-SHADOW_FILE = "shadow_learning_trades.json"
+try:
+    from cloud_runtime import state_path
+    SHADOW_FILE = str(state_path("shadow_learning_trades.json"))
+except Exception:
+    SHADOW_FILE = "shadow_learning_trades.json"
 # Asymmetric Stage A grading: tight losses, let winners breathe / trail
 STOP_PCT = 15.0           # hard loss — tight risk
 HARD_WIN_PCT = 100.0      # bank monsters at +100% (can be higher peak before trail)
