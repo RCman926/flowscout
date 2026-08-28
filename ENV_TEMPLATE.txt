@@ -45,3 +45,11 @@ PAPER_MAX_OPEN=1
 # Halt new Boss paper entries after this much realized loss today (USD)
 PAPER_DAILY_LOSS_HALT=500
 PAPER_COOLDOWN_SECONDS=120
+
+# === OFFLINE DESK ===
+# 1 = boot without live Yahoo / Polygon / IBKR. Serves last-good snapshot as STALE.
+# Paper stays DISARMED. Boss will not open tickets from stale quotes.
+# Same machine, second boot still works if offline_snapshot.json exists.
+FLOWSCOUT_OFFLINE=0
+# Test hook: treat Yahoo as unreachable (same sit-out path as FLOWSCOUT_OFFLINE)
+# YAHOO_DISABLED=0

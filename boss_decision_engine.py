@@ -40,6 +40,8 @@ class BossDecisionEngine:
         now: Optional[datetime] = None,
         paper_armed: bool = False,
         session_structure: Optional[Dict] = None,
+        data_stale: bool = False,
+        offline: bool = False,
     ) -> Dict[str, Any]:
         flow_signal = flow_signal or {}
         flow_action = flow_signal.get("action", "NO_TRADE")
@@ -317,6 +319,32 @@ class BossDecisionEngine:
             "contracts": contracts if tradeable else 0,
             "manager_thesis": direction.get("thesis"),
         }
+        stale = bool(data_stale or offline)
+        if not stale:
+            try:
+                from offline_mode import live_market_blocked, payload_is_stale
+
+                stale = bool(live_market_blocked() or payload_is_stale(options_chain))
+            except Exception:
+                stale = False
+        if stale:
+            try:
+                from offline_mode import sit_out_boss
+
+                prior = dict(self.last_decision) if self.last_decision else decision
+                decision = sit_out_boss(prior)
+            except Exception:
+                decision["action"] = "NO_TRADE"
+                decision["can_auto_paper"] = False
+                decision["executable"] = False
+                decision["paper_armed"] = False
+                decision["offline"] = True
+                decision["stale_paint"] = True
+                decision["data_quality"] = "offline_stale"
+                vetoes = list(decision.get("veto_flags") or [])
+                if "OFFLINE_STALE" not in vetoes:
+                    vetoes.append("OFFLINE_STALE")
+                decision["veto_flags"] = vetoes
         self.last_decision = decision
         return decision
 

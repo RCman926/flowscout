@@ -2026,6 +2026,14 @@ class SqueezeRadar:
         """Sweep Yahoo movers market-wide, then deep-grade a rotating slice."""
         hits: List[Dict[str, Any]] = []
         try:
+            from offline_mode import live_market_blocked
+
+            if live_market_blocked():
+                logger.info("Big Run scan skipped — OFFLINE (no live Yahoo)")
+                return []
+        except Exception:
+            pass
+        try:
             sweep = _sweep_market()
             with self._lock:
                 cursor = int(self._deep_cursor or 0)

@@ -528,6 +528,7 @@
         .status.connected { background: var(--success-color); color: white; }
         .status.disconnected { background: var(--danger-color); color: white; }
         .status.connecting { background: var(--warning-color); color: white; }
+        .status.offline { background: #d97706; color: white; }
         
         .update-speed, .data-source-label {
             color: var(--text-secondary);
@@ -1100,6 +1101,8 @@
         .desk-health-bar.bad .desk-health-dot { background: #ef4444; }
         .desk-health-bar.idle { border-color: rgba(56,189,248,0.45); color: #bae6fd; }
         .desk-health-bar.idle .desk-health-dot { background: #38bdf8; }
+        .desk-health-bar.offline { border-color: rgba(217,119,6,0.55); color: #fbbf24; }
+        .desk-health-bar.offline .desk-health-dot { background: #d97706; }
         #desk-health-panel {
             display: none; margin: 8px 0 12px; padding: 12px 14px; border-radius: 10px;
             border: 1px solid rgba(148,163,184,0.3); background: rgba(15,23,42,0.9); color: #e2e8f0; font-size: 0.8rem;
@@ -5057,7 +5060,22 @@
         let currentPage = 1;
         let tradesPerPage = 100;
         
-        function connectionStatusFromMarket(marketStatus, hasData) {
+        function isOfflineDesk(data, marketStatus) {
+            data = data || window.lastFlowData || {};
+            marketStatus = marketStatus || {};
+            const freshness = String(data.data_freshness || marketStatus.data_freshness || '').toUpperCase();
+            return !!(data.offline || data.stale || data.stale_paint || marketStatus.offline
+                || freshness === 'OFFLINE' || freshness === 'STALE');
+        }
+
+        function connectionStatusFromMarket(marketStatus, hasData, extra) {
+            extra = extra || {};
+            const data = extra.data || window.lastFlowData || {};
+            if (isOfflineDesk(data, marketStatus) || extra.offline) {
+                return hasData
+                    ? 'Connected — OFFLINE (stale snapshot)'
+                    : 'Connected — OFFLINE (no live quotes)';
+            }
             const session = (marketStatus && (marketStatus.session || marketStatus.status)) || '';
             const closedSessions = ['WEEKEND', 'OVERNIGHT', 'CLOSED'];
             if (closedSessions.includes(String(session).toUpperCase()) || marketStatus?.is_trading === false) {
@@ -5273,9 +5291,10 @@
                         console.log('[WebSocket] ✅ CONNECTION CONFIRMED by server:', message);
                         log('[WebSocket] Connection confirmed by server');
                         const ms = message.market_status || {};
-                        const statusText = connectionStatusFromMarket(ms, false);
-                        // On weekend/overnight don't pretend we are still "loading" live prints
-                        updateStatus('connected', statusText);
+                        const offlineNow = !!(message.offline || ms.offline || message.data_freshness === 'OFFLINE');
+                        window._deskOffline = offlineNow;
+                        const statusText = connectionStatusFromMarket(ms, false, { offline: offlineNow });
+                        updateStatus(offlineNow ? 'offline' : 'connected', statusText);
                         const overlay = document.getElementById('loading-overlay');
                         if (overlay) {
                             const overlayText = document.getElementById('loading-overlay-text') || overlay.querySelector('div:not(.spinner)');
@@ -5283,7 +5302,7 @@
                                 overlayText.textContent = statusText;
                             }
                             const closed = ['WEEKEND', 'OVERNIGHT'].includes(String(ms.session || '').toUpperCase());
-                            if (closed || ms.is_trading === false) {
+                            if (closed || ms.is_trading === false || offlineNow) {
                                 dismissLoadingOverlay();
                             }
                         }
@@ -5355,12 +5374,18 @@
                             log('[WebSocket] First flow_update received - hiding loading overlay');
                             dismissLoadingOverlay();
                             const ms = message.market_status || message.data?.market_status || {};
-                            updateStatus('connected', connectionStatusFromMarket(ms, true));
+                            const offlineNow = isOfflineDesk(message.data, ms);
+                            window._deskOffline = offlineNow;
+                            updateStatus(offlineNow ? 'offline' : 'connected', connectionStatusFromMarket(ms, true, { data: message.data, offline: offlineNow }));
                         } else {
                             // Keep status honest on later updates (e.g. weekend after reconnect)
                             const ms = message.market_status || message.data?.market_status || {};
                             const session = String(ms.session || '').toUpperCase();
-                            if (session === 'WEEKEND' || session === 'OVERNIGHT' || ms.is_trading === false) {
+                            const offlineNow = isOfflineDesk(message.data, ms);
+                            window._deskOffline = offlineNow;
+                            if (offlineNow) {
+                                updateStatus('offline', connectionStatusFromMarket(ms, true, { data: message.data, offline: true }));
+                            } else if (session === 'WEEKEND' || session === 'OVERNIGHT' || ms.is_trading === false) {
                                 updateStatus('connected', connectionStatusFromMarket(ms, true));
                             }
                         }
@@ -5641,8 +5666,20 @@
         function updateStatus(status, text) {
             const statusEl = document.getElementById('connection-status');
             if (statusEl) {
-                statusEl.className = `status ${status}`;
+                statusEl.className = `status-badge status ${status}`;
                 statusEl.textContent = text;
+                if (status === 'offline') {
+                    statusEl.style.background = 'linear-gradient(135deg, #d97706 0%, #b45309 100%)';
+                    statusEl.style.boxShadow = '0 2px 8px rgba(217, 119, 6, 0.5)';
+                } else if (status === 'disconnected' || status === 'connecting') {
+                    statusEl.style.background = status === 'connecting'
+                        ? 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)'
+                        : 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)';
+                    statusEl.style.boxShadow = '0 2px 8px rgba(239, 68, 68, 0.45)';
+                } else {
+                    statusEl.style.background = 'linear-gradient(135deg, #10b981 0%, #059669 100%)';
+                    statusEl.style.boxShadow = '0 2px 8px rgba(16, 185, 129, 0.5)';
+                }
             }
             if (typeof refreshLiveUpdateBadge === 'function') refreshLiveUpdateBadge();
         }
@@ -5661,6 +5698,14 @@
             if (!el) return;
             const wsOpen = typeof ws !== 'undefined' && ws && ws.readyState === WebSocket.OPEN;
             const last = window.lastFlowUpdateAt;
+            const offlineDesk = !!(window._deskOffline || isOfflineDesk(window.lastFlowData || {}, {}));
+            if (offlineDesk) {
+                el.textContent = wsOpen ? 'OFFLINE · stale snapshot' : 'OFFLINE';
+                el.style.color = '#fbbf24';
+                el.style.borderColor = 'rgba(251,191,36,0.55)';
+                el.style.background = 'rgba(120,53,15,0.45)';
+                return;
+            }
             if (!last) {
                 el.textContent = wsOpen ? 'LIVE · waiting…' : 'OFFLINE';
                 el.style.color = wsOpen ? '#38bdf8' : '#f87171';
@@ -6886,6 +6931,7 @@
         function _healthTone(st) {
             if (st === 'HEALTHY') return 'ok';
             if (st === 'CLOSED') return 'idle';
+            if (st === 'OFFLINE') return 'offline';
             if (st === 'DEGRADED') return 'warn';
             return 'bad';
         }
@@ -6903,7 +6949,7 @@
                 const j = await r.json();
                 const st = j.status || 'UNKNOWN';
                 if (bar) {
-                    bar.classList.remove('ok', 'warn', 'bad', 'idle');
+                    bar.classList.remove('ok', 'warn', 'bad', 'idle', 'offline');
                     bar.classList.add(_healthTone(st));
                 }
                 if (label) {
@@ -6911,6 +6957,8 @@
                     const clock = _healthClockBit(j);
                     if (st === 'CLOSED') {
                         label.textContent = 'Desk: CLOSED' + clock + ' (not a crash)';
+                    } else if (st === 'OFFLINE') {
+                        label.textContent = 'Desk: OFFLINE' + clock + ' · stale snapshot (not live)';
                     } else {
                         label.textContent = 'Desk: ' + st + clock + (n ? ' · ' + n + ' issue' + (n === 1 ? '' : 's') : '');
                     }
@@ -7237,12 +7285,15 @@
 
             const ctx = flowCtx || window.lastFlowData || {};
             const armed = !!(paperBoss?.armed ?? boss?.paper_armed);
+            const offlinePaint = !!(boss && (boss.offline || boss.stale_paint || boss.data_quality === 'offline_stale'))
+                || isOfflineDesk(ctx, ctx.market_status || {});
             const _bossSig = [
                 (boss && boss.action) || '',
                 (boss && boss.confidence) || '',
                 (boss && boss.contract && boss.contract.strike) || '',
                 (boss && (boss.hard_vetoes || []).join(',')) || '',
                 armed ? '1' : '0',
+                offlinePaint ? 'off' : 'on',
             ].join('|');
             if (window._bossPaintSig === _bossSig) {
                 updateBossArmButton(armed);
@@ -7260,13 +7311,16 @@
                 actionEl.className = 'boss-action flat';
                 if (confEl) confEl.textContent = '—';
                 const closed = !!(ctx.snapshot_mode || ctx.data_freshness === 'CLOSED' || ctx.market_status?.session === 'WEEKEND');
+                const offlineEmpty = isOfflineDesk(ctx, ctx.market_status || {});
                 const pre = String(ctx.market_status?.session || '').toUpperCase() === 'PRE_MARKET';
                 if (reasonEl) {
-                    reasonEl.textContent = pre
+                    reasonEl.textContent = offlineEmpty
+                        ? 'OFFLINE — no live quotes. Last-good snapshot missing or empty. Boss sits out. Not a crash.'
+                        : (pre
                         ? 'Pre-market prep — Boss waits for RTH open print. Spot/PM ok; Cons/Bal/Agg need liquid chain.'
                         : (closed
                             ? 'Market closed — Boss idle until RTH. Cons/Bal/Agg need a live options chain.'
-                            : 'Waiting for Boss cycle…');
+                            : 'Waiting for Boss cycle…'));
                 }
                 renderBossScenarioShell(
                     scenariosEl,
@@ -7312,7 +7366,8 @@
             }
 
             const action = boss.action || 'NO_TRADE';
-            actionEl.textContent = action;
+            const lastLive = boss.last_live_action && boss.last_live_action !== action ? boss.last_live_action : '';
+            actionEl.textContent = lastLive ? (action + ' · last ' + lastLive) : action;
             actionEl.className = 'boss-action ' + (action === 'BUY_CALLS' ? 'calls' : action === 'BUY_PUTS' ? 'puts' : 'flat');
             if (confEl) confEl.textContent = (boss.confidence != null ? boss.confidence + '%' : '—');
 
@@ -7330,9 +7385,10 @@
             if (venueEl) venueEl.textContent = boss.venue || 'local_sim';
             if (dqEl) {
                 let dq = boss.data_quality || 'delayed';
+                if (offlinePaint || dq === 'offline_stale') dq = 'OFFLINE · stale snapshot';
                 const delayM = ctx.data_delay_minutes;
-                if (delayM != null) dq += ` · ${Number(delayM).toFixed(0)}m`;
-                else if (ctx.data_delay_warning) dq += ' · stale warn';
+                if (delayM != null && !offlinePaint) dq += ` · ${Number(delayM).toFixed(0)}m`;
+                else if (ctx.data_delay_warning && !offlinePaint) dq += ' · stale warn';
                 dqEl.textContent = dq;
             }
             if (fillModelEl) fillModelEl.textContent = (boss.fill_model || 'buy_ask_sell_bid').replace(/_/g, ' ');
@@ -7364,6 +7420,10 @@
                     badges.push({ t: `IV ${r}`, c: r === 'RICH' ? 'red' : r === 'CHEAP' ? 'green' : 'blue' });
                 }
                 if (boss.can_auto_paper) badges.push({ t: 'AUTO OK', c: 'green' });
+                if (offlinePaint || boss.offline || boss.stale_paint) {
+                    badges.push({ t: 'OFFLINE STALE', c: 'amber' });
+                    badges.push({ t: 'SIT OUT', c: 'red' });
+                }
                 _setHtmlIfChanged(badgesEl, badges.map(b => `<span class="boss-status-badge ${b.c}">${b.t}</span>`).join(''));
             }
 
@@ -8662,9 +8722,17 @@
             if (freshnessBadge && !(data.lite_tick || data.yahoo_cooling)) {
                 const msFresh = data.market_status || {};
                 const sessionFresh = String(msFresh.session || '').toUpperCase();
+                const offlineSnap = isOfflineDesk(data, msFresh);
                 const closedSnap = data.data_freshness === 'CLOSED' || data.snapshot_mode ||
                     sessionFresh === 'WEEKEND' || sessionFresh === 'OVERNIGHT';
-                if (closedSnap) {
+                if (offlineSnap) {
+                    const age = data.data_age_seconds;
+                    freshnessBadge.textContent = age != null
+                        ? `OFFLINE · ${Math.max(0, Math.floor(Number(age)))}s stale`
+                        : 'OFFLINE · stale';
+                    freshnessBadge.style.background = 'linear-gradient(135deg, #d97706 0%, #b45309 100%)';
+                    freshnessBadge.title = 'Offline / stale last-good snapshot — not live Yahoo prints. Boss sits out.';
+                } else if (closedSnap) {
                     freshnessBadge.textContent = 'Closed snap';
                     freshnessBadge.style.background = 'linear-gradient(135deg, #64748b 0%, #475569 100%)';
                     freshnessBadge.title = 'Markets closed — showing last session / delayed Yahoo snapshot (not live prints)';

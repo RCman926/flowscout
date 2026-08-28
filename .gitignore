@@ -135,6 +135,8 @@ tests/
 
 # Local runtime / desk state (not source)
 _archive_unused/
+offline_snapshot.json
+offline_snapshot.json.tmp
 squeeze_radar_state.json
 shadow_learning_trades.json
 boss_decision_journal.json

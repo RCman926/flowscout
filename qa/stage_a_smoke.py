@@ -283,6 +283,88 @@ def test_quote_only_when_hard_session():
     print("OK hard session blocks auto paper; quotes not executable")
 
 
+def test_offline_sit_out_and_snapshot_persist():
+    """Boss sits out on stale data; snapshot survives a 'restart' (new OfflineDesk)."""
+    import json
+    import tempfile
+    from pathlib import Path
+
+    from offline_mode import OfflineDesk, sit_out_boss, annotate_stale, payload_is_stale
+
+    last = {
+        "action": "BUY_CALLS",
+        "confidence": 70,
+        "can_auto_paper": True,
+        "executable": True,
+        "paper_armed": True,
+        "contract": {"strike": 100, "right": "CALL", "ask": 1.0, "bid": 0.9},
+        "scenarios": [{"scenario": "Balanced", "primary": True, "executable": True}],
+        "reason": "flow aligned",
+    }
+    painted = sit_out_boss(last)
+    assert painted["action"] == "NO_TRADE"
+    assert painted["can_auto_paper"] is False
+    assert painted["executable"] is False
+    assert painted["paper_armed"] is False
+    assert painted["stale_paint"] is True
+    assert painted["offline"] is True
+    assert painted["last_live_action"] == "BUY_CALLS"
+    assert painted["contract"]["strike"] == 100  # card not blanked
+    assert "OFFLINE_STALE" in painted["veto_flags"]
+    assert painted["scenarios"][0]["executable"] is False
+    assert payload_is_stale(annotate_stale({"stock_price": 100, "data_freshness": "NEW"}))
+
+    with tempfile.TemporaryDirectory() as td:
+        path = Path(td) / "offline_snapshot.json"
+        desk = OfflineDesk(path)
+        flow = {
+            "symbol": "SPY",
+            "stock_price": 512.34,
+            "all_calls": [{"strike": 512, "bid": 0.9, "ask": 1.1}],
+            "all_puts": [{"strike": 512, "bid": 0.8, "ask": 1.0}],
+            "data_source": "yfinance",
+            "data_freshness": "NEW",
+            "boss_decision": last,
+        }
+        desk.capture("SPY", flow, boss=last)
+        assert path.exists()
+        raw = json.loads(path.read_text(encoding="utf-8"))
+        assert raw["stock_price"] == 512.34
+        desk2 = OfflineDesk(path)
+        served = desk2.serve_flow("SPY")
+        assert served["offline"] is True
+        assert served["stale"] is True
+        assert served["data_freshness"] == "OFFLINE"
+        assert served["stock_price"] == 512.34
+        assert served["live"] is False
+        assert served["boss_decision"]["action"] == "NO_TRADE"
+        assert served["boss_decision"]["can_auto_paper"] is False
+        assert served["boss_decision"]["last_live_action"] == "BUY_CALLS"
+    print("OK offline sit-out + snapshot persist across restart")
+
+
+def test_boss_stale_flag_no_auto_paper():
+    from boss_decision_engine import BossDecisionEngine
+
+    eng = BossDecisionEngine()
+    calls, puts = _chain(100)
+    d = eng.decide(
+        "SPY",
+        100.0,
+        flow_signal={"action": "BUY_CALLS", "confidence": 80, "reason": "test"},
+        calls=calls,
+        puts=puts,
+        paper_armed=True,
+        data_stale=True,
+        offline=True,
+    )
+    assert d["action"] == "NO_TRADE"
+    assert d["can_auto_paper"] is False
+    assert d["executable"] is False
+    assert d.get("offline") is True or d.get("stale_paint") is True
+    print("OK boss stale/offline forces sit-out even if paper_armed")
+
+
 if __name__ == "__main__":
     test_scenarios()
     test_boss_disarmed()
@@ -291,4 +373,6 @@ if __name__ == "__main__":
     test_veto_sets_aligned()
     test_session_pass_through_no_desync()
     test_quote_only_when_hard_session()
+    test_offline_sit_out_and_snapshot_persist()
+    test_boss_stale_flag_no_auto_paper()
     print("\nAll Stage A smoke checks passed.")

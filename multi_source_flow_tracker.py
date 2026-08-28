@@ -418,6 +418,17 @@ class MultiSourceFlowTracker:
         """
         cache_key = f"{symbol}_0dte"
         current_time = time.time()
+
+        # Offline / Yahoo-blocked: last-good snapshot only — never fake live prints
+        try:
+            from offline_mode import live_market_blocked, serve_offline_flow
+
+            if live_market_blocked():
+                served = serve_offline_flow(symbol)
+                self.cache[cache_key] = (served, current_time)
+                return served
+        except Exception as e:
+            logger.debug(f"offline serve skipped: {e}")
         
         # Check cache
         if cache_key in self.cache:
@@ -557,6 +568,12 @@ class MultiSourceFlowTracker:
                     self.cache[cache_key] = (data, current_time)
                     self._save_rotation_stats()
                     logger.info(f"✅ Successfully got data from {source_name}")
+                    try:
+                        from offline_mode import capture_live_snapshot
+
+                        capture_live_snapshot(symbol, data)
+                    except Exception:
+                        pass
                     return data
                 self._mark_source_cold(source_name, 'empty or zero price')
             except Exception as e:
@@ -565,6 +582,16 @@ class MultiSourceFlowTracker:
                 self._mark_source_cold(source_name, str(e)[:120])
 
         logger.warning(f"All warm sources failed for {symbol}" + (f": {last_error}" if last_error else ""))
+        try:
+            from offline_mode import mark_live_failure, serve_offline_flow
+
+            mark_live_failure(str(last_error or "all sources failed"))
+            served = serve_offline_flow(symbol)
+            if served and float(served.get("stock_price") or 0) > 0:
+                logger.warning(f"Serving last-good OFFLINE snapshot for {symbol}")
+                return served
+        except Exception:
+            pass
         
         # All sources failed - try to get at least stock price as fallback
         logger.warning(f"Attempting stock price fallback for {symbol}...")
@@ -1167,6 +1194,13 @@ class MultiSourceFlowTracker:
     
     def _get_yfinance_data(self, symbol: str) -> Optional[Dict]:
         """Get data from yfinance (fallback) — gated by shared yahoo_throttle."""
+        try:
+            from offline_mode import live_market_blocked, serve_offline_flow
+
+            if live_market_blocked():
+                return serve_offline_flow(symbol)
+        except Exception:
+            pass
         try:
             import time
             from yahoo_throttle import (

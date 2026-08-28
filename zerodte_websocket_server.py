@@ -345,6 +345,48 @@ async def lifespan(app: FastAPI):
         logger.info(f"Changing working directory from {os.getcwd()} to {script_dir}")
         os.chdir(script_dir)
     logger.info(f"Working directory: {os.getcwd()}")
+
+    # Hydrate last-good snapshot so a second offline boot still has paint
+    try:
+        from offline_mode import hydrate_last_good, live_market_blocked, annotate_stale, status_dict
+
+        snap = hydrate_last_good()
+        if snap:
+            symbol = snap.get("symbol") or "SPY"
+            flow = snap.get("flow") if isinstance(snap.get("flow"), dict) else None
+            if flow:
+                age = None
+                if snap.get("captured_ts"):
+                    try:
+                        age = max(0.0, time.time() - float(snap["captured_ts"]))
+                    except (TypeError, ValueError):
+                        age = None
+                painted = annotate_stale(
+                    flow,
+                    symbol=symbol,
+                    captured_at=snap.get("captured_at"),
+                    snapshot_age_sec=age,
+                )
+                if isinstance(snap.get("boss_decision"), dict):
+                    from offline_mode import sit_out_boss
+
+                    painted["boss_decision"] = sit_out_boss(snap["boss_decision"])
+                _last_successful_flow_data[symbol] = painted
+                _last_successful_data_timestamp[symbol] = float(snap.get("captured_ts") or 0)
+                logger.info(
+                    "Hydrated last-good snapshot for %s @ %s (age=%s)",
+                    symbol,
+                    painted.get("stock_price"),
+                    age,
+                )
+        if live_market_blocked():
+            st = status_dict()
+            logger.info(
+                "OFFLINE MODE — live Yahoo/Polygon/IBKR off. snapshot=%s paper stays DISARMED.",
+                st.get("has_snapshot"),
+            )
+    except Exception as e:
+        logger.warning(f"offline hydrate: {e}")
     
     try:
         from session_hygiene import apply_session_hygiene
@@ -353,7 +395,14 @@ async def lifespan(app: FastAPI):
         logger.warning(f"session hygiene: {e}")
     
     logger.info("📊 Initializing background tasks...")
-    if os.getenv("UNATTENDED", "").lower() in ("1", "true", "yes"):
+    _skip_unattended_arm = False
+    try:
+        from offline_mode import live_market_blocked as _off_arm
+
+        _skip_unattended_arm = _off_arm()
+    except Exception:
+        _skip_unattended_arm = False
+    if os.getenv("UNATTENDED", "").lower() in ("1", "true", "yes") and not _skip_unattended_arm:
         try:
             if paper_arm_state:
                 paper_arm_state.set_armed(True)
@@ -377,6 +426,17 @@ async def lifespan(app: FastAPI):
         try:
             while True:
                 try:
+                    try:
+                        from offline_mode import live_market_blocked
+
+                        if live_market_blocked():
+                            if not idle_logged:
+                                logger.info("Big Run parked — OFFLINE (no live Yahoo)")
+                                idle_logged = True
+                            await asyncio.sleep(600)
+                            continue
+                    except Exception:
+                        pass
                     clock = session_clock()
                     if clock.get("closed"):
                         if not idle_logged:
@@ -1206,6 +1266,70 @@ _rate_limit_last_log = {}  # api_name -> timestamp (throttle warning spam)
 _yfinance_last_warning = {}  # symbol -> timestamp to prevent log spam
 
 
+def _desk_offline() -> bool:
+    try:
+        from offline_mode import live_market_blocked
+
+        return bool(live_market_blocked())
+    except Exception:
+        return False
+
+
+def _offline_status() -> dict:
+    try:
+        from offline_mode import status_dict
+
+        return status_dict()
+    except Exception:
+        return {"offline": False, "live_fetches": True}
+
+
+def _flow_is_stale(flow_data) -> bool:
+    if _desk_offline():
+        return True
+    try:
+        from offline_mode import payload_is_stale
+
+        return bool(payload_is_stale(flow_data if isinstance(flow_data, dict) else None))
+    except Exception:
+        return False
+
+
+def _persist_live_snapshot(symbol: str, flow_data: dict, boss_decision=None) -> None:
+    if not isinstance(flow_data, dict) or _flow_is_stale(flow_data):
+        return
+    if float(flow_data.get("stock_price") or 0) <= 0:
+        return
+    try:
+        from offline_mode import capture_live_snapshot
+
+        capture_live_snapshot(symbol, flow_data, boss=boss_decision or flow_data.get("boss_decision"))
+    except Exception:
+        pass
+
+
+def _sit_out_boss_paint(flow_data=None, last_boss=None):
+    try:
+        from offline_mode import sit_out_boss
+
+        prior = last_boss
+        if not isinstance(prior, dict) and isinstance(flow_data, dict):
+            prior = flow_data.get("boss_decision")
+        return sit_out_boss(prior if isinstance(prior, dict) else None)
+    except Exception:
+        return {
+            "action": "NO_TRADE",
+            "can_auto_paper": False,
+            "executable": False,
+            "offline": True,
+            "stale_paint": True,
+            "data_quality": "offline_stale",
+            "reason": "OFFLINE — sitting out",
+            "veto_flags": ["OFFLINE_STALE"],
+            "hard_vetoes": ["OFFLINE_STALE"],
+        }
+
+
 def _et_now_time():
     """Current time-of-day in America/New_York."""
     try:
@@ -1246,6 +1370,23 @@ async def _send_immediate_symbol_data(websocket: WebSocket, symbol: str):
         closed_session = session in ('WEEKEND', 'OVERNIGHT')
 
         flow_data = None
+
+        if _desk_offline():
+            try:
+                from offline_mode import serve_offline_flow
+
+                flow_data = serve_offline_flow(symbol)
+                if symbol in _last_successful_flow_data and float((_last_successful_flow_data[symbol] or {}).get("stock_price") or 0) > 0:
+                    # Prefer in-memory hydrate if disk snapshot was empty
+                    if not flow_data or float(flow_data.get("stock_price") or 0) <= 0:
+                        flow_data = _last_successful_flow_data[symbol]
+            except Exception as e:
+                logger.debug(f"offline immediate serve: {e}")
+            if flow_data:
+                await _format_and_send_data(websocket, symbol, flow_data)
+            else:
+                logger.warning(f"OFFLINE — no snapshot for {symbol} on connect")
+            return
 
         # Prefer cache (accept stale on weekend/overnight — no live chain expected)
         try:
@@ -1442,7 +1583,33 @@ async def _format_and_send_data(websocket: WebSocket, symbol: str, flow_data: di
         paper_boss = {}
         try:
             stock_px = float(clean_flow_data.get('stock_price') or 0)
-            if BOSS_ENGINE_AVAILABLE and boss_decision_engine and stock_px > 0:
+            stale_now = _flow_is_stale(clean_flow_data)
+            if stale_now:
+                last_boss = None
+                if isinstance(clean_flow_data.get('boss_decision'), dict):
+                    last_boss = clean_flow_data.get('boss_decision')
+                elif symbol in _last_successful_flow_data and isinstance((_last_successful_flow_data[symbol] or {}).get('boss_decision'), dict):
+                    last_boss = _last_successful_flow_data[symbol].get('boss_decision')
+                boss_decision = _sit_out_boss_paint(clean_flow_data, last_boss)
+                clean_signal['boss_decision'] = boss_decision
+                clean_flow_data['boss_decision'] = boss_decision
+                clean_flow_data['offline'] = True
+                clean_flow_data['stale'] = True
+                clean_flow_data['data_freshness'] = 'OFFLINE'
+                armed = False
+                if paper_trading_engine:
+                    paper_boss = {
+                        'armed': False,
+                        'arm_status': paper_arm_state.status() if paper_arm_state else {},
+                        'open_positions': paper_trading_engine.get_open_positions(),
+                        'performance': paper_trading_engine.get_performance(),
+                        'risk': paper_trading_engine.risk_status(),
+                        'offline': True,
+                        'can_auto_paper': False,
+                    }
+                clean_signal['paper_boss'] = paper_boss
+                clean_flow_data['paper_boss'] = paper_boss
+            elif BOSS_ENGINE_AVAILABLE and boss_decision_engine and stock_px > 0:
                 armed = bool(paper_arm_state.armed) if paper_arm_state else False
                 boss_decision = boss_decision_engine.decide(
                     symbol=symbol,
@@ -1469,6 +1636,8 @@ async def _format_and_send_data(websocket: WebSocket, symbol: str, flow_data: di
                     }
                 clean_signal['paper_boss'] = paper_boss
                 clean_flow_data['paper_boss'] = paper_boss
+                if not stale_now:
+                    _persist_live_snapshot(symbol, clean_flow_data, boss_decision)
         except Exception as e:
             logger.debug(f"_format_and_send_data Boss attach failed for {symbol}: {e}")
             boss_decision = {'action': 'NO_TRADE', 'confidence': 0, 'reason': 'Boss unavailable on snapshot'}
@@ -1492,6 +1661,7 @@ async def _format_and_send_data(websocket: WebSocket, symbol: str, flow_data: di
             'data': clean_flow_data,
             'signal': clean_signal,
             'market_status': market_status,
+            'offline': bool(clean_flow_data.get('offline') or _desk_offline()),
             'advanced_analysis': clean_advanced_analysis,  # Phase 1 upgrades
             # Also mirror Boss at top of data habit used by main updater
         }
@@ -1541,6 +1711,48 @@ async def background_data_updater(update_interval: float = 2.5):
                 # Log every 20 iterations to confirm loop is running
                 if loop_iteration % 20 == 0:
                     logger.info(f"💓 Background updater loop iteration #{loop_iteration} - still running!")
+
+                if _desk_offline():
+                    try:
+                        from offline_mode import serve_offline_flow
+
+                        market_status = get_market_status()
+                        targets = {s for s in manager.symbol_subscriptions.keys() if s == 'SPY'} or {'SPY'}
+                        for symbol in targets:
+                            snap = None
+                            if symbol in _last_successful_flow_data:
+                                snap = _last_successful_flow_data[symbol]
+                            if not snap or float((snap or {}).get('stock_price') or 0) <= 0:
+                                snap = serve_offline_flow(symbol)
+                            if not isinstance(snap, dict):
+                                snap = serve_offline_flow(symbol)
+                            snap = dict(snap)
+                            snap['market_status'] = market_status
+                            snap['offline'] = True
+                            snap['stale'] = True
+                            snap['data_freshness'] = 'OFFLINE'
+                            snap['live'] = False
+                            last_boss = snap.get('boss_decision') if isinstance(snap.get('boss_decision'), dict) else None
+                            snap['boss_decision'] = _sit_out_boss_paint(snap, last_boss)
+                            _last_successful_flow_data[symbol] = snap
+                            subscribers = list(manager.symbol_subscriptions.get(symbol, set()) or [])
+                            if subscribers:
+                                for ws in subscribers:
+                                    try:
+                                        await _format_and_send_data(ws, symbol, snap)
+                                    except Exception as e:
+                                        logger.debug(f"offline broadcast failed for {symbol}: {e}")
+                            else:
+                                # Keep updater_alive even with no clients
+                                pass
+                        await asyncio.sleep(5.0)
+                        continue
+                    except asyncio.CancelledError:
+                        raise
+                    except Exception as e:
+                        logger.debug(f"offline updater: {e}")
+                        await asyncio.sleep(5.0)
+                        continue
                 
                 # Periodic market data scan — NEVER during pre-market / open-protect (burns Yahoo)
                 current_time = time.time()
@@ -2670,49 +2882,60 @@ async def background_data_updater(update_interval: float = 2.5):
                                 }
                             )
                             vix_for_boss = vix_lvl if 'vix_lvl' in locals() else None
-                            if vix_for_boss is None:
-                                try:
-                                    from vix_analyzer import vix_analyzer as _vix_b
-                                    vs = _vix_b.analyze_vix()
-                                    vix_for_boss = vs.get('current_vix') or vs.get('vix') or vs.get('level')
-                                except Exception:
-                                    vix_for_boss = None
-                            armed = bool(paper_arm_state.armed) if paper_arm_state else False
-                            sess_for_boss = session_structure if 'session_structure' in locals() else flow_data.get('session_structure')
-                            calls_for_boss = calls_sorted if 'calls_sorted' in locals() else flow_data.get('all_calls')
-                            puts_for_boss = puts_sorted if 'puts_sorted' in locals() else flow_data.get('all_puts')
-                            boss_decision = boss_decision_engine.decide(
-                                symbol=symbol,
-                                stock_price=stock_price,
-                                flow_signal=flow_for_boss,
-                                calls=calls_for_boss,
-                                puts=puts_for_boss,
-                                options_chain={
-                                    'calls': calls_for_boss or [],
-                                    'puts': puts_for_boss or [],
-                                },
-                                vix_level=vix_for_boss,
-                                paper_armed=armed,
-                                session_structure=sess_for_boss,
-                            )
-                            # Keep session_structure identical to Boss workers (one voice)
-                            if boss_decision.get('workers') and sess_for_boss:
-                                flow_data['session_structure'] = sess_for_boss
-                                optimized_decision['session_structure'] = sess_for_boss
-                            elif boss_decision.get('workers'):
-                                # Reconstruct minimal session blob from Boss if WS skipped evaluate
-                                synced = {
-                                    'workers': boss_decision.get('workers'),
-                                    'direction_hint': {
-                                        'action': (boss_decision.get('session_context') or {}).get('direction_hint_action'),
-                                        'phase': (boss_decision.get('session_context') or {}).get('phase'),
-                                        'orb_state': (boss_decision.get('session_context') or {}).get('orb_state'),
-                                        'source': (boss_decision.get('session_context') or {}).get('direction_source'),
+                            stale_cycle = _flow_is_stale(flow_data if isinstance(flow_data, dict) else None)
+                            if stale_cycle:
+                                last_boss = None
+                                if isinstance(flow_data, dict) and isinstance(flow_data.get('boss_decision'), dict):
+                                    last_boss = flow_data.get('boss_decision')
+                                boss_decision = _sit_out_boss_paint(
+                                    flow_data if isinstance(flow_data, dict) else None,
+                                    last_boss,
+                                )
+                                armed = False
+                            else:
+                                if vix_for_boss is None:
+                                    try:
+                                        from vix_analyzer import vix_analyzer as _vix_b
+                                        vs = _vix_b.analyze_vix()
+                                        vix_for_boss = vs.get('current_vix') or vs.get('vix') or vs.get('level')
+                                    except Exception:
+                                        vix_for_boss = None
+                                armed = bool(paper_arm_state.armed) if paper_arm_state else False
+                                sess_for_boss = session_structure if 'session_structure' in locals() else flow_data.get('session_structure')
+                                calls_for_boss = calls_sorted if 'calls_sorted' in locals() else flow_data.get('all_calls')
+                                puts_for_boss = puts_sorted if 'puts_sorted' in locals() else flow_data.get('all_puts')
+                                boss_decision = boss_decision_engine.decide(
+                                    symbol=symbol,
+                                    stock_price=stock_price,
+                                    flow_signal=flow_for_boss,
+                                    calls=calls_for_boss,
+                                    puts=puts_for_boss,
+                                    options_chain={
+                                        'calls': calls_for_boss or [],
+                                        'puts': puts_for_boss or [],
                                     },
-                                    'veto_flags': list(boss_decision.get('hard_vetoes') or []),
-                                }
-                                flow_data['session_structure'] = synced
-                                optimized_decision['session_structure'] = synced
+                                    vix_level=vix_for_boss,
+                                    paper_armed=armed,
+                                    session_structure=sess_for_boss,
+                                )
+                                # Keep session_structure identical to Boss workers (one voice)
+                                if boss_decision.get('workers') and sess_for_boss:
+                                    flow_data['session_structure'] = sess_for_boss
+                                    optimized_decision['session_structure'] = sess_for_boss
+                                elif boss_decision.get('workers'):
+                                    # Reconstruct minimal session blob from Boss if WS skipped evaluate
+                                    synced = {
+                                        'workers': boss_decision.get('workers'),
+                                        'direction_hint': {
+                                            'action': (boss_decision.get('session_context') or {}).get('direction_hint_action'),
+                                            'phase': (boss_decision.get('session_context') or {}).get('phase'),
+                                            'orb_state': (boss_decision.get('session_context') or {}).get('orb_state'),
+                                            'source': (boss_decision.get('session_context') or {}).get('direction_source'),
+                                        },
+                                        'veto_flags': list(boss_decision.get('hard_vetoes') or []),
+                                    }
+                                    flow_data['session_structure'] = synced
+                                    optimized_decision['session_structure'] = synced
 
                             optimized_decision['boss_decision'] = boss_decision
                             # Authoritative Stage A verb — hide legacy optimizer action behind legacy_*
@@ -2728,16 +2951,25 @@ async def background_data_updater(update_interval: float = 2.5):
                                 # Honest marks: exit/manage prefer BID; never prefer mid over bid
                                 bid = c.get('bid')
                                 mark = bid if bid not in (None, 0, 0.0) else (c.get('mid') or c.get('entry_mark'))
-                                paper_boss_result['armed'] = armed
+                                paper_boss_result['armed'] = bool(armed) and not stale_cycle
                                 paper_boss_result['arm_status'] = paper_arm_state.status() if paper_arm_state else {}
-                                paper_boss_result['exits'] = paper_trading_engine.manage_boss_positions(
-                                    symbol, stock_price, mark, boss_decision, option_bid=bid
-                                )
-                                if boss_decision.get('can_auto_paper'):
-                                    paper_boss_result['entry'] = paper_trading_engine.execute_boss_trade(boss_decision)
+                                if stale_cycle:
+                                    # Do not flatten opens or open tickets on stale/offline marks
+                                    paper_boss_result['offline'] = True
+                                    paper_boss_result['can_auto_paper'] = False
+                                    paper_boss_result['exits'] = []
+                                else:
+                                    paper_boss_result['exits'] = paper_trading_engine.manage_boss_positions(
+                                        symbol, stock_price, mark, boss_decision, option_bid=bid
+                                    )
+                                    if boss_decision.get('can_auto_paper'):
+                                        paper_boss_result['entry'] = paper_trading_engine.execute_boss_trade(boss_decision)
+                                        _persist_live_snapshot(symbol, flow_data if isinstance(flow_data, dict) else {}, boss_decision)
                                 paper_boss_result['open_positions'] = paper_trading_engine.get_open_positions()
                                 paper_boss_result['performance'] = paper_trading_engine.get_performance()
                                 paper_boss_result['risk'] = paper_trading_engine.risk_status()
+                            if not stale_cycle and isinstance(flow_data, dict):
+                                _persist_live_snapshot(symbol, flow_data, boss_decision)
                             # Shadow LEARN: every Boss BUY_CALLS/BUY_PUTS is graded (paper stays DISARMED)
                             try:
                                 from shadow_learning_engine import shadow_learning_engine
@@ -4724,12 +4956,22 @@ async def websocket_endpoint(websocket: WebSocket, symbol: str = "SPY"):
         try:
             from market_hours_detector import get_market_status as _get_mkt_status
             _mkt = _get_mkt_status()
+            _off = _desk_offline()
+            if isinstance(_mkt, dict):
+                _mkt = dict(_mkt)
+                _mkt['offline'] = _off
             connection_msg = {
                 'type': 'connected',
                 'symbol': symbol,
                 'timestamp': datetime.now().isoformat(),
-                'message': 'WebSocket connected, fetching data...',
+                'message': (
+                    'WebSocket connected — OFFLINE (stale snapshot, not live prints)'
+                    if _off else
+                    'WebSocket connected, fetching data...'
+                ),
                 'market_status': _mkt,
+                'offline': _off,
+                'data_freshness': 'OFFLINE' if _off else None,
             }
             await manager.send_personal_message(connection_msg, websocket)
             logger.info(f"[WebSocket] ✅ Sent 'connected' message to client for {symbol}")
@@ -4764,36 +5006,48 @@ async def websocket_endpoint(websocket: WebSocket, symbol: str = "SPY"):
         loop = asyncio.get_event_loop()
         flow_data = None
         # Note: calls_sorted, puts_sorted, momentum, etc. already initialized at function scope above
-        try:
-            # Add timeout to prevent hanging
-            flow_data = await asyncio.wait_for(
-                loop.run_in_executor(
-                    None,
-                    multi_source_tracker.get_0dte_options_chain,
-                    symbol
-                ),
-                timeout=10.0  # 10 second timeout
-            )
-        except asyncio.TimeoutError:
-            logger.warning(f"Data fetch timeout for {symbol} - using fallback")
-            flow_data = None
-        except Exception as e:
-            logger.warning(f"Multi-source failed, trying single source: {e}")
+        if _desk_offline():
             try:
+                from offline_mode import serve_offline_flow
+
+                flow_data = _last_successful_flow_data.get(symbol) or serve_offline_flow(symbol)
+                if not flow_data or float((flow_data or {}).get('stock_price') or 0) <= 0:
+                    flow_data = serve_offline_flow(symbol)
+                logger.info(f"OFFLINE connect payload for {symbol} stock={ (flow_data or {}).get('stock_price') }")
+            except Exception as e:
+                logger.warning(f"OFFLINE connect payload failed: {e}")
+                flow_data = None
+        else:
+            try:
+                # Add timeout to prevent hanging
                 flow_data = await asyncio.wait_for(
                     loop.run_in_executor(
                         None,
-                        flow_tracker.get_0dte_options_chain,
+                        multi_source_tracker.get_0dte_options_chain,
                         symbol
                     ),
                     timeout=10.0  # 10 second timeout
                 )
             except asyncio.TimeoutError:
-                logger.warning(f"Single source also timed out for {symbol}")
+                logger.warning(f"Data fetch timeout for {symbol} - using fallback")
                 flow_data = None
-            except Exception as e2:
-                logger.warning(f"Single source also failed: {e2}")
-                flow_data = None
+            except Exception as e:
+                logger.warning(f"Multi-source failed, trying single source: {e}")
+                try:
+                    flow_data = await asyncio.wait_for(
+                        loop.run_in_executor(
+                            None,
+                            flow_tracker.get_0dte_options_chain,
+                            symbol
+                        ),
+                        timeout=10.0  # 10 second timeout
+                    )
+                except asyncio.TimeoutError:
+                    logger.warning(f"Single source also timed out for {symbol}")
+                    flow_data = None
+                except Exception as e2:
+                    logger.warning(f"Single source also failed: {e2}")
+                    flow_data = None
         
         # Handle case when flow_data is None or empty
         # When markets are closed, try to get 1DTE options for next trading day
@@ -4834,6 +5088,8 @@ async def websocket_endpoint(websocket: WebSocket, symbol: str = "SPY"):
             premarket_price = 0
             premarket_change_pct = 0
             try:
+                if _desk_offline():
+                    raise RuntimeError("offline — skip Yahoo history")
                 # Add timeout to prevent hanging - use proper function calls
                 ticker = yf.Ticker(symbol)
                 
@@ -5050,6 +5306,8 @@ async def websocket_endpoint(websocket: WebSocket, symbol: str = "SPY"):
             premarket_price = 0
             premarket_change_pct = 0
             try:
+                if _desk_offline():
+                    raise RuntimeError("offline — skip Yahoo history")
                 # Add timeout to prevent hanging - use proper function calls
                 ticker = yf.Ticker(symbol)
                 
@@ -5389,6 +5647,18 @@ async def websocket_endpoint(websocket: WebSocket, symbol: str = "SPY"):
         # Task was cancelled - this is normal during shutdown
         logger.info(f"WebSocket task cancelled for {symbol}")
         manager.disconnect(websocket)
+    except RuntimeError as e:
+        # Starlette TestClient / client already gone
+        if "disconnect" in str(e).lower() or "receive" in str(e).lower():
+            manager.disconnect(websocket)
+            logger.info(f"Client gone for {symbol}. Remaining connections: {len(manager.active_connections)}")
+        else:
+            logger.error(f"WebSocket error for {symbol}: {e}", exc_info=True)
+            try:
+                if websocket in manager.active_connections:
+                    manager.disconnect(websocket)
+            except Exception:
+                pass
     except Exception as e:
         logger.error(f"WebSocket error for {symbol}: {e}", exc_info=True)
         # CRITICAL FIX: Only disconnect if websocket is still in connections
@@ -5734,6 +6004,7 @@ async def health_check():
                 "data_sources": data_sources,
                 "performance": performance_info,
                 "api_status": api_status_detailed,
+                "offline": _offline_status(),
                 "background_updater": {
                     "running": hasattr(background_data_updater, '_loop_count'),
                     "iterations": getattr(background_data_updater, '_loop_count', 0)
@@ -6801,6 +7072,18 @@ if __name__ == "__main__":
 
     host = os.getenv("FLOWSCOUT_HOST", "127.0.0.1")
     port = int(os.getenv("FLOWSCOUT_PORT", "8000"))
+    try:
+        from offline_mode import live_market_blocked, status_dict
+
+        if live_market_blocked():
+            st = status_dict()
+            print(
+                f"OFFLINE MODE — last-good snapshot, no live Yahoo. "
+                f"has_snapshot={st.get('has_snapshot')} paper DISARMED",
+                flush=True,
+            )
+    except Exception:
+        pass
     print(f"FlowScout listening on http://{host}:{port}/", flush=True)
     uvicorn.run(
         app,
